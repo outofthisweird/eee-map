@@ -271,12 +271,10 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
   <div class="body">
     <span id="pb"></span>
     <div class="text">
-      <p id="pname"></p>
       <p id="ptitle"></p>
-      <p><span id="pline"></span><br><span id="pdate"></span> · <span id="pid"></span></p>
       <div id="pxfer"></div>
       <p><a id="pig" target="_blank" rel="noopener">인스타그램에서 보기</a> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></p>
-      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small>이전 역</small> <span></span></button><button id="pnext"><small>다음 역</small> <span></span> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
+      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small>이전 역</small></button><button id="pnext"><small>다음 역</small> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
       <p><button id="pclose">닫기</button></p>
     </div>
   </div>
@@ -1010,14 +1008,13 @@ function openStation(s,fromHash,keepView){
   focusLine(s.line);
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
-  $('#pname').textContent=s.s; $('#ptitle').textContent=s.t;
-  $('#pline').textContent=`${L.day}요일 · ${s.ser}`; $('#pdate').textContent=s.d; $('#pid').textContent=s.id;
-  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 ${disc(x.line,x.b)} ${x.line.day}요일 · ${x.s}`;b.onclick=()=>openStation(x);xr.appendChild(b)});
+  $('#ptitle').textContent=s.t;   // [eee] popup = title, transfers, Instagram, prev/next, close (no day·date·id·series, 2026-11-18)
+  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`환승: ${x.ser}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
   $('#pig').href=s.u;
   const prev=L.st[s.i-1], next=L.st[s.i+1];
   const pb=$('#pprev'),nb=$('#pnext');
-  pb.disabled=!prev; pb.querySelector('span').textContent=prev?prev.s:'기점'; pb.onclick=()=>prev&&openStation(prev);
-  nb.disabled=!next; nb.querySelector('span').textContent=next?next.s:'종점 (최신)'; nb.onclick=()=>next&&openStation(next);
+  pb.disabled=!prev; pb.onclick=()=>prev&&openStation(prev);
+  nb.disabled=!next; nb.onclick=()=>next&&openStation(next);
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); placePopup();
   if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
   follow=s;
