@@ -1,2 +1,4 @@
 __pycache__/
 .DS_Store
+# 로컬 헬베티카 미리보기 — 절대 커밋·배포 금지(nycta-gsm DEC-028)
+preview/

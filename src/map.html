@@ -6,6 +6,11 @@
 <title>EEE — Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
+<script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
+   file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
+   만들기: tools/preview_font.sh */
+(function(){var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css">');document.documentElement.classList.add('font-preview');}})();</script>
 <style>
   :root{
     --paper:#fff; --muted:#666;
@@ -13,6 +18,8 @@
     --mon:#EE352E; --wed:#FCCC0A; --fri:#0039A6; --sun:#00933C;
     --font:"Inter","Noto Sans KR","Pretendard","Helvetica Neue",Helvetica,Arial,sans-serif;
   }
+  /* 미리보기 서체가 있으면 라틴 글자는 헬베티카(NYCTA 커닝), 한글은 Noto Sans KR로 넘어간다. 파일이 없으면 Inter로 돌아간다. */
+  :root.font-preview{--font:"Helvetica Neue NYCTA Preview","Inter","Noto Sans KR","Pretendard",sans-serif}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:500;-webkit-font-smoothing:antialiased}
   #map{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;user-select:none}

@@ -32,6 +32,11 @@ python3 tests/smoke_test.py      # 팝업·랜덤 배치·드래그·그리드·
 python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬임·늘어난 구간 개수, 수정 전후 비교용)
 ```
 
+- **헬베티카 미리보기(로컬 전용):** `tools/preview_font.sh`를 실행하면 형제 폴더 `nycta-gsm-src`(또는 `nycta-gsm`)의 `make preview`로 서체를 만들어 `preview/`에 복사한다. 이후 `file://`·localhost에서 열면 라틴 글자는 NYCTA 커닝이 들어간 Helvetica Neue Medium으로 보인다. 한글은 Noto Sans KR로 보인다.
+  - `?font=web`을 붙이면 배포 서체(지금은 Inter)로 본다.
+  - `preview/`는 git에서 제외했고 **절대 커밋·배포하지 않는다**(nycta-gsm DEC-028). 배포 사이트(github.io)에서는 이 서체를 불러오지 않는다. 컴퓨터마다 스크립트를 다시 실행해야 한다.
+  - 미리보기 서체는 Medium 한 가지다. 그래서 `font-weight:700`도 Medium으로 보인다.
+  - 앱 브라우저 창용 로컬 서버: `.claude/launch.json`(`eee-map`, 127.0.0.1:8766)
 - **수정:** 항상 `src/map.html`과 `data/stations.json`을 고친다. `index.html`은 빌드 결과물이므로 직접 고치지 않는다.
 - **위치 저장:** 배치는 브라우저 localStorage(`eee-pos-v4`)에 저장된다. 저장 형식을 바꾸면 `POS_KEY` 버전을 올린다.
   - 배치 편집(드래그·↻)은 **사용자가 디자인할 때 쓰는 도구**다. 방문자 공유 기능은 지금 필요 없고, 이 브라우저에 상태가 잘 저장되기만 하면 된다.
