@@ -1,0 +1,2 @@
+source: github.com/outofthisweird/nycta-gsm (public web/ output)
+commit: d5eb462 2026-11-17 CLAUDE.md: 비공개 원본 저장소(origin)와 공개 pages 역할, 여러 컴퓨터 작업 방법 추가

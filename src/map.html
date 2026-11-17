@@ -5,183 +5,164 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EEE — Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
-<script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
-   file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
-   만들기: tools/preview_font.sh */
-(function(){var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css">');document.documentElement.classList.add('font-preview');}})();</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500..700&display=swap" rel="stylesheet">
 <style>
+/*__NYCTA__*/
+</style>
+<style>
+/* ==========================================================================
+   EEE map UI on the NYCTA design system (nycta-gsm). Tokens above come from vendor/nycta/nycta.css §0–1
+   (build.py pastes them in); this block only maps them onto the map. Rule IDs refer to the nycta-gsm ledger.
+   - Type: one weight (TYPE-002), sentence case (DONT-005), flush left, no faux bold (SIGN-002).
+     Latin = Albert Sans NYCTA (or the local Helvetica preview), Hangul falls through to Noto Sans KR.
+   - Exact rectangles (DEC-009); the only circles are discs and stations.
+   - UI chrome = reverse plates (DEC-031): field in the page text colour, ⅛in rule ½in below the top edge.
+   ========================================================================== */
   :root{
-    --paper:#fff; --muted:#666;
-    --bg:#fff; --ink:#000; --dim:#A7A9AC;
-    --mon:#EE352E; --wed:#FCCC0A; --fri:#0039A6; --sun:#00933C;
-    --font:"Inter","Noto Sans KR","Pretendard","Helvetica Neue",Helvetica,Arial,sans-serif;
+    --font-latin:"Albert Sans NYCTA";
+    --font:var(--font-latin),"Noto Sans KR","Pretendard",sans-serif;
+    --edge:20px;                                   /* [eee] distance of the UI from the screen edge */
+    --ui-btn:40px;                                 /* [eee] tool / zoom button = square */
+    --rp-gap:calc(var(--doc-in) * .5);             /* DEC-031 | ½in field above the rule */
+    --rp-rule:max(1px, calc(var(--doc-in) * .125));/* DEC-031, SIGN-023 | ⅛in rule */
+    --rp-top:calc(var(--rp-gap) * 2 + var(--rp-rule)); /* DEC-031 | ½ + ⅛ + ½in to the first cap line */
+    --rp-side:calc(var(--doc-in) * .5);            /* GRID-003 | ½in side margin */
+    /* [eee 설계결정] Hangul rises above the cap line and drops below the baseline, so Grid 1 (pitch 1⅞in, lh .95)
+       makes Korean lines touch. Korean copy: lh 1.4, and block gap = Grid 2 gap 1⅜in instead of ½in. */
+    --lh-ko:1.4;
+    --gap-ko:calc(var(--doc-in) * 1.375);          /* GRID-006 gap */
+    color-scheme:light;
   }
-  /* 미리보기 서체가 있으면 라틴 글자는 헬베티카(NYCTA 커닝), 한글은 Noto Sans KR로 넘어간다. 파일이 없으면 Inter로 돌아간다. */
-  :root.font-preview{--font:"Helvetica Neue NYCTA Preview","Inter","Noto Sans KR","Pretendard",sans-serif}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:500;-webkit-font-smoothing:antialiased}
+  /* local Helvetica preview (index.html loader below): only the Latin face changes; weights/metrics come from preview/helvetica.css */
+  :root.font-preview{--font-latin:"Helvetica Neue NYCTA Preview"}
+  /* ◐ dark = white↔black swap; disc glyph colours stay (DEC-019) */
+  :root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}   /* DEC-009 */
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--font);font-weight:var(--font-weight);
+    font-size:100%;line-height:var(--lh-g1);font-kerning:normal;font-synthesis:none;text-transform:none;-webkit-font-smoothing:antialiased}
+  button{all:unset;cursor:pointer;box-sizing:border-box;font:inherit;color:inherit}
+  :focus:not(:focus-visible){outline:none}                                   /* DEC-008 */
+  :focus-visible{outline:1px solid currentColor;outline-offset:2px}          /* DEC-008 minimal */
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+  /* ---- map ---- */
   #map{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;user-select:none}
   #map.dragging{cursor:grabbing}
-  .label{font-size:var(--label-size,13px);fill:var(--ink);pointer-events:none}
+  .label{font-size:var(--label-size,13px);font-weight:var(--font-weight);fill:var(--fg);pointer-events:none}
   .hide-labels .label{display:none}
   .line-path{fill:none;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
-  .station{cursor:pointer}
+  .station{cursor:grab}
   .station:focus{outline:none}
-  .station:focus-visible .dot{outline:2px solid var(--ink);outline-offset:4px}
+  .station:focus-visible .dot{outline:1px solid var(--fg);outline-offset:4px}
   .station .hit{fill:transparent}
-  .xfer circle{fill:var(--paper);stroke:var(--ink);stroke-width:3}
+  .dot{fill:var(--fg)}
+  .xdot{fill:var(--bg);stroke:var(--fg)}
+  .train{fill:var(--bg)}
   .dim{opacity:.18}
-  .bullet text{font-weight:700;font-size:15px;text-anchor:middle;dominant-baseline:central}
-
-  /* sign band */
-  .sign{background:var(--ink);color:var(--paper);display:flex;align-items:center;gap:12px;padding:0 16px;border-top:3px solid var(--ink);box-shadow:inset 0 3px 0 var(--ink), inset 0 5px 0 var(--paper)}
-  #logo{position:fixed;top:20px;left:20px;height:64px;min-width:220px;z-index:5}
-  #logo b{font-size:30px;font-weight:700;letter-spacing:-.5px}
-  #logo span{font-size:11px;line-height:1.3;opacity:.85}
-
-  #legend{position:fixed;left:20px;bottom:20px;z-index:5;background:var(--paper);border:2px solid var(--ink);padding:12px 14px;display:grid;gap:8px}
-  #legend button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px}
-  #legend button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-  .bul{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex:none}
-  .bul.y{color:#000}
-  #legend .day{width:22px;font-weight:700}
-  #legend .bs{display:flex;gap:4px}
-
-  #zoom{position:fixed;right:20px;bottom:20px;z-index:5;display:flex;flex-direction:column;border:2px solid var(--ink);background:var(--paper)}
-  #zoom button{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
-  #zoom button+button{border-top:2px solid var(--ink)}
-  #zoom button:hover{background:var(--ink);color:var(--paper)}
-
-  #card{position:fixed;z-index:6;pointer-events:none;background:var(--paper);border:2px solid var(--ink);padding:10px 12px;max-width:280px;font-size:13px;line-height:1.4;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
-  #card.on{opacity:1;transform:none}
-  #card .meta{color:var(--muted);font-size:11px;margin-top:4px}
-
-  #panel{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100%;background:var(--paper);border-left:3px solid var(--ink);z-index:10;transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
-  #panel.open{transform:none}
-  #panel .sign{height:72px;flex:none}
-  #panel .sign .name{font-size:22px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #panel .close{all:unset;cursor:pointer;font-size:26px;line-height:1;padding:4px}
-  #panel .body{padding:20px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:14px}
-  #panel h2{font-size:20px;line-height:1.35;font-weight:700}
-  #panel .info{font-size:13px;color:var(--ink);display:grid;grid-template-columns:64px 1fr;gap:4px 8px}
-  #panel .info dt{color:var(--muted)}
-  #pxfer{display:grid;gap:6px}
-  #pxfer:empty{display:none}
-  .xbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;border:2px solid var(--ink);padding:8px 10px;font-size:13px;font-weight:700}
-  .xbtn:hover{background:var(--ink);color:var(--paper)}
-  .xbtn .bul{width:22px;height:22px;font-size:12px}
-  #panel .ph{aspect-ratio:4/5;border:2px dashed #bbb;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;text-align:center;padding:16px}
-  #panel a.ig{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--paper);text-decoration:none;padding:14px 16px;font-weight:700;font-size:14px}
-  #panel .nav{display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--ink);flex:none}
-  #panel .nav button{all:unset;cursor:pointer;padding:14px 16px;font-size:13px}
-  #panel .nav button+button{border-left:2px solid var(--ink);text-align:right}
-  #panel .nav button:disabled{color:#bbb;cursor:default}
-  #panel .nav small{display:block;color:var(--muted);font-size:11px}
-  #panel .nav button:disabled small{color:#ccc}
-  #xfp{position:fixed;top:20px;right:20px;z-index:8;width:300px;font-size:12px}
-  #xftoggle{all:unset;cursor:pointer;display:block;margin-left:auto;background:var(--ink);color:var(--paper);padding:10px 14px;font-weight:700;font-size:13px}
-  #xfbody{background:var(--paper);border:2px solid var(--ink);margin-top:6px;padding:12px;display:grid;gap:14px;max-height:calc(100vh - 160px);overflow:auto}
-  #xfbody[hidden]{display:none}
-  #xfbody h3{font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  #xfbody h3 .bul{width:22px;height:22px;font-size:12px}
-  #xfbody label{display:grid;gap:3px;margin-top:6px;color:var(--muted)}
-  #xfbody output{color:var(--ink);font-weight:700}
-  #xfbody output i{font-style:normal;color:#888;font-weight:500}
-  #xfbody input{width:100%;accent-color:var(--ink)}
-  .xfrow{display:flex;gap:8px}
-  .xfrow button{all:unset;cursor:pointer;border:2px solid var(--ink);padding:6px 10px;font-weight:700}
-  .xfrow button:hover{background:var(--ink);color:var(--paper)}
   .station .dot{transition:transform .15s;transform-box:fill-box;transform-origin:center}
   .station:hover .dot,.station.active .dot{transform:scale(var(--dot-hover,1.7))}
-  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-  @media (max-width:640px){
-    #logo{top:12px;left:12px;height:52px;min-width:0}
-    #logo span{display:none}
-    #legend{left:12px;bottom:12px;padding:8px 10px}
-    #zoom{right:12px;bottom:12px}
-    #panel{width:100%;top:auto;height:78%;border-left:0;border-top:3px solid var(--ink);transform:translateY(105%)}
-  }
-  [data-theme=dark]{--bg:#000;--ink:#fff;--paper:#000;--muted:#9a9a9a;--dim:#58595B}
-  html{background:var(--bg)}
-  .dot{fill:var(--ink)}
-  .xdot{fill:var(--bg);stroke:var(--ink)}
-  .train{fill:var(--bg)}
-  #tools{position:fixed;right:20px;bottom:156px;z-index:5;display:flex;flex-direction:column;border:2px solid var(--ink);background:var(--paper)}
-  #tools button{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--ink)}
-  #tools button+button{border-top:2px solid var(--ink)}
-  #tools button:hover{background:var(--ink);color:var(--paper)}
-  #tools button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-  #gridlayer{display:none;pointer-events:none} svg.show-grid #gridlayer{display:inline}
-  #gridpat .gl{fill:none;stroke:var(--ink);stroke-opacity:.09;stroke-width:1}
-  #gridpat .gd{fill:var(--ink);fill-opacity:.28}
-  #zoom button{color:var(--ink)}
-  ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
-  @media (max-width:640px){#tools{right:12px;bottom:148px}}
-  /* UI boxes: black on the white map, white on the inverted map */
-  #legend,#zoom,#tools,#xfbody,#card{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  #legend button{color:var(--paper)}
-  #legend button:focus-visible{outline-color:var(--paper)}
-  #zoom button,#tools button{color:var(--paper)}
-  #zoom button+button,#tools button+button{border-top:1px solid color-mix(in srgb,var(--paper) 35%,transparent)}
-  #zoom button:hover,#tools button:hover{background:var(--paper);color:var(--ink)}
-  #tools button[aria-pressed=true]{background:var(--paper);color:var(--ink)}
-  #xftoggle{background:var(--ink);color:var(--paper)}
-  #xfbody label{color:color-mix(in srgb,var(--paper) 65%,transparent)}
-  #xfbody output{color:var(--paper)}
-  #xfbody output i{color:color-mix(in srgb,var(--paper) 55%,transparent)}
-  #xfbody input{accent-color:var(--paper)}
-  .xfrow button{border-color:var(--paper);color:var(--paper)}
-  .xfrow button:hover{background:var(--paper);color:var(--ink)}
-  #card .meta{color:color-mix(in srgb,var(--paper) 65%,transparent)}
-  /* station popup (replaces the side panel) */
-  #panel{position:fixed;top:0;left:0;right:auto;bottom:auto;width:300px;max-width:calc(100vw - 24px);height:auto;border:0;
-    background:var(--ink);color:var(--paper);z-index:10;transform:none;opacity:0;pointer-events:none;transition:opacity .16s;display:flex;flex-direction:column}
-  #panel.open{opacity:1;pointer-events:auto;transform:none}
-  #panel .sign{height:auto;padding:12px 14px;background:transparent;color:var(--paper);box-shadow:none;border:0;border-bottom:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
-  #panel .sign .name{font-size:17px}
-  #panel .close{color:var(--paper);font-size:15px}
-  #panel .body{padding:12px 14px;gap:10px;flex:none;overflow:visible}
-  #panel h2{font-size:15px;line-height:1.4}
-  #panel .info{color:var(--paper);grid-template-columns:52px 1fr;font-size:12px}
-  #panel .info dt{color:color-mix(in srgb,var(--paper) 55%,transparent)}
-  #panel a.ig{background:var(--paper);color:var(--ink);padding:11px 14px;font-size:13px}
-  .xbtn{border-color:var(--paper);color:var(--paper);font-size:12px;padding:7px 9px}
-  .xbtn:hover{background:var(--paper);color:var(--ink)}
-  #panel .nav{border-top:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
-  #panel .nav button{color:var(--paper);padding:10px 14px;font-size:12px}
-  #panel .nav button+button{border-left:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
-  #panel .nav small{color:color-mix(in srgb,var(--paper) 55%,transparent)}
-  #panel .nav button:disabled,#panel .nav button:disabled small{color:color-mix(in srgb,var(--paper) 30%,transparent)}
-  #xfbody .opts{display:grid;gap:8px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
-  #xfbody .tog{display:flex;align-items:center;gap:8px;margin:0;color:var(--paper);font-weight:700;font-size:12px;cursor:pointer}
-  #xfbody .tog input{width:16px;height:16px;accent-color:var(--paper);margin:0}
-  #xfbody .tog i{font-style:normal;font-weight:500;color:color-mix(in srgb,var(--paper) 55%,transparent)}
-  #xfbody .tog.sub{padding-left:24px;font-weight:500}
-  #xfbody .tog input:disabled+span{opacity:.4}
-  .station{cursor:grab}
-  .dragging-station,.dragging-station .station{cursor:grabbing}
   .station.snap .dot{transform:scale(2.2)}
   .station.snap .xdot{transform:scale(1.4)}
+  .dragging-station,.dragging-station .station{cursor:grabbing}
+  #gridlayer{display:none;pointer-events:none} svg.show-grid #gridlayer{display:inline}
+  #gridpat .gl{fill:none;stroke:var(--fg);stroke-opacity:.09;stroke-width:1}
+  #gridpat .gd{fill:var(--fg);fill-opacity:.28}
+  ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+  /* ---- disc (line badge): DISC-001/004 — glyph cap = 0.408 D; yellow takes black type, every other colour white (DEC-004) ---- */
+  .disc{--d:28px;display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);border-radius:50%;
+    background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
+    line-height:1;text-align:center;white-space:nowrap;vertical-align:top}
+  .disc>span{display:block}
+  /* inline disc beside 1rem copy: D = cap × 1 11/16 ÷ 1 3/8 with the 20px floor (GRID-008, DEC-021); unlike nycta.css the glyph
+     follows the floored D (glyph cap = 0.408 D), so the letter stays legible at 20px */
+  .disc--inline{--d:max(20px, calc(1rem * var(--cap-em) * 1.6875 / 1.375));vertical-align:middle;margin-block:-.6em}
+
+  /* ---- arrow: ARROW-005 path (symbol #nyarrow), ARROW-001 directions only ---- */
+  .arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:0 0 auto;fill:currentColor;overflow:visible;
+    vertical-align:calc(-1 * (var(--d) - 1em * var(--cap-em)) / 2)}   /* DEC-014 inline size, centred on the cap height */
+  .arrow[data-dir=left]{transform:rotate(180deg)}
+
+  /* ---- reverse plate (DEC-031): every UI box ---- */
+  .rplate{--font-weight:var(--font-weight-dark);color:var(--bg);font-weight:var(--font-weight);
+    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
+  :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
+
+  /* logo: identification plate, name hung from the top-left margin (GRID-003/004) */
+  #logo{position:fixed;top:var(--edge);left:var(--edge);z-index:5;display:flex;align-items:flex-start;gap:calc(var(--doc-in) * 1.375);
+    padding:var(--rp-top) calc(var(--doc-in) * 1.375) calc(var(--doc-in) * 1.375) var(--rp-side)}
+  #logo b{font-weight:inherit;font-size:1.75rem;line-height:1;margin-inline-start:calc(-1 * var(--lsb-comp))}   /* DEC-005 Directional tier (lower bound) */
+  #logo span{font-size:max(12px, .75rem);line-height:var(--lh-g1)}
+
+  /* legend: [disc] [day] [series], hierarchy by order, rows split by ⅛in rules */
+  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:grid;padding:var(--rp-top) var(--rp-side) 0}
+  #legend button{display:flex;align-items:center;gap:calc(var(--doc-in) * .5);padding:calc(var(--rp-side) * 1.5) var(--rp-side) calc(var(--rp-side) * 1.5) 0;line-height:var(--lh-ko)}
+  #legend button+button{border-top:var(--rp-rule) solid currentColor}
+  #legend .bs{display:flex;gap:2px}
+  #legend .day{min-width:1.25em}
+
+  /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
+  #tools,#zoom{position:fixed;right:var(--edge);z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
+  #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
+  #zoom{bottom:var(--edge)}
+  #tools button,#zoom button{width:var(--ui-btn);height:var(--ui-btn);display:flex;align-items:center;justify-content:center;font-size:1.125rem;line-height:1}
+  #zoom #zfit{font-size:max(12px, .75rem)}
+  #tools button+button,#zoom button+button{border-top:var(--rp-rule) solid currentColor}
+  #tools button:hover,#zoom button:hover,#tools button[aria-pressed=true]{background:var(--bg);color:var(--fg)}
+
+  /* ---- station popup: DEC-031 information popup (Grid 1, lead disc, close as text link, no animation) ---- */
+  #panel{--p-in:var(--doc-in);position:fixed;top:0;left:0;z-index:10;opacity:0;pointer-events:none;
+    width:max-content;max-width:min(calc(var(--p-in) * 48), calc(100vw - 24px));            /* ≤ 4 ft */
+    padding:var(--rp-top) var(--rp-side) calc(var(--p-in) * (.5 + .235 * 1.375));           /* bottom ½in below the descender guide */
+    font-size:1rem;line-height:var(--lh-ko)}
+  #panel.open{opacity:1;pointer-events:auto}
+  #panel .body{display:flex;align-items:flex-start;gap:calc(var(--p-in) * .5)}              /* GRID-009 disc → text ½in */
+  #pb .disc{--d:calc(1rem * (var(--cap-em) + var(--lh-ko)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch, Korean pitch) */
+  #panel .text{min-width:0;max-width:calc(var(--p-in) * 40)}
+  #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-ko) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-comp))}
+  #panel .text>*+*{margin-block-start:calc(var(--gap-ko) + var(--p-trim))}                  /* GRID-007 → [eee] Korean gap */
+  @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
+  #pxfer{display:grid;gap:calc(var(--gap-ko) / 2)} #pxfer:empty{display:none}
+  #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
+  #panel button:disabled{text-decoration:none;cursor:default}
+  #panel .nav{display:grid;gap:calc(var(--gap-ko) / 2)}
+  #panel .nav button{display:flex;align-items:baseline;gap:.3em}   /* flex gaps: the underline stops between words */
+  #panel small{font-size:inherit}
+
+  @media (max-width:640px){
+    :root{--edge:12px}
+    #logo span{display:none}
+    #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
+  }
 </style>
+<script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
+   file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
+   토큰 블록 뒤에 와야 미리보기 값(굵기·cap 비율)이 이긴다. 만들기: tools/preview_font.sh */
+(function(){var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css">');document.documentElement.classList.add('font-preview');}})();</script>
 </head>
 <body>
+<svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <svg id="map" role="img" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="stations"></g><g id="bullets"></g><g id="trains"></g></g></svg>
 
-<div id="logo" class="sign"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
-<div id="legend" aria-label="노선 범례"></div>
-<div id="tools"><button id="gridbtn" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button></div>
-<div id="zoom"><button id="zin" aria-label="확대">+</button><button id="zout" aria-label="축소">−</button><button id="zfit" aria-label="전체 보기" style="font-size:13px">ALL</button></div>
-<aside id="panel" aria-hidden="true">
-  <div class="sign"><span id="pb"></span><span class="name" id="pname"></span><button class="close" id="pclose" aria-label="닫기">✕</button></div>
+<div id="logo" class="rplate"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
+<div id="legend" class="rplate" aria-label="노선 범례"></div>
+<div id="tools" class="rplate"><button id="gridbtn" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button></div>
+<div id="zoom" class="rplate"><button id="zin" aria-label="확대">+</button><button id="zout" aria-label="축소">−</button><button id="zfit" aria-label="전체 보기">전체</button></div>
+<aside id="panel" class="rplate" aria-hidden="true">
   <div class="body">
-    <h2 id="ptitle"></h2>
-    <dl class="info"><dt>노선</dt><dd id="pline"></dd><dt>게시일</dt><dd id="pdate"></dd><dt>역 번호</dt><dd id="pid"></dd></dl>
-    <div id="pxfer"></div>
-    <a class="ig" id="pig" target="_blank" rel="noopener">인스타그램에서 보기 <span>→</span></a>
+    <span id="pb"></span>
+    <div class="text">
+      <p id="pname"></p>
+      <p id="ptitle"></p>
+      <p><span id="pline"></span><br><span id="pdate"></span> · <span id="pid"></span></p>
+      <div id="pxfer"></div>
+      <p><a id="pig" target="_blank" rel="noopener">인스타그램에서 보기</a> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></p>
+      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small>이전 역</small> <span></span></button><button id="pnext"><small>다음 역</small> <span></span> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
+      <p><button id="pclose">닫기</button></p>
+    </div>
   </div>
-  <div class="nav"><button id="pprev"><small>← 이전 역</small><span></span></button><button id="pnext"><small>다음 역 →</small><span></span></button></div>
 </aside>
 <nav class="sr" id="srlist" aria-label="역 목록"></nav>
 
@@ -199,18 +180,24 @@ const DESIGN = {
   newest:    { ring: 1.15 },                 // ring radius = line width × this (static, no pulse)
   label:     { offset: 20, offsetAtInterchange: 26, maxChars: 8, size: 13 },
   bullet:    { radius: 15, fontSize: 15, gapAtEnd: 44, gapAtSeriesChange: 36 },
-  train:     { w: 18, h: 10, stroke: 3, speed: 45 },   // speed: ms per px of line (higher = slower)
+  train:     { w: 18, h: 10, stroke: 3, radius: 0, speed: 45 },   // speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
   motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
-  // Line colours (MTA trunk colours). textOn = colour of the letter inside the line bullet.
+  // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
+  // white on every other colour (DEC-004). Change a line's colour by naming another token here.
   lines: {
-    E: { color:'#FCCC0A', textOn:'#000' },   // 수 · 지식채널 eee (main)
-    R: { color:'#EE352E', textOn:'#fff' },   // 월 · Off the Reeecord
-    M: { color:'#0039A6', textOn:'#fff' },   // 금 · THE MEEETRO
-    X: { color:'#6CBE45', textOn:'#000' },   // 일 · 전시 소개 (ended 07-26)
-    F: { color:'#00933C', textOn:'#fff' },   // 일 · EFC
+    E: { token:'--c-yellow' },     // 수 · 지식채널 eee (main)
+    R: { token:'--c-red' },        // 월 · Off the Reeecord
+    M: { token:'--c-blue' },       // 금 · THE MEEETRO
+    X: { token:'--c-orange' },     // 일 · 전시 소개 (ended 07-26)
+    F: { token:'--c-green' },      // 일 · EFC
   },
 };
+{const cs=getComputedStyle(document.documentElement);
+  for(const k in DESIGN.lines){const d=DESIGN.lines[k];d.color=cs.getPropertyValue(d.token).trim()||'#000';
+    d.textOn=cs.getPropertyValue(d.token==='--c-yellow'?'--c-black':'--c-white').trim()||'#fff'}}
+// line disc (nycta DISC-001/004), used in the legend and the popup
+const disc=(L,c,cls='disc disc--inline')=>`<span class="${cls}" style="--line:${L.color};--on:${L.textOn}"><span>${c}</span></span>`;
 const U = DESIGN.grid.unit, STEP = DESIGN.grid.step, LW = DESIGN.line.width;
 document.documentElement.style.setProperty('--label-size', DESIGN.label.size+'px');
 document.documentElement.style.setProperty('--dot-hover', DESIGN.station.hoverScale);
@@ -553,7 +540,7 @@ function draw(){
   });
   all.forEach(s=>{if(s.owner)s.g=s.owner.g});
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
-  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:2,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.path.getTotalLength();L.tpos=L.tpos??Math.random()});
+  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.path.getTotalLength();L.tpos=L.tpos??Math.random()});
 }
 function build(fresh){ if(fresh){generate();} geometry(); draw(); }
 generate(); loadPos(); geometry(); draw();
@@ -830,7 +817,7 @@ function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('draggin
 const lg=$('#legend');
 LINES.forEach(L=>{
   const b=document.createElement('button'); b.dataset.line=L.key;
-  b.innerHTML=`<span class="day">${L.day}</span><span class="bs">${L.series.map(([c])=>`<span class="bul" style="background:${L.color};color:${L.textOn}">${c}</span>`).join('')}</span><span>${L.series.map(s=>s[1]).join(' → ')}</span>`;
+  b.innerHTML=`<span class="day">${L.day}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span>${L.series.map(s=>s[1]).join(' → ')}</span>`;
   b.onmouseenter=()=>focusLine(L); b.onmouseleave=()=>focusLine(null);
   b.onclick=()=>{release();fitTo(L.px)};
   lg.appendChild(b);
@@ -905,10 +892,10 @@ function openStation(s,fromHash,keepView){
   current&&current.g.classList.remove('active'); current=s; s.g.classList.add('active');
   focusLine(s.line);
   const L=s.line;
-  $('#pb').innerHTML=`<span class="bul" style="background:${L.color};color:${L.textOn}">${s.b}</span>`;
+  $('#pb').innerHTML=disc(L,s.b,'disc');
   $('#pname').textContent=s.s; $('#ptitle').textContent=s.t;
   $('#pline').textContent=`${L.day}요일 · ${s.ser}`; $('#pdate').textContent=s.d; $('#pid').textContent=s.id;
-  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 <span class="bul" style="background:${x.line.color};color:${x.line.textOn}">${x.b}</span> ${x.line.day}요일 · ${x.s}`;b.onclick=()=>openStation(x);xr.appendChild(b)});
+  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 ${disc(x.line,x.b)} ${x.line.day}요일 · ${x.s}`;b.onclick=()=>openStation(x);xr.appendChild(b)});
   $('#pig').href=s.u;
   const prev=L.st[s.i-1], next=L.st[s.i+1];
   const pb=$('#pprev'),nb=$('#pnext');
