@@ -14,6 +14,7 @@ W="$NYCTA_DIR/web"
 mkdir -p vendor/nycta
 cp "$W/css/nycta.css" vendor/nycta/nycta.css
 cp "$W/fonts/albert-sans-nycta-wght.woff2" "$W/fonts/OFL-AlbertSans.txt" vendor/nycta/
+cp "$W/fonts/nycta-hangul.woff2" "$W/fonts/OFL-SUIT.txt" vendor/nycta/   # DEC-032 한글(SUIT 파생, OFL)
 { echo "source: github.com/outofthisweird/nycta-gsm (public web/ output)"
   echo "commit: $(git -C "$NYCTA_DIR" log -1 --format='%h %cs %s' 2>/dev/null || echo unknown)"; } > vendor/nycta/SOURCE.txt
 echo "vendor/nycta 갱신됨 ($NYCTA_DIR) — python3 build.py 로 index.html 다시 만들기"

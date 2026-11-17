@@ -27,12 +27,13 @@
 ```bash
 python3 build.py                 # src/map.html + data/stations.json → index.html (단일 파일)
 open index.html                  # 브라우저로 바로 열면 됨 (서버 불필요)
-pip install playwright && playwright install chromium
+pip install playwright && playwright install chromium   # 또는 ../nycta-gsm/.venv/bin/python 으로 테스트 실행
 python3 tests/smoke_test.py      # 팝업·랜덤 배치·드래그·그리드·저장 회귀 테스트
 python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬임·늘어난 구간 개수, 수정 전후 비교용)
 ```
 
-- **헬베티카 미리보기(로컬 전용):** `tools/preview_font.sh`를 실행하면 형제 폴더 `nycta-gsm-src`(또는 `nycta-gsm`)의 `make preview`로 서체를 만들어 `preview/`에 복사한다. 이후 `file://`·localhost에서 열면 라틴 글자는 NYCTA 커닝이 들어간 Helvetica Neue Medium으로 보인다. 한글은 Noto Sans KR로 보인다.
+- **헬베티카 미리보기(로컬 전용):** `tools/preview_font.sh`를 실행하면 형제 폴더 `nycta-gsm-src`(또는 `nycta-gsm`)의 `make preview`로 서체를 만들어 `preview/`에 복사한다. 이후 `file://`·localhost에서 열면 라틴 글자는 NYCTA 커닝이 들어간 Helvetica Neue Medium으로, 한글은 그 cap에 맞춘 NYCTA Hangul Preview로 보인다.
+  - nycta-gsm이 업데이트되면 이 스크립트를 다시 실행한다(서체가 같이 바뀐다).
   - `?font=web`을 붙이면 배포 서체(지금은 Inter)로 본다.
   - `preview/`는 git에서 제외했고 **절대 커밋·배포하지 않는다**(nycta-gsm DEC-028). 배포 사이트(github.io)에서는 이 서체를 불러오지 않는다. 컴퓨터마다 스크립트를 다시 실행해야 한다.
   - 미리보기 서체는 Medium 한 가지다. 그래서 `font-weight:700`도 Medium으로 보인다.
@@ -49,8 +50,8 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `src/map.html` | 프로토타입 전체. HTML, CSS, JS(바닐라, 외부 의존성 없음)가 한 파일에 있다. `__DATA__` 자리에 데이터가 들어간다. |
 | `data/stations.json` | 게시물 76개. `{월:[...], 수:[...], 금:[...], 일:[...]}` |
-| `build.py` | 데이터와 NYCTA 토큰(+서체 data URI)을 끼워 넣어 `index.html`을 만든다. |
-| `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, Albert Sans NYCTA 서체, OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
+| `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로)을 끼워 넣어 `index.html`을 만든다. |
+| `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
 | `tools/sync_nycta.sh` | nycta-gsm `web/`에서 CSS·서체만 복사한다. 비공개 원장이나 데이터는 가져오지 않는다. |
 | `tools/preview_font.sh` | 로컬 헬베티카 미리보기를 만든다(아래 참고). |
 | `index.html` | 빌드 결과. 이 파일 하나로 동작한다. |
@@ -84,7 +85,9 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - `build.py`가 `nycta.css` §0–1(서체·토큰)만 `/*__NYCTA__*/` 자리에 넣는다.
   - nycta의 기본 스타일, 구성요소, OS 다크 모드는 넣지 않는다. 다크 모드는 ◐ 버튼으로만 바뀐다.
   - 노선도에 필요한 새 규칙은 **nycta 원장에 먼저 ID를 만든 뒤** sync한다. 노선도에만 쓰는 결정은 CSS 주석에 `[eee]`로 표시한다.
-- 서체: 배포는 Albert Sans NYCTA, 로컬은 헬베티카 미리보기를 쓴다. 한글은 Noto Sans KR로 넘어간다.
+- 서체: 배포는 Albert Sans NYCTA, 로컬은 헬베티카 미리보기를 쓴다. 페이지 서체는 `--font: var(--font-sign)` 하나라서 미리보기 CSS가 `--font-sign`만 바꾸면 된다.
+  - **한글은 NYCTA Hangul**(nycta DEC-032, SUIT 파생, 2026-11-18). Noto Sans KR(구글 폰트) 연결은 없앴다. SUIT에 없는 드문 음절은 시스템 서체로 나온다. 지금 데이터의 한글 259자는 모두 들어 있다.
+  - **한국어 규칙 DEC-033**: 페이지 전체가 `lang="ko"`라서 `keep-all`, `line-break: strict`, 단어 간격 `--ws-ko`, 첫 글자 보정 `--lsb-pull`(= `--lsb-comp-ko`)이 적용된다. 영문 문구(로고)는 `lang="en"`을 붙여 영문 값을 유지한다.
   - 굵기는 하나만 쓴다(가짜 볼드 금지). 다크 모드나 반전 판에서는 `--font-weight-dark`를 쓴다.
   - 대문자로만 쓰지 않는다. 그래서 `ALL` 대신 `전체`로 바꿨다.
 - 노선 색은 nycta 팔레트 토큰을 쓴다(`DESIGN.lines[].token`): E 노랑, R 빨강, M 파랑, F 초록, **X 주황(임시: 1970 팔레트에 연두가 없음)**.
@@ -92,7 +95,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 - UI 상자는 반전 판(DEC-031)이다. 글자색 바탕에 위 ½in 아래 ⅛in 줄을 긋고, 모서리는 직각이다.
   - 팝업도 DEC-031을 따른다: 왼쪽 원판, 정보 단계 1rem, 닫기는 밑줄 텍스트, 애니메이션 없음.
   - 화살표는 NYCTA 화살표(`#nyarrow`)를 쓴다.
-- **[eee] 한글 행간:** 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
+- **[eee] 한글 행간:** (Noto Sans KR 시절 결정. NYCTA Hangul은 윗선이 cap 선에 맞아 nycta는 Grid 1/2 피치를 그대로 쓴다. 이 예외를 없앨지는 미정) 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
 - 노선 굵기, 역 점, 환승역, 그리드 같은 노선도 기하는 매뉴얼에 근거가 없어 그대로 두었다. 열차 모서리만 직각(`DESIGN.train.radius: 0`)으로 바꿨다.
 
 **디자인 방향**
@@ -167,6 +170,6 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - 모바일 대응 점검
 - **NYC 디자인 후속:**
   - X 노선 색 확정
-  - 한글 행간 규칙을 nycta 원장에 올릴지 결정
+  - 한글 행간 예외(`--lh-ko` 1.4, `--gap-ko`)를 NYCTA Hangul 기준으로 없앨지 결정(nycta DEC-033은 Grid 피치 유지)
   - 노선 굵기·역 크기를 모듈과 연결할지 검토
-  - 라벨 글자 크기와 단어 간격(`--ws`)을 한글에 맞게 적용할지 결정
+  - 라벨 글자 크기를 모듈과 맞출지 결정(단어 간격은 DEC-033으로 적용함)
