@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>EEE — Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fff; --muted:#666;
+    --bg:#fff; --ink:#000; --dim:#A7A9AC;
+    --mon:#EE352E; --wed:#FCCC0A; --fri:#0039A6; --sun:#00933C;
+    --font:"Inter","Noto Sans KR","Pretendard","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:500;-webkit-font-smoothing:antialiased}
+  #map{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;user-select:none}
+  #map.dragging{cursor:grabbing}
+  .label{font-size:var(--label-size,13px);fill:var(--ink);pointer-events:none}
+  .hide-labels .label{display:none}
+  .line-path{fill:none;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
+  .station{cursor:pointer}
+  .station:focus{outline:none}
+  .station:focus-visible .dot{outline:2px solid var(--ink);outline-offset:4px}
+  .station .hit{fill:transparent}
+  .xfer circle{fill:var(--paper);stroke:var(--ink);stroke-width:3}
+  .dim{opacity:.18}
+  .bullet text{font-weight:700;font-size:15px;text-anchor:middle;dominant-baseline:central}
+
+  /* sign band */
+  .sign{background:var(--ink);color:var(--paper);display:flex;align-items:center;gap:12px;padding:0 16px;border-top:3px solid var(--ink);box-shadow:inset 0 3px 0 var(--ink), inset 0 5px 0 var(--paper)}
+  #logo{position:fixed;top:20px;left:20px;height:64px;min-width:220px;z-index:5}
+  #logo b{font-size:30px;font-weight:700;letter-spacing:-.5px}
+  #logo span{font-size:11px;line-height:1.3;opacity:.85}
+
+  #legend{position:fixed;left:20px;bottom:20px;z-index:5;background:var(--paper);border:2px solid var(--ink);padding:12px 14px;display:grid;gap:8px}
+  #legend button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px}
+  #legend button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .bul{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex:none}
+  .bul.y{color:#000}
+  #legend .day{width:22px;font-weight:700}
+  #legend .bs{display:flex;gap:4px}
+
+  #zoom{position:fixed;right:20px;bottom:20px;z-index:5;display:flex;flex-direction:column;border:2px solid var(--ink);background:var(--paper)}
+  #zoom button{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+  #zoom button+button{border-top:2px solid var(--ink)}
+  #zoom button:hover{background:var(--ink);color:var(--paper)}
+
+  #card{position:fixed;z-index:6;pointer-events:none;background:var(--paper);border:2px solid var(--ink);padding:10px 12px;max-width:280px;font-size:13px;line-height:1.4;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
+  #card.on{opacity:1;transform:none}
+  #card .meta{color:var(--muted);font-size:11px;margin-top:4px}
+
+  #panel{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100%;background:var(--paper);border-left:3px solid var(--ink);z-index:10;transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+  #panel.open{transform:none}
+  #panel .sign{height:72px;flex:none}
+  #panel .sign .name{font-size:22px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #panel .close{all:unset;cursor:pointer;font-size:26px;line-height:1;padding:4px}
+  #panel .body{padding:20px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:14px}
+  #panel h2{font-size:20px;line-height:1.35;font-weight:700}
+  #panel .info{font-size:13px;color:var(--ink);display:grid;grid-template-columns:64px 1fr;gap:4px 8px}
+  #panel .info dt{color:var(--muted)}
+  #pxfer{display:grid;gap:6px}
+  #pxfer:empty{display:none}
+  .xbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;border:2px solid var(--ink);padding:8px 10px;font-size:13px;font-weight:700}
+  .xbtn:hover{background:var(--ink);color:var(--paper)}
+  .xbtn .bul{width:22px;height:22px;font-size:12px}
+  #panel .ph{aspect-ratio:4/5;border:2px dashed #bbb;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;text-align:center;padding:16px}
+  #panel a.ig{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:var(--paper);text-decoration:none;padding:14px 16px;font-weight:700;font-size:14px}
+  #panel .nav{display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--ink);flex:none}
+  #panel .nav button{all:unset;cursor:pointer;padding:14px 16px;font-size:13px}
+  #panel .nav button+button{border-left:2px solid var(--ink);text-align:right}
+  #panel .nav button:disabled{color:#bbb;cursor:default}
+  #panel .nav small{display:block;color:var(--muted);font-size:11px}
+  #panel .nav button:disabled small{color:#ccc}
+  #xfp{position:fixed;top:20px;right:20px;z-index:8;width:300px;font-size:12px}
+  #xftoggle{all:unset;cursor:pointer;display:block;margin-left:auto;background:var(--ink);color:var(--paper);padding:10px 14px;font-weight:700;font-size:13px}
+  #xfbody{background:var(--paper);border:2px solid var(--ink);margin-top:6px;padding:12px;display:grid;gap:14px;max-height:calc(100vh - 160px);overflow:auto}
+  #xfbody[hidden]{display:none}
+  #xfbody h3{font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  #xfbody h3 .bul{width:22px;height:22px;font-size:12px}
+  #xfbody label{display:grid;gap:3px;margin-top:6px;color:var(--muted)}
+  #xfbody output{color:var(--ink);font-weight:700}
+  #xfbody output i{font-style:normal;color:#888;font-weight:500}
+  #xfbody input{width:100%;accent-color:var(--ink)}
+  .xfrow{display:flex;gap:8px}
+  .xfrow button{all:unset;cursor:pointer;border:2px solid var(--ink);padding:6px 10px;font-weight:700}
+  .xfrow button:hover{background:var(--ink);color:var(--paper)}
+  .station .dot{transition:transform .15s;transform-box:fill-box;transform-origin:center}
+  .station:hover .dot,.station.active .dot{transform:scale(var(--dot-hover,1.7))}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  @media (max-width:640px){
+    #logo{top:12px;left:12px;height:52px;min-width:0}
+    #logo span{display:none}
+    #legend{left:12px;bottom:12px;padding:8px 10px}
+    #zoom{right:12px;bottom:12px}
+    #panel{width:100%;top:auto;height:78%;border-left:0;border-top:3px solid var(--ink);transform:translateY(105%)}
+  }
+  [data-theme=dark]{--bg:#000;--ink:#fff;--paper:#000;--muted:#9a9a9a;--dim:#58595B}
+  html{background:var(--bg)}
+  .dot{fill:var(--ink)}
+  .xdot{fill:var(--bg);stroke:var(--ink)}
+  .train{fill:var(--bg)}
+  #tools{position:fixed;right:20px;bottom:156px;z-index:5;display:flex;flex-direction:column;border:2px solid var(--ink);background:var(--paper)}
+  #tools button{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--ink)}
+  #tools button+button{border-top:2px solid var(--ink)}
+  #tools button:hover{background:var(--ink);color:var(--paper)}
+  #tools button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+  #gridlayer{display:none;pointer-events:none} svg.show-grid #gridlayer{display:inline}
+  #gridpat .gl{fill:none;stroke:var(--ink);stroke-opacity:.09;stroke-width:1}
+  #gridpat .gd{fill:var(--ink);fill-opacity:.28}
+  #zoom button{color:var(--ink)}
+  ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+  @media (max-width:640px){#tools{right:12px;bottom:148px}}
+  /* UI boxes: black on the white map, white on the inverted map */
+  #legend,#zoom,#tools,#xfbody,#card{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  #legend button{color:var(--paper)}
+  #legend button:focus-visible{outline-color:var(--paper)}
+  #zoom button,#tools button{color:var(--paper)}
+  #zoom button+button,#tools button+button{border-top:1px solid color-mix(in srgb,var(--paper) 35%,transparent)}
+  #zoom button:hover,#tools button:hover{background:var(--paper);color:var(--ink)}
+  #tools button[aria-pressed=true]{background:var(--paper);color:var(--ink)}
+  #xftoggle{background:var(--ink);color:var(--paper)}
+  #xfbody label{color:color-mix(in srgb,var(--paper) 65%,transparent)}
+  #xfbody output{color:var(--paper)}
+  #xfbody output i{color:color-mix(in srgb,var(--paper) 55%,transparent)}
+  #xfbody input{accent-color:var(--paper)}
+  .xfrow button{border-color:var(--paper);color:var(--paper)}
+  .xfrow button:hover{background:var(--paper);color:var(--ink)}
+  #card .meta{color:color-mix(in srgb,var(--paper) 65%,transparent)}
+  /* station popup (replaces the side panel) */
+  #panel{position:fixed;top:0;left:0;right:auto;bottom:auto;width:300px;max-width:calc(100vw - 24px);height:auto;border:0;
+    background:var(--ink);color:var(--paper);z-index:10;transform:none;opacity:0;pointer-events:none;transition:opacity .16s;display:flex;flex-direction:column}
+  #panel.open{opacity:1;pointer-events:auto;transform:none}
+  #panel .sign{height:auto;padding:12px 14px;background:transparent;color:var(--paper);box-shadow:none;border:0;border-bottom:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
+  #panel .sign .name{font-size:17px}
+  #panel .close{color:var(--paper);font-size:15px}
+  #panel .body{padding:12px 14px;gap:10px;flex:none;overflow:visible}
+  #panel h2{font-size:15px;line-height:1.4}
+  #panel .info{color:var(--paper);grid-template-columns:52px 1fr;font-size:12px}
+  #panel .info dt{color:color-mix(in srgb,var(--paper) 55%,transparent)}
+  #panel a.ig{background:var(--paper);color:var(--ink);padding:11px 14px;font-size:13px}
+  .xbtn{border-color:var(--paper);color:var(--paper);font-size:12px;padding:7px 9px}
+  .xbtn:hover{background:var(--paper);color:var(--ink)}
+  #panel .nav{border-top:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
+  #panel .nav button{color:var(--paper);padding:10px 14px;font-size:12px}
+  #panel .nav button+button{border-left:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
+  #panel .nav small{color:color-mix(in srgb,var(--paper) 55%,transparent)}
+  #panel .nav button:disabled,#panel .nav button:disabled small{color:color-mix(in srgb,var(--paper) 30%,transparent)}
+  #xfbody .opts{display:grid;gap:8px;padding-bottom:12px;border-bottom:1px solid color-mix(in srgb,var(--paper) 25%,transparent)}
+  #xfbody .tog{display:flex;align-items:center;gap:8px;margin:0;color:var(--paper);font-weight:700;font-size:12px;cursor:pointer}
+  #xfbody .tog input{width:16px;height:16px;accent-color:var(--paper);margin:0}
+  #xfbody .tog i{font-style:normal;font-weight:500;color:color-mix(in srgb,var(--paper) 55%,transparent)}
+  #xfbody .tog.sub{padding-left:24px;font-weight:500}
+  #xfbody .tog input:disabled+span{opacity:.4}
+  .station{cursor:grab}
+  .dragging-station,.dragging-station .station{cursor:grabbing}
+  .station.snap .dot{transform:scale(2.2)}
+  .station.snap .xdot{transform:scale(1.4)}
+</style>
+</head>
+<body>
+<svg id="map" role="img" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="stations"></g><g id="bullets"></g><g id="trains"></g></g></svg>
+
+<div id="logo" class="sign"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
+<div id="legend" aria-label="노선 범례"></div>
+<div id="tools"><button id="gridbtn" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button></div>
+<div id="zoom"><button id="zin" aria-label="확대">+</button><button id="zout" aria-label="축소">−</button><button id="zfit" aria-label="전체 보기" style="font-size:13px">ALL</button></div>
+<aside id="panel" aria-hidden="true">
+  <div class="sign"><span id="pb"></span><span class="name" id="pname"></span><button class="close" id="pclose" aria-label="닫기">✕</button></div>
+  <div class="body">
+    <h2 id="ptitle"></h2>
+    <dl class="info"><dt>노선</dt><dd id="pline"></dd><dt>게시일</dt><dd id="pdate"></dd><dt>역 번호</dt><dd id="pid"></dd></dl>
+    <div id="pxfer"></div>
+    <a class="ig" id="pig" target="_blank" rel="noopener">인스타그램에서 보기 <span>→</span></a>
+  </div>
+  <div class="nav"><button id="pprev"><small>← 이전 역</small><span></span></button><button id="pnext"><small>다음 역 →</small><span></span></button></div>
+</aside>
+<nav class="sr" id="srlist" aria-label="역 목록"></nav>
+
+<script>
+const DATA = __DATA__;
+// ======================================================================
+// DESIGN — every visual value of the map lives here. Change these, not the code below.
+// (UI colours and type live in the CSS :root block; map geometry and marks live here.)
+// ======================================================================
+const DESIGN = {
+  grid:      { unit: 36, step: 2 },          // px per grid cell: every station sits on this invisible grid (toggle ▦ to see it)
+  line:      { width: 10, cornerRadius: 30, stationRadius: 10 },   // bend corners / corners that fall on a station
+  station:   { dot: 3.6, hitRadius: 16, hoverScale: 1.7 },
+  interchange:{ size: 22, stroke: 4 },
+  newest:    { ring: 1.15 },                 // ring radius = line width × this (static, no pulse)
+  label:     { offset: 20, offsetAtInterchange: 26, maxChars: 8, size: 13 },
+  bullet:    { radius: 15, fontSize: 15, gapAtEnd: 44, gapAtSeriesChange: 36 },
+  train:     { w: 18, h: 10, stroke: 3, speed: 45 },   // speed: ms per px of line (higher = slower)
+  motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
+  zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
+  // Line colours (MTA trunk colours). textOn = colour of the letter inside the line bullet.
+  lines: {
+    E: { color:'#FCCC0A', textOn:'#000' },   // 수 · 지식채널 eee (main)
+    R: { color:'#EE352E', textOn:'#fff' },   // 월 · Off the Reeecord
+    M: { color:'#0039A6', textOn:'#fff' },   // 금 · THE MEEETRO
+    X: { color:'#6CBE45', textOn:'#000' },   // 일 · 전시 소개 (ended 07-26)
+    F: { color:'#00933C', textOn:'#fff' },   // 일 · EFC
+  },
+};
+const U = DESIGN.grid.unit, STEP = DESIGN.grid.step, LW = DESIGN.line.width;
+document.documentElement.style.setProperty('--label-size', DESIGN.label.size+'px');
+document.documentElement.style.setProperty('--dot-hover', DESIGN.station.hoverScale);
+const MAIN = 'E';
+const LINES = [
+  {key:'E', day:'수', series:[['E','지식채널 eee']], seed:11},
+  {key:'R', day:'월', series:[['R','Off the Reeecord']], seed:23},
+  {key:'M', day:'금', series:[['M','THE MEEETRO']], seed:37},
+  {key:'X', day:'일', series:[['X','전시 소개']], seed:51},
+  {key:'F', day:'일', series:[['F','EFC']], seed:67},
+];
+const TURN_FROM = 3, MAX_DRIFT = 2;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS='http://www.w3.org/2000/svg';
+const $=s=>document.querySelector(s);
+const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
+const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+const mod8=h=>((h%8)+8)%8, diff8=(a,b)=>{let d=mod8(a-b);return d>4?d-8:d};
+function rng(seed){let s=seed>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const all=[];
+const SRC={E:DATA['수'],R:DATA['월'],M:DATA['금'],X:DATA['일'].filter(s=>s.b==='X'),F:DATA['일'].filter(s=>s.b==='F')};
+LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.st.forEach((s,i)=>{s.line=L;s.i=i;all.push(s)})});
+const byLine=Object.fromEntries(LINES.map(L=>[L.key,L])), main=byLine[MAIN];
+const BRANCHES=LINES.filter(L=>L!==main);
+
+// ---------- default transfers ----------
+// A branch starts at the main-line station published right before the branch's first post.
+function autoAnchor(L){const first=L.st[0].d;return [...main.st].reverse().find(s=>s.d<first)||main.st[0]}
+
+// ======================================================================
+// GENERATOR — free station positions (no grid), Mini Metro style.
+// Lines walk outward with a gently wandering heading; gaps between stations vary.
+// ======================================================================
+const GEN = {
+  // NYC-style: long straight runs of evenly spaced stations, turning only at a few key points.
+  runMin: 3, runMax: 8,        // stations per straight run
+  longP: .3,                   // straight runs: 2 grid cells between stations (72px), or 3 with this chance
+  diagSteps: 2,                // 45° runs: 2 cells across and 2 down between stations (≈102px)
+  turn90P: .35,                // a run boundary turns 90° with this chance, otherwise 45° (never 90° twice in a row)
+  maxDrift: 2,                 // in 45° steps: never more than 90° away from the starting heading
+  minStationGap: 58,           // px: a new station keeps this far from every other station
+  minLineGap: 30,              // px: ...and this far from other lines' paths
+  alignTol: 18,                // px: used when tidying hand-placed stations
+};
+let samples=[];               // points along every drawn path (grid units), for label placement
+
+// One segment between two stations, Mini Metro style: a straight run and a 45° run joined by one bend.
+// Which run comes first follows the direction the line arrived from, so the line flows on.
+function route(A,B,prevDir){
+  const dx=B[0]-A[0],dy=B[1]-A[1],ax=Math.abs(dx),ay=Math.abs(dy),sx=Math.sign(dx),sy=Math.sign(dy);
+  if(ax<.5||ay<.5||Math.abs(ax-ay)<.5){const m=Math.hypot(dx,dy)||1;return{bends:[],out:[dx/m,dy/m],first:[dx/m,dy/m]}}
+  const d=Math.min(ax,ay), straight=ax>ay?[sx,0]:[0,sy], diagU=[sx/Math.SQRT2,sy/Math.SQRT2];
+  const bendS=ax>ay?[A[0]+sx*(ax-ay),A[1]]:[A[0],A[1]+sy*(ay-ax)];      // straight first
+  const bendD=[A[0]+sx*d,A[1]+sy*d];                                      // diagonal first
+  let straightFirst=true;
+  if(prevDir){const dS=straight[0]*prevDir[0]+straight[1]*prevDir[1], dD=diagU[0]*prevDir[0]+diagU[1]*prevDir[1]; straightFirst=dS>=dD}
+  return straightFirst?{bends:[bendS],out:diagU,first:straight}:{bends:[bendD],out:straight,first:diagU};
+}
+function linePolyline(L){ // stations + bends, with a corner radius per vertex
+  const P=[[L.st[0].x,L.st[0].y]],R=[0],idx=[0]; let prev=null;
+  for(let i=1;i<L.st.length;i++){
+    const A=[L.st[i-1].x,L.st[i-1].y],B=[L.st[i].x,L.st[i].y], r=route(A,B,prev);
+    r.bends.forEach(p=>{P.push(p);R.push(DESIGN.line.cornerRadius)});
+    idx.push(P.length); P.push(B); R.push(DESIGN.line.stationRadius); prev=r.out;
+    L.st[i-1].outDir=r.first; L.st[i].inDir=r.out;
+  }
+  R[R.length-1]=0; return {P,R,idx};
+}
+// Pull a point onto the straight or 45° line from `from` when it is nearly there (avoids tiny jogs).
+function align(q,from,tol){
+  let dx=q[0]-from[0],dy=q[1]-from[1];const ax=Math.abs(dx),ay=Math.abs(dy);
+  if(ay<tol&&ax>=ay)dy=0; else if(ax<tol&&ay>ax)dx=0;
+  else if(Math.abs(ax-ay)<tol){const m=(ax+ay)/2;dx=Math.sign(dx)*m;dy=Math.sign(dy)*m}
+  return [from[0]+dx,from[1]+dy];
+}
+// ---------- SNAP — how strongly positions click into straight, 45° and right-angle lines ----------
+const SNAP={
+  alignBonus:.45,   // in grid cells: while dragging, a grid point in a straight line with a neighbour wins over
+                    // a nearer one by this much (45° lines count 60%; a 90° turn between two diagonals counts nothing)
+  rightCos:.42,     // a turn counts as "nearly a right angle" when |cos| < this (≈ 65°–115°)
+  tidyCorner:28,    // px: after a drag, stations this close to a clean right-angle corner move onto it
+  straightCos:.85, straightDist:26,  // px: stations this close to the straight line between neighbours go onto it
+  minGap:40,        // px: a snap never puts a station closer than this to another station
+};
+const U8N=DIRS.map(([x,y])=>{const m=Math.hypot(x,y);return[x/m,y/m]});
+const turnCos=(a,p,c)=>{const v1=[p[0]-a[0],p[1]-a[1]],v2=[c[0]-p[0],c[1]-p[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);return l1&&l2?(v1[0]*v2[0]+v1[1]*v2[1])/(l1*l2):1};
+const gridU=()=>DESIGN.grid.unit;
+// two 45° runs meeting at exactly 90° at p
+function isDiagV(a,p,c){const v1=[p[0]-a[0],p[1]-a[1]],v2=[c[0]-p[0],c[1]-p[1]],dg=v=>Math.abs(v[0])>1&&Math.abs(Math.abs(v[0])-Math.abs(v[1]))<1;
+  return dg(v1)&&dg(v2)&&Math.abs(v1[0]*v2[0]+v1[1]*v2[1])<1}
+const offGrid=s=>{const G=gridU();return Math.abs(s.x/G-Math.round(s.x/G))>.01||Math.abs(s.y/G-Math.round(s.y/G))>.01};
+const gsnap=q=>{const G=gridU();return[Math.round(q[0]/G)*G,Math.round(q[1]/G)*G]};
+const gkey=q=>Math.round(q[0])+','+Math.round(q[1]);
+// Move planned targets onto grid points, never onto a spot another station already uses (that would merge them).
+function gridPlans(plans){
+  const moving=new Set(plans.map(p=>p.s)),taken=new Map(),G=gridU(),grp=s=>s.owner||s;
+  all.forEach(s=>{if(!moving.has(s))taken.set(gkey([s.x,s.y]),s)});
+  const at=new Map();all.forEach(s=>at.set(s,[s.x,s.y]));plans.forEach(p=>at.set(p.s,p.to));
+  const vAt=s=>{if(!s)return false;const st=s.line.st,a=st[s.i-1],c=st[s.i+1];return!!(a&&c)&&isDiagV(at.get(a),at.get(s),at.get(c))};
+  plans.forEach(p=>{
+    const free=q=>{const o=taken.get(gkey(q));return!o||grp(o)===grp(p.s)};
+    const base=gsnap(p.to),st=p.s.line.st;let best=null;
+    for(let r=0;r<=2;r++){if(r===2&&best)break;
+      for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){if(Math.max(Math.abs(i),Math.abs(j))!==r)continue;
+        const c=[base[0]+i*G,base[1]+j*G];if(!free(c))continue;at.set(p.s,c);
+        const v=[p.s,st[p.s.i-1],st[p.s.i+1]].filter(vAt).length;                  // avoid spiky diagonal V's
+        const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5;if(!best||sc<best.sc)best={c,sc}}}
+    const q=best?best.c:base;p.to=q;at.set(p.s,q);taken.set(gkey(q),p.s);
+  });
+  return plans.filter(p=>Math.hypot(p.to[0]-p.from[0],p.to[1]-p.from[1])>.5);
+}
+// The point nearest p where a horizontal/vertical line leaving a and one arriving at c meet at exactly 90°
+// (only right angles between straight runs: two diagonals meeting at 90° make a spiky V, so those are skipped).
+function rightCorners(a,c,minLeg=20){ // every such corner (two straight ones, two 45°-turned ones)
+  const out=[],rx=c[0]-a[0],ry=c[1]-a[1];
+  for(let h=0;h<8;h+=2)for(const sd of[2,-2]){const d1=U8N[h],d2=U8N[mod8(h+sd)],det=d1[0]*d2[1]-d1[1]*d2[0];
+    const t=(rx*d2[1]-ry*d2[0])/det,u=(d1[0]*ry-d1[1]*rx)/det; if(t<minLeg||u<minLeg)continue;
+    if(!out.some(o=>Math.abs(o.q[0]-a[0]-t*d1[0])+Math.abs(o.q[1]-a[1]-t*d1[1])<.5))out.push({q:[a[0]+t*d1[0],a[1]+t*d1[1]],t,u,h})}
+  return out;
+}
+function rightCorner(a,c,p,minLeg=20){
+  let best=null;rightCorners(a,c,minLeg).forEach(o=>{const d=Math.hypot(o.q[0]-p[0],o.q[1]-p[1]);if(!best||d<best.d)best={...o,d}});
+  return best;
+}
+// Is q clear of every other station (by SNAP.minGap)? `skip` stations don't count.
+const clearOf=(q,skip)=>!all.some(o=>!skip.has(o)&&Math.hypot(o.x-q[0],o.y-q[1])<SNAP.minGap);
+function distToSeg(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],l=vx*vx+vy*vy||1;let t=((p[0]-a[0])*vx+(p[1]-a[1])*vy)/l;t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-a[0]-t*vx,p[1]-a[1]-t*vy)}
+// generate(): the default layout. generate(Math.random): a fresh random one (the ↻ button) — see RANDOM.
+function generate(rand){
+  generateRandom(rand||rng(20261117));   // no rand: the same seed every time (first visit)
+}
+// RANDOM — what the ↻ button shuffles. Each press tries a few layouts and keeps the tidiest.
+const RANDOM={
+  tries:6,
+  runMin:[2,4], runMax:[4,9],   // straight-run length range is itself random per layout
+  turn90P:[.1,.55], longP:[0,.5], maxDrift:[1,3],
+  parentMainP:.55,              // a branch joins the main line with this chance, otherwise any line already drawn
+  // a transfer is never a line's first or last station: branches always run through it
+};
+function generateRandom(rand){
+  let best=null;
+  for(let t=0;t<RANDOM.tries;t++){
+    layoutOnce(rand);
+    let bad=0;const S=all;
+    for(let i=0;i<S.length;i++)for(let j=i+1;j<S.length;j++){const d=Math.hypot(S[i].x-S[j].x,S[i].y-S[j].y);if(d<1){const term=x=>x.i===0||x.i===x.line.st.length-1;if(term(S[i])||term(S[j]))bad+=50;else if(S[i].line===S[j].line||!S[i]._anchor&&!S[j]._anchor)bad+=3}else if(d<50)bad++}
+    LINES.forEach(L=>{const q=L.st.map(s=>[s.x,s.y]);for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))bad+=3});
+    if(!best||bad<best.bad)best={bad,pos:all.map(s=>[s.x,s.y])};
+    if(!bad)break;
+  }
+  all.forEach((s,i)=>{s.x=best.pos[i][0];s.y=best.pos[i][1];s.gx=s.x;s.gy=s.y});
+}
+function layoutOnce(rand){
+  const R=rand, rr=(a,b)=>a+R()*(b-a);
+  const C=R?{...GEN,runMin:Math.round(rr(...RANDOM.runMin)),turn90P:rr(...RANDOM.turn90P),longP:rr(...RANDOM.longP),maxDrift:Math.round(rr(...RANDOM.maxDrift))}:GEN;
+  if(R)C.runMax=Math.max(C.runMin+1,Math.round(rr(...RANDOM.runMax)));
+  all.forEach(s=>{delete s._anchor});
+  const placed=[], segs=[];   // segs: [a,b,lineKey]
+  const same=(p,q)=>Math.abs(p[0]-q[0])<.5&&Math.abs(p[1]-q[1])<.5;
+  const okSpot=(q,from,lineKey)=>{
+    if(placed.some(p=>!same(p,from)&&Math.hypot(p[0]-q[0],p[1]-q[1])<C.minStationGap))return false;
+    if(segs.some(([a,b,k])=>k!==lineKey&&distToSeg(q,a,b)<C.minLineGap))return false;
+    // the new segment must not run through another station
+    const r=route(from,q,null), pts=[from,...r.bends,q];
+    for(let i=1;i<pts.length;i++)if(placed.some(p=>!same(p,from)&&distToSeg(p,pts[i-1],pts[i])<C.minLineGap))return false;
+    return true;
+  };
+  const addRoute=(A,B,k)=>{const r=route(A,B,null),pts=[A,...r.bends,B];for(let i=1;i<pts.length;i++)segs.push([pts[i-1],pts[i],k])};
+  const U8=DIRS.map(([x,y])=>{const m=Math.hypot(x,y);return[x/m,y/m]});
+  const ri=(rand,a,b)=>a+Math.floor(rand()*(b-a+1));
+  const walk=(L,list,start,h0,rand)=>{
+    const G=DESIGN.grid.unit,newK=()=>rand()<C.longP?3:2;
+    let p=start,h=h0,left=ri(rand,C.runMin,C.runMax),kAx=newK(),last90=false;
+    const steps=hh=>hh%2?C.diagSteps:kAx;
+    for(const s of list){
+      let turnTo=null;
+      if(left<=0){ // end of a straight run: turn 45° (or 90°) at this key point
+        const mag=(!last90&&h%2===0&&rand()<C.turn90P)?2:1;   // 90° only from a straight heading (no diagonal V's)
+        const sides=[1,-1].filter(sd=>Math.abs(diff8(h+sd*mag,h0))<=C.maxDrift); if(rand()<.5)sides.reverse();
+        turnTo=sides.length?mod8(h+sides[0]*mag):null; left=ri(rand,C.runMin,C.runMax); kAx=newK(); last90=mag===2&&turnTo!==null;
+      }
+      // every spot is a whole number of grid cells away, so all stations land on the grid.
+      // 45° turn: one cell on along the old heading, the rest along the new one (the bend falls between stations)
+      const spot=(hNew,k)=>{const a=DIRS[h],b=DIRS[hNew];
+        if(hNew===h)return[p[0]+a[0]*k*G,p[1]+a[1]*k*G];
+        if(Math.abs(diff8(hNew,h))===2)return[p[0]+b[0]*k*G,p[1]+b[1]*k*G];   // 90°: a clean right angle right at the station
+        return[p[0]+(a[0]+b[0]*(k-1))*G,p[1]+(a[1]+b[1]*(k-1))*G]};
+      const tries=[];
+      if(turnTo!==null)tries.push([turnTo,steps(turnTo)]); tries.push([h,steps(h)]);
+      [1,-1,2,-2].forEach(t2=>{if(Math.abs(t2)===2&&h%2)return;const hh=mod8(h+t2);if(Math.abs(diff8(hh,h0))<=C.maxDrift)tries.push([hh,steps(hh)])});
+      tries.push([h,steps(h)+1]);
+      let pick=tries.find(([hh,g])=>okSpot(spot(hh,g),p,L.key))||tries[0];
+      const q=spot(pick[0],pick[1]); if(pick[0]!==h){if(Math.abs(diff8(pick[0],h))===2)last90=true;h=pick[0]}
+      left--; s.x=q[0]; s.y=q[1]; placed.push(q); addRoute(p,q,L.key); p=q;
+    }
+  };
+  const toH=th=>mod8(Math.round(th/(Math.PI/4)));   // nearest of the 8 directions
+  if(R){ // ---- random layout ----
+    const m0=main.st[0]; m0.x=0; m0.y=0; placed.push([0,0]);
+    walk(main,main.st.slice(1),[0,0],Math.floor(R()*8),R);
+    const done=[main], br=[...BRANCHES].sort(()=>R()-.5);
+    br.forEach(L=>{
+      const par=R()<RANDOM.parentMainP?main:done[Math.floor(R()*done.length)];
+      const free=par.st.filter(s=>!s._anchor&&s.i>0&&s.i<par.st.length-1), A=free[Math.floor(R()*free.length)]||par.st[1], a=[A.x,A.y], i=A.i;
+      const pv=par.st[Math.max(0,i-1)], nx=par.st[Math.min(par.st.length-1,i+1)], th=Math.atan2(nx.y-pv.y,nx.x-pv.x);
+      const side=R()<.5?1:-1, h1=mod8(toH(th+side*Math.PI/2)+(R()<.35?(R()<.5?1:-1):0));
+      const t=1+Math.floor(R()*(L.st.length-2));   // which of its stations is the transfer (never the first or last)
+      const X=L.st[t]; X.x=a[0]; X.y=a[1]; A._anchor=X._anchor=true;
+      walk(L,L.st.slice(t+1),a,h1,R);
+      walk(L,L.st.slice(0,t).reverse(),a,mod8(h1+4+(R()<.35?(R()<.5?1:-1):0)),R);
+      done.push(L);
+    });
+    return;
+  }
+  // main line from the origin, heading east
+  const m0=main.st[0]; m0.x=0; m0.y=0; placed.push([0,0]);
+  walk(main,main.st.slice(1),[0,0],0,rng(main.seed));   // heading index 0 = east
+  // branches leave their transfer station roughly at right angles to the main line
+  BRANCHES.forEach(L=>{
+    const A=autoAnchor(L), a=[A.x,A.y], i=A.i, M=main.st;
+    const p=M[Math.max(0,i-1)], n=M[Math.min(M.length-1,i+1)], mth=Math.atan2(n.y-p.y,n.x-p.x);
+    const r=rng(L.seed);
+    const crowd=th=>placed.filter(q=>{const v=[q[0]-a[0],q[1]-a[1]];return Math.hypot(...v)<400&&(v[0]*Math.cos(th)+v[1]*Math.sin(th))>0}).length;
+    const opts=[mth+Math.PI/2,mth-Math.PI/2].map(th=>[th,crowd(th)+r()]).sort((x,y)=>x[1]-y[1]);
+    const X=L.st[0]; X.x=a[0]; X.y=a[1];
+    walk(L,L.st.slice(1),a,toH(opts[0][0]),r);
+  });
+  all.forEach(s=>{s.gx=s.x;s.gy=s.y});   // remember the generated spot
+}
+
+// ---------- saved arrangement (this browser) ----------
+const POS_KEY='eee-pos-v4';   // v3: every station's spot (random layouts survive a reload)
+function loadPos(){try{const m=JSON.parse(localStorage.getItem(POS_KEY)||'{}');all.forEach(s=>{if(m[s.id]){s.x=m[s.id][0];s.y=m[s.id][1]}})}catch(e){}}
+function savePos(){try{const m={};all.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
+function clearPos(){try{localStorage.removeItem(POS_KEY)}catch(e){}}
+
+// ---------- geometry from positions: interchanges, paths, labels ----------
+function link(s,T){const g=[T,...(T.xfer||[])];g.forEach(m=>{m.xfer=(m.xfer||[]).filter(x=>x!==s).concat(s)});s.xfer=g;s.owner=T.owner||T}
+const posKey=s=>Math.round(s.x*10)+','+Math.round(s.y*10);
+function geometry(){
+  all.forEach(s=>{delete s.xfer;delete s.owner});
+  // stations at the same spot form an interchange; the first line in LINES owns it
+  const groups=new Map(); all.forEach(s=>{const k=posKey(s);(groups.get(k)||groups.set(k,[]).get(k)).push(s)});
+  groups.forEach(g=>{if(g.length<2)return;g.sort((a,b)=>LINES.indexOf(a.line)-LINES.indexOf(b.line));for(let i=1;i<g.length;i++)link(g[i],g[0])});
+  samples=[];
+  LINES.forEach(L=>{
+    const {P,R,idx}=linePolyline(L); L.P=P; L.R=R; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
+    for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/10));
+      for(let k=0;k<=n;k++)samples.push({x:(a[0]+(b[0]-a[0])*k/n)/U,y:(a[1]+(b[1]-a[1])*k/n)/U})}
+  });
+  // for the growth animation: each line grows out of its transfer to the line it hangs off,
+  // found by walking out from the main line
+  LINES.forEach(L=>{L.parent=null;L.pk=0;L.k=0});
+  {const seen=new Set([main]),q=[main];
+   while(q.length){const P=q.shift();P.st.forEach(s=>(s.xfer||[]).forEach(x=>{if(seen.has(x.line))return;seen.add(x.line);
+     x.line.parent=P;x.line.pk=s.i;x.line.k=x.i;q.push(x.line)}))}}
+  // where a station sits on a corner, the line curves past it: draw the station on the curve
+  LINES.forEach(L=>{L.st.forEach((s,i)=>{const k=L.idx[i];s.vx=s.x;s.vy=s.y;if(k<=0||k>=L.P.length-1||!L.R[k])return;
+    const a=L.P[k-1],b=L.P[k],c=L.P[k+1],v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
+    if(!l1||!l2||Math.abs(v1[0]*v2[1]-v1[1]*v2[0])<1e-6)return; const rr=Math.min(L.R[k],l1/2,l2/2);
+    const p1=[b[0]-v1[0]/l1*rr,b[1]-v1[1]/l1*rr],p2=[b[0]+v2[0]/l2*rr,b[1]+v2[1]/l2*rr];
+    s.vx=.25*p1[0]+.5*b[0]+.25*p2[0];s.vy=.25*p1[1]+.5*b[1]+.25*p2[1]})});
+  all.forEach(s=>{if(s.owner){s.vx=s.owner.vx;s.vy=s.owner.vy}});
+  all.forEach(s=>{const a=s.inDir||s.outDir||[1,0],b=s.outDir||s.inDir||[1,0];let tx=a[0]+b[0],ty=a[1]+b[1];const m=Math.hypot(tx,ty);s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
+  // labels: pick a free side
+  const boxes=[], W=str=>[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?13:7.6),0);
+  const hitsLines=b=>samples.some(s=>{const x=s.x*U,y=s.y*U;return x>b[0]-6&&x<b[2]+6&&y>b[1]-6&&y<b[3]+6});
+  const overlaps=b=>boxes.some(o=>b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]);
+  all.forEach(s=>{
+    if(s.owner){s.lab=null;return}
+    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=W(str),h=15;
+    const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1]]; let best=null;
+    for(const n of cands){const off=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset,cx=s.x+n[0]*off,cy=s.y+n[1]*off;
+      const anchor=Math.abs(n[0])>.3?(n[0]>0?'start':'end'):'middle';
+      const x0=anchor==='start'?cx:anchor==='end'?cx-w:cx-w/2, y0=cy-h/2+(n[1]>.3?6:n[1]<-.3?-6:0), box=[x0,y0,x0+w,y0+h];
+      const ok=!overlaps(box)&&!hitsLines(box); if(ok||!best)best={anchor,box,cx,cy:y0+h-3,n}; if(ok)break}
+    boxes.push(best.box); s.lab=best; s.n=best.n;
+  });
+}
+
+// ---------- draw ----------
+const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains');
+function roundedPath(P,R){ // R: corner radius per vertex
+  if(P.length<2)return `M${P[0][0]},${P[0][1]}`;
+  let d=`M${P[0][0]},${P[0][1]}`;
+  for(let i=1;i<P.length-1;i++){const [a,b,c]=[P[i-1],P[i],P[i+1]];
+    const v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
+    const r=R?R[i]:DESIGN.line.cornerRadius;
+    if(l1<1e-6||l2<1e-6||Math.abs(v1[0]*v2[1]-v1[1]*v2[0])<1e-6||!r){d+=` L${b[0]},${b[1]}`;continue}
+    const rr=Math.min(r,l1/2,l2/2),p1=[b[0]-v1[0]/l1*rr,b[1]-v1[1]/l1*rr],p2=[b[0]+v2[0]/l2*rr,b[1]+v2[1]/l2*rr];
+    d+=` L${p1[0]},${p1[1]} Q${b[0]},${b[1]} ${p2[0]},${p2[1]}`}
+  const z=P[P.length-1];return d+` L${z[0]},${z[1]}`;
+}
+function draw(){
+  [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren());
+  LINES.forEach(L=>{
+    L.subs=[];
+    const mk=(P,R,seq,si)=>{if(P.length<2)return;const p=el('path',{d:roundedPath(P,R),class:'line-path',stroke:L.color,'stroke-width':LW,'data-line':L.key},gL);
+      p._len=p.getTotalLength();p._P=P;p._seq=seq;p._si=si;L.subs.push(p)};
+    const ki=L.idx[L.k];
+    // split at the interchange with the main line so the line can grow out of it in both directions
+    mk(L.P.slice(ki),L.R.slice(ki),L.st.slice(L.k),L.idx.slice(L.k).map(x=>x-ki));
+    if(L.k>0){const P=L.P.slice(0,ki+1).reverse(),R=L.R.slice(0,ki+1).reverse();mk(P,R,L.st.slice(0,L.k+1).reverse(),L.idx.slice(0,L.k+1).reverse().map(x=>ki-x))}
+    L.path=el('path',{d:roundedPath(L.P,L.R),fill:'none',stroke:'none'},gL);
+  });
+  all.forEach(s=>{
+    const L=s.line;
+    if(s.owner){s.g=s.owner.g;return}
+    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${L.day}요일 ${s.s}`,'data-id':s.id},gS);
+    g.setAttribute('transform',`translate(${s.vx},${s.vy})`);
+    el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
+    if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
+    else el('circle',{class:'dot',r:DESIGN.station.dot},g);
+    if(s.lab){const t=el('text',{class:'label',x:s.lab.cx-s.vx,y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor},g);t.textContent=s.label}
+    s.g=g;
+    g.addEventListener('mouseenter',e=>hover(s,e)); g.addEventListener('mousemove',moveCard);
+    g.addEventListener('mouseleave',unhover);
+    g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openStation(s)}});
+  });
+  all.forEach(s=>{if(s.owner)s.g=s.owner.g});
+  try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
+  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:2,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.path.getTotalLength();L.tpos=L.tpos??Math.random()});
+}
+function build(fresh){ if(fresh){generate();} geometry(); draw(); }
+generate(); loadPos(); geometry(); draw();
+function refreshFocus(){const f=follow;if(current){const s=current;current=null;openStation(s,true,true)}follow=f;if(follow)centerOn(follow,600,false)}
+
+// ---------- station dragging ----------
+// Drag a station to move it. Drop it on another line's station to make an interchange.
+// Dragging an interchange moves the whole group; Shift-drag pulls one station out of it.
+let sdrag=null;
+const SNAP_PX=16;
+// Rope: when a dragged station gets too far from its neighbour, the neighbour follows (and so on down the line).
+// Interchanges stay put — pulling one would drag other lines along too.
+const PULL={maxGap:160, ease:.28, personalSpace:48, push:.3};
+let settle=null;   // after release, pulled stations keep catching up for a moment
+
+// ======================================================================
+// UNTANGLE — after a drag settles, badly tangled lines straighten themselves out.
+// Tangled = the line crosses itself, or folds back on itself (turn ≥ 120°) at a station.
+// The dragged station and interchanges stay where they are.
+// ======================================================================
+const UNTANGLE={foldCos:-.5, gap:100, space:64, lineSpace:44, iters:220, tween:600, alignTol:12};
+function segX(a,b,c,d){const o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const d1=o(c,d,a),d2=o(c,d,b),d3=o(a,b,c),d4=o(a,b,d);return d1*d2<0&&d3*d4<0}
+function tangles(L,pos){ // pos: array of [x,y] per station
+  const cross=[],folds=[];
+  for(let i=0;i<pos.length-1;i++)for(let j=i+2;j<pos.length-1;j++)if(segX(pos[i],pos[i+1],pos[j],pos[j+1]))cross.push([i,j]);
+  for(let i=1;i<pos.length-1;i++){const a=[pos[i][0]-pos[i-1][0],pos[i][1]-pos[i-1][1]],b=[pos[i+1][0]-pos[i][0],pos[i+1][1]-pos[i][1]];
+    const la=Math.hypot(...a),lb=Math.hypot(...b);if(la&&lb&&(a[0]*b[0]+a[1]*b[1])/(la*lb)<UNTANGLE.foldCos)folds.push(i)}
+  return {cross,folds,bad:cross.length+folds.length};
+}
+function badness(L,pos,fixed){const t=tangles(L,pos);return t.cross.length+t.folds.filter(i=>!fixed[i]).length}
+// Straighten: a station that sits just off the straight line between its neighbours goes onto it,
+// then lines up exactly (straight or 45°) with the previous station. Big deliberate turns are left alone.
+function straightenPos(pos,fixed,L){
+  const moved=new Set(), st=L?L.st:[];
+  const roomy=(q,i)=>{ // keep clear of other lines' stations and of this line's own (non-neighbour) stations
+    const own=new Set(st);if(!clearOf(q,own))return false;
+    return !pos.some((r,j)=>Math.abs(j-i)>1&&Math.hypot(r[0]-q[0],r[1]-q[1])<SNAP.minGap)};
+  for(let pass=0;pass<4;pass++)for(let i=1;i<pos.length-1;i++){ if(fixed[i])continue;
+    const a=pos[i-1],p=pos[i],c=pos[i+1],cos=turnCos(a,p,c);
+    let q=null;
+    if(cos>=SNAP.straightCos&&distToSeg(p,a,c)<=SNAP.straightDist){        // nearly straight: onto the line
+      const vx=c[0]-a[0],vy=c[1]-a[1],l=vx*vx+vy*vy||1,u=((p[0]-a[0])*vx+(p[1]-a[1])*vy)/l;
+      q=align([a[0]+u*vx,a[1]+u*vy],a,GEN.alignTol);
+    }else if(Math.abs(cos)<SNAP.rightCos){                                // nearly a right angle: make it exact
+      const rc=rightCorner(a,c,p,30); if(rc&&rc.d<=SNAP.tidyCorner)q=rc.q;
+    }
+    if(q&&Math.hypot(q[0]-p[0],q[1]-p[1])>.5&&roomy(q,i)){pos[i]=q;moved.add(i)}
+  }
+  return moved;
+}
+function planUntangle(L,keep){
+  const st=L.st, pos=st.map(s=>[s.x,s.y]), fixed=st.map(s=>keep.includes(s)||!!s.xfer);
+  let t0=tangles(L,pos);
+  if(!t0.bad){ const m=straightenPos(pos,fixed,L); if(!m.size)return null;
+    return [...m].map(i=>({s:st[i],from:[st[i].x,st[i].y],to:pos[i]})); }
+  // (no reversing of stretches here: that flips whole tails of a line around)
+  // 2) relax folds and leftover knots: springs along the line + personal space
+  const others=all.filter(o=>o.line!==L).map(o=>[o.x,o.y]);
+  const touched=new Set();
+  const window=new Set(); const {cross:c2,folds:f2}=tangles(L,pos);
+  [...f2,...c2.flat()].forEach(i=>{for(let k=i-4;k<=i+5;k++)if(k>=0&&k<st.length)window.add(k)});
+  const otherSegs=[];LINES.forEach(M=>{if(M===L)return;for(let i=1;i<M.st.length;i++)otherSegs.push([[M.st[i-1].x,M.st[i-1].y],[M.st[i].x,M.st[i].y]])});
+  for(let it=0;it<UNTANGLE.iters&&window.size;it++){
+    window.forEach(i=>{ if(fixed[i])return; const p=pos[i],prev=pos[i-1],next=pos[i+1]; let fx=0,fy=0;
+      if(prev&&next){fx+=((prev[0]+next[0])/2-p[0])*.5;fy+=((prev[1]+next[1])/2-p[1])*.5}
+      else if(prev&&pos[i-2]){const d=[prev[0]-pos[i-2][0],prev[1]-pos[i-2][1]],m=Math.hypot(...d)||1;fx+=(prev[0]+d[0]/m*UNTANGLE.gap-p[0])*.3;fy+=(prev[1]+d[1]/m*UNTANGLE.gap-p[1])*.3}
+      else if(next&&pos[i+2]){const d=[next[0]-pos[i+2][0],next[1]-pos[i+2][1]],m=Math.hypot(...d)||1;fx+=(next[0]+d[0]/m*UNTANGLE.gap-p[0])*.3;fy+=(next[1]+d[1]/m*UNTANGLE.gap-p[1])*.3}
+      [prev,next].forEach(nb=>{if(!nb)return;const dx=p[0]-nb[0],dy=p[1]-nb[1],d=Math.hypot(dx,dy)||1;const k=(UNTANGLE.gap-d)/d*.25;fx+=dx*k;fy+=dy*k});
+      const near=(q)=>{const dx=p[0]-q[0],dy=p[1]-q[1],d=Math.hypot(dx,dy);if(d>0&&d<UNTANGLE.space){const k=(UNTANGLE.space-d)/d*.35;fx+=dx*k;fy+=dy*k}};
+      pos.forEach((q,j)=>{if(Math.abs(j-i)>1)near(q)}); others.forEach(near);
+      // keep off line sections (own non-adjacent ones and other lines) so U-turns bulge into a curve
+      const offSeg=(a,b)=>{const vx=b[0]-a[0],vy=b[1]-a[1],l=vx*vx+vy*vy||1;let u=((p[0]-a[0])*vx+(p[1]-a[1])*vy)/l;u=Math.max(0,Math.min(1,u));
+        const cx=a[0]+u*vx,cy=a[1]+u*vy,dx=p[0]-cx,dy=p[1]-cy,d=Math.hypot(dx,dy);if(d>0&&d<UNTANGLE.lineSpace){const k=(UNTANGLE.lineSpace-d)/d*.4;fx+=dx*k;fy+=dy*k}};
+      for(let j=0;j<pos.length-1;j++){if(j===i||j===i-1||j===i-2||j===i+1)continue;offSeg(pos[j],pos[j+1])}
+      otherSegs.forEach(([a,b])=>offSeg(a,b));
+      p[0]+=fx*.6;p[1]+=fy*.6;touched.add(i);
+    });
+  }
+  // 3) tidy: nearly straight / 45° neighbours snap into line
+  touched.forEach(i=>{if(fixed[i]||!pos[i-1])return;pos[i]=align(pos[i],pos[i-1],UNTANGLE.alignTol)});
+  straightenPos(pos,fixed,L).forEach(i=>touched.add(i));
+  const t1=tangles(L,pos); if(t1.bad>=t0.bad&&!touched.size)return null;
+  const plan=[];st.forEach((s,i)=>{if(Math.hypot(pos[i][0]-s.x,pos[i][1]-s.y)>.5)plan.push({s,from:[s.x,s.y],to:pos[i]})});
+  return plan.length?plan:null;
+}
+let tween=null;
+function startTween(plans,done){
+  plans=gridPlans(plans); if(!plans.length){if(done)done();else savePos();return}
+  if(reduce){plans.forEach(p=>{p.s.x=p.to[0];p.s.y=p.to[1]});geometry();draw();if(done)done();else savePos();return}
+  tween={plans,t0:performance.now(),done};
+}
+function untangleLines(lines,keep){
+  const plans=[];lines.forEach(L=>{const p=planUntangle(L,keep);if(p)plans.push(...p)});
+  all.forEach(s=>{if(offGrid(s)&&!plans.some(p=>p.s===s))plans.push({s,from:[s.x,s.y],to:[s.x,s.y]})});
+  if(!plans.length){savePos();return false}
+  startTween(plans); return true;
+}
+// Over-stretched links (next to interchanges, which don't follow) spring back to PULL.maxGap.
+// Interchanges stay; everything else — including the dragged station — is pulled back toward them.
+function planSnapBack(moving=[]){
+  // Interchanges stay — except one the user just dragged: that whole group may spring back too.
+  const P=new Map(all.map(s=>[s,[s.x,s.y]])), G=PULL.maxGap, movedGroup=new Set(moving);
+  const lockedLater=new Set();
+  LINES.forEach(L=>{
+    const st=L.st,pos=st.map(s=>P.get(s)),fixed=st.map(s=>lockedLater.has(s)||(!!s.xfer&&!movedGroup.has(s)));
+    let any=false;for(let i=1;i<st.length;i++)if(Math.hypot(pos[i][0]-pos[i-1][0],pos[i][1]-pos[i-1][1])>G+1)any=true;
+    if(any)for(let it=0;it<80;it++){let worst=0;
+      for(let i=0;i<st.length-1;i++){const a=pos[i],b=pos[i+1],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy);if(d<=G)continue;worst=Math.max(worst,d-G);
+        const ux=dx/d,uy=dy/d,ex=d-G;
+        if(fixed[i]&&fixed[i+1])continue;
+        if(fixed[i]){b[0]-=ux*ex;b[1]-=uy*ex}
+        else if(fixed[i+1]){a[0]+=ux*ex;a[1]+=uy*ex}
+        else{a[0]+=ux*ex/2;a[1]+=uy*ex/2;b[0]-=ux*ex/2;b[1]-=uy*ex/2}}
+      if(worst<.5)break}
+    // a moved interchange carries its whole group to the same spot; later lines treat it as fixed
+    st.forEach((s,i)=>{if(s.xfer&&movedGroup.has(s)){[s,...s.xfer].forEach(m=>{P.set(m,[pos[i][0],pos[i][1]]);lockedLater.add(m)})}});
+  });
+  const plans=[];all.forEach(s=>{const q=P.get(s);if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
+  return plans.length?plans:null;
+}
+// After a drag: the station the user put down stays where it is. The stations the rope pulled
+// along are laid out neatly again — evenly along a subway-style route to the next station that
+// did not move (or in a straight row, at the end of a line).
+const REALIGN={maxGap:200, tailGap:84, minLeg:56, rightBonus:.6};
+function evenOn(P,n){const g=polyLen(P)/(n+1);return[...Array(n)].map((_,k)=>pointAt(P,g*(k+1)))}
+// n stations along a one-corner path, one of them right on the corner; null if the gaps would be too uneven
+function cornerOn(P,n){
+  const l1=Math.hypot(P[1][0]-P[0][0],P[1][1]-P[0][1]),l2=Math.hypot(P[2][0]-P[1][0],P[2][1]-P[1][1]);let best=null;
+  for(let k1=0;k1<n;k1++){const k2=n-1-k1,g1=l1/(k1+1),g2=l2/(k2+1),r=Math.max(g1,g2)/Math.min(g1,g2);if(!best||r<best.r)best={k1,k2,g1,g2,r}}
+  if(!best||best.r>2||Math.min(best.g1,best.g2)<50)return null;
+  const out=[];for(let j=1;j<=best.k1;j++)out.push(pointAt([P[0],P[1]],best.g1*j));out.push(P[1]);
+  for(let j=1;j<=best.k2;j++)out.push(pointAt([P[1],P[2]],best.g2*j));return out;
+}
+function polyLen(P){let l=0;for(let i=1;i<P.length;i++)l+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return l}
+function pointAt(P,d){for(let i=1;i<P.length;i++){const s=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(d<=s||i===P.length-1){const u=s?Math.min(1,d/s):0;return[P[i-1][0]+(P[i][0]-P[i-1][0])*u,P[i-1][1]+(P[i][1]-P[i-1][1])*u]}d-=s}return P[P.length-1]}
+function routeVariants(A,B){ // the two subway-style ways to join A and B: straight first, or 45° first
+  const dx=B[0]-A[0],dy=B[1]-A[1],ax=Math.abs(dx),ay=Math.abs(dy),sx=Math.sign(dx),sy=Math.sign(dy),d=Math.min(ax,ay);
+  if(ax<.5||ay<.5||Math.abs(ax-ay)<.5)return[[A,B]];
+  const bS=ax>ay?[A[0]+sx*(ax-ay),A[1]]:[A[0],A[1]+sy*(ay-ax)],bD=[A[0]+sx*d,A[1]+sy*d];
+  return[[A,bS,B],[A,bD,B]];
+}
+function pathScore(P,skip){ // fewer crossings with other line sections and fewer stations close to the path = better
+  let sc=0;
+  LINES.forEach(L=>{for(let i=1;i<L.st.length;i++){const a=L.st[i-1],b=L.st[i];if(skip.has(a)||skip.has(b))continue;
+    for(let k=1;k<P.length;k++)if(segX(P[k-1],P[k],[a.x,a.y],[b.x,b.y]))sc+=3}});
+  all.forEach(o=>{if(skip.has(o))return;for(let k=1;k<P.length;k++)if(distToSeg([o.x,o.y],P[k-1],P[k])<40){sc+=1;break}});
+  return sc;
+}
+function planRealign(moving){
+  const target=new Map(), keep=new Set(moving);
+  const groupOf=s=>[s.owner||s,...((s.owner||s).xfer||[])];
+  moving.forEach(m=>{
+    const L=m.line,st=L.st;
+    [1,-1].forEach(dir=>{
+      const run=[];let j=m.i+dir;
+      while(j>=0&&j<st.length&&pulled.has(st[j])&&!st[j].xfer&&!keep.has(st[j])){run.push(st[j]);j+=dir}
+      const anchor=(j>=0&&j<st.length)?st[j]:null;
+      const skip=new Set([m,...run,...(anchor?[anchor]:[])]);
+      let M=[m.x,m.y];
+      if(anchor){
+        const A=[anchor.x,anchor.y];
+        // only move the dragged station if the gaps would otherwise get too wide
+        const need=(run.length+1)*REALIGN.maxGap, dist=polyLen(routeVariants(M,A)[0]);
+        if(dist>need&&!run.length){const u=(dist-need)/dist;M=[M[0]+(A[0]-M[0])*u,M[1]+(A[1]-M[1])*u];
+          groupOf(m).forEach(g=>target.set(g,[M[0],M[1]]))}
+        if(!run.length)return;
+        // candidates: the two Mini-Metro routes (straight + 45°), and clean right-angle routes
+        // whose corner gets a station of its own. Right angles are slightly preferred.
+        const back=st[m.i-dir], arr=back?Math.atan2(M[1]-back.y,M[0]-back.x):null;
+        const headOf=(P)=>mod8(Math.round(Math.atan2(P[1][1]-P[0][1],P[1][0]-P[0][0])/(Math.PI/4)));
+        const cands=routeVariants(M,A).map(P=>({P,pts:evenOn(P,run.length),bias:0}));
+        if(run.length)rightCorners(M,A,REALIGN.minLeg).forEach(o=>{const P=[M,o.q,A],pts=cornerOn(P,run.length);if(pts)cands.push({P,pts,bias:-REALIGN.rightBonus})});
+        let best=null;cands.forEach(c=>{let sc=pathScore(c.P,skip)+c.bias;
+          if(arr!==null)sc+=Math.abs(diff8(headOf(c.P),mod8(Math.round(arr/(Math.PI/4)))))*.4;
+          if(c.pts.some(q=>!clearOf(q,skip)))sc+=2;
+          if(!best||sc<best.sc)best={...c,sc}});
+        run.forEach((s,k)=>target.set(s,best.pts[k]));
+      }else if(run.length){ // end of the line: carry on in the direction the line arrives at the dragged station
+        const back=st[m.i-dir], v=back?[M[0]-back.x,M[1]-back.y]:[run[run.length-1].x-M[0],run[run.length-1].y-M[1]];
+        const h=mod8(Math.round(Math.atan2(v[1],v[0])/(Math.PI/4)));
+        const G=gridU();M=gsnap(M);
+        let best=null;[h,mod8(h+1),mod8(h-1),mod8(h+2),mod8(h-2)].forEach(hh=>{const D=DIRS[hh].map(v=>v*2*G);   // 2 grid cells per station
+          const P=[M,[M[0]+D[0]*run.length,M[1]+D[1]*run.length]];const s=pathScore(P,skip)+Math.abs(diff8(hh,h))*.6;
+          if(!best||s<best.s)best={D,s}});
+        run.forEach((s,k)=>target.set(s,[M[0]+best.D[0]*(k+1),M[1]+best.D[1]*(k+1)]));
+      }
+    });
+  });
+  const plans=[];target.forEach((q,s)=>{if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
+  return plans.length?plans:null;
+}
+function afterSettle(moving){
+  const lines=[...new Set(moving.map(m=>m.line))];
+  const plan=planRealign(moving);
+  const then=()=>{untangleLines(lines,moving);pulled=new Set()};
+  if(plan)startTween(plan,then); else then();
+}
+function stepTween(now){
+  if(!tween)return; const p=Math.min(1,(now-tween.t0)/UNTANGLE.tween),e=1-Math.pow(1-p,3);
+  tween.plans.forEach(q=>{q.s.x=q.from[0]+(q.to[0]-q.from[0])*e;q.s.y=q.from[1]+(q.to[1]-q.from[1])*e});
+  geometry();draw(); if(p>=1){const done=tween.done;tween=null;if(done)done();else{savePos();if(current)refreshFocus()}}
+}
+let pulled=new Set();   // stations the rope dragged along during the current drag
+function relax(moving){
+  let movedBy=0; const lines=new Set(moving.map(m=>m.line));
+  const pinned=s=>moving.includes(s)||!!s.xfer;
+  lines.forEach(L=>{
+    const st=L.st, idx=st.map((s,i)=>moving.includes(s)?i:-1).filter(i=>i>=0);
+    const pass=(from,to,step)=>{for(let j=from;j!==to;j+=step){const prev=st[j-step],cur=st[j];if(pinned(cur))break;
+      const dx=cur.x-prev.x,dy=cur.y-prev.y,d=Math.hypot(dx,dy);if(d<=PULL.maxGap)continue;
+      const tx=prev.x+dx/d*PULL.maxGap,ty=prev.y+dy/d*PULL.maxGap,mx=(tx-cur.x)*PULL.ease,my=(ty-cur.y)*PULL.ease;
+      cur.x+=mx;cur.y+=my;movedBy+=Math.abs(mx)+Math.abs(my);pulled.add(cur);
+      // a pulled station keeps a little personal space from other stations
+      all.forEach(o=>{if(o===cur||o===prev||(o.owner||o)===(cur.owner||cur)||moving.includes(o))return;const ex=cur.x-o.x,ey=cur.y-o.y,e=Math.hypot(ex,ey);
+        if(e>0&&e<PULL.personalSpace){const k=(PULL.personalSpace-e)/e*PULL.push;cur.x+=ex*k;cur.y+=ey*k;movedBy+=Math.abs(ex*k)+Math.abs(ey*k)}})}};
+    idx.forEach(i=>{pass(i+1,st.length,1);pass(i-1,-1,-1)});
+  });
+  return movedBy;
+}
+function stationAt(cx,cy){const h=document.elementFromPoint(cx,cy),g=h&&h.closest&&h.closest('.station');if(!g)return null;return all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g)}
+function toWorld(cx,cy){return[(cx-view.x)/view.k,(cy-view.y)/view.k]}
+function startStationDrag(s,e){
+  // finish anything still settling — but only redraw if something actually moved:
+  // redrawing on every press swapped the station under the pointer, which swallowed the click (no popup)
+  let changed=false;
+  if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null;changed=true}
+  all.forEach(o=>{if(offGrid(o)){const q=gsnap([o.x,o.y]);o.x=q[0];o.y=q[1];changed=true}});
+  settle=null; pulled=new Set(); if(changed){geometry();draw()}
+  const group=[s.owner||s,...((s.owner||s).xfer||[])];
+  let moving=group;
+  if(e.shiftKey&&group.length>1){const pick=group[group.length-1];moving=[pick]}   // pull the last-joined station out
+  const w=toWorld(e.clientX,e.clientY);
+  sdrag={s,moving,lines:new Set(moving.map(m=>m.line)),off:[moving[0].x-w[0],moving[0].y-w[1]],start:[e.clientX,e.clientY],active:false,snap:null};
+}
+function moveStationDrag(e){
+  const d=sdrag; if(!d)return;
+  if(!d.active&&Math.hypot(e.clientX-d.start[0],e.clientY-d.start[1])<4)return;
+  if(!d.active){d.active=true;release();svg.classList.add('dragging-station');unhover()}
+  const w=toWorld(e.clientX,e.clientY); let x=w[0]+d.off[0],y=w[1]+d.off[1];
+  // snap onto a station of another line (not one already on a dragged line)
+  d.snap=null; let best=SNAP_PX/view.k;
+  const isEnd=x=>x.i===0||x.i===x.line.st.length-1;   // a line's first/last station never becomes a transfer
+  const dragEnd=d.moving.some(isEnd);
+  all.forEach(o=>{if(dragEnd||d.moving.includes(o)||d.lines.has(o.line))return; const grp=[o.owner||o,...((o.owner||o).xfer||[])];
+    if(grp.some(isEnd))return;
+    if(grp.some(m=>d.lines.has(m.line)&&!d.moving.includes(m)))return;
+    const dd=Math.hypot(o.x-x,o.y-y); if(dd<best){best=dd;d.snap=o}});
+  if(d.snap){x=d.snap.x;y=d.snap.y}
+  else{ // soft-align with neighbouring stations on the dragged lines
+    // the station sits on a grid point: the nearest one, unless one cell over lines up with a neighbour
+    const G=gridU(),raw=[x,y],base=gsnap(raw),pairs=[];
+    d.moving.forEach(m=>{const a=m.line.st[m.i-1],c=m.line.st[m.i+1];pairs.push([a&&!d.moving.includes(a)?[a.x,a.y]:null,c&&!d.moving.includes(c)?[c.x,c.y]:null])});
+    const used=new Set(all.filter(o=>!d.moving.includes(o)).map(o=>gkey([o.x,o.y])));
+    let best=null;
+    for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const q=[base[0]+i*G,base[1]+j*G];if(used.has(gkey(q)))continue;
+      let sc=Math.hypot(q[0]-raw[0],q[1]-raw[1])/G;
+      pairs.forEach(([a,c])=>{const kind=n=>{if(!n)return 0;const dx=Math.abs(q[0]-n[0]),dy=Math.abs(q[1]-n[1]);return dx<1||dy<1?2:Math.abs(dx-dy)<1?1:0};
+        const ka=kind(a),kc=kind(c);
+        if(a&&c&&isDiagV(a,q,c)){sc+=.6;return}                          // two diagonals at 90°: avoid
+        [ka,kc].forEach(k=>{if(k===2)sc-=SNAP.alignBonus;else if(k===1)sc-=SNAP.alignBonus*.6})});
+      if(!best||sc<best.sc)best={q,sc}}
+    if(best){x=best.q[0];y=best.q[1]}else{x=base[0];y=base[1]}
+  }
+  d.moving.forEach(m=>{m.x=x;m.y=y});
+  geometry(); draw(); placePopup();
+  if(d.snap&&d.snap.g)d.snap.g.classList.add('snap');
+}
+function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('dragging-station');if(!d)return false;
+  if(d.active){settle={moving:d.moving};savePos();geometry();draw();if(current)refreshFocus();return true}return false}
+
+// ---------- legend & sr list ----------
+const lg=$('#legend');
+LINES.forEach(L=>{
+  const b=document.createElement('button'); b.dataset.line=L.key;
+  b.innerHTML=`<span class="day">${L.day}</span><span class="bs">${L.series.map(([c])=>`<span class="bul" style="background:${L.color};color:${L.textOn}">${c}</span>`).join('')}</span><span>${L.series.map(s=>s[1]).join(' → ')}</span>`;
+  b.onmouseenter=()=>focusLine(L); b.onmouseleave=()=>focusLine(null);
+  b.onclick=()=>{release();fitTo(L.px)};
+  lg.appendChild(b);
+});
+$('#srlist').innerHTML=LINES.map(L=>`<h2>${L.day}요일</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${s.t}</a></li>`).join('')}</ul>`).join('');
+
+// ---------- view (pan/zoom) ----------
+const svg=$('#map'), world=$('#world');
+let view={x:0,y:0,k:1}, target=null;
+function apply(){world.setAttribute('transform',`translate(${view.x},${view.y}) scale(${view.k})`);svg.classList.toggle('hide-labels',view.k<DESIGN.zoom.hideLabelsBelow)}
+function bounds(pts){let a=1e9,b=1e9,c=-1e9,d=-1e9;pts.forEach(([x,y])=>{a=Math.min(a,x);b=Math.min(b,y);c=Math.max(c,x);d=Math.max(d,y)});return[a,b,c,d]}
+function fitView(pts,pad=120){
+  const [a,b,c,d]=bounds(pts); const W=innerWidth,H=innerHeight;
+  const k=Math.max(DESIGN.zoom.min,Math.min(DESIGN.zoom.max,Math.min((W-pad*2)/(c-a||1),(H-pad*2)/(d-b||1))));
+  return {k,x:W/2-(a+c)/2*k,y:H/2-(b+d)/2*k};
+}
+function animateTo(v,ms=600){
+  if(reduce){view=v;apply();return}
+  const s={...view},t0=performance.now();
+  target=t=>{const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);
+    view={x:s.x+(v.x-s.x)*e,y:s.y+(v.y-s.y)*e,k:s.k+(v.k-s.k)*e};apply();if(p>=1)target=null};
+}
+function fitTo(pts){animateTo(fitView(pts))}
+function zoomAt(f,cx,cy){
+  const k=Math.max(DESIGN.zoom.min,Math.min(DESIGN.zoom.max,view.k*f)); f=k/view.k;
+  view={k,x:cx-(cx-view.x)*f,y:cy-(cy-view.y)*f};apply();
+}
+// pointer drag + pinch
+const ptrs=new Map(); let moved=false, last=null, vel=[0,0], pinch0=null;
+svg.addEventListener('pointerdown',e=>{const hitSt=ptrs.size===0&&e.button===0?stationAt(e.clientX,e.clientY):null;svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=false;if(hitSt)startStationDrag(hitSt,e);else sdrag=null;target=null;vel=[0,0];last=[e.clientX,e.clientY,performance.now()];if(ptrs.size===2){const [p,q]=[...ptrs.values()];pinch0={d:Math.hypot(p[0]-q[0],p[1]-q[1]),k:view.k}}});
+svg.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return; const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(sdrag&&ptrs.size===1){moveStationDrag(e);if(sdrag.active)moved=true;return}
+  if(ptrs.size===2&&pinch0){sdrag=null;release();const [p,q]=[...ptrs.values()];const d=Math.hypot(p[0]-q[0],p[1]-q[1]);zoomAt((pinch0.k*d/pinch0.d)/view.k,(p[0]+q[0])/2,(p[1]+q[1])/2);moved=true;return}
+  const dx=e.clientX-prev[0],dy=e.clientY-prev[1]; if(Math.abs(dx)+Math.abs(dy)>2){if(!moved)release();moved=true;svg.classList.add('dragging');unhover()}
+  view.x+=dx;view.y+=dy;apply(); const now=performance.now(); vel=[dx/Math.max(1,now-last[2])*16,dy/Math.max(1,now-last[2])*16]; last=[e.clientX,e.clientY,now];
+});
+const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;svg.classList.remove('dragging');
+  if(sdrag){const wasDrag=endStationDrag();if(wasDrag){moved=true;setTimeout(()=>moved=false,0);return}}
+  if(moved&&!reduce&&ptrs.size===0){let v=[...vel];target=()=>{v[0]*=.92;v[1]*=.92;view.x+=v[0];view.y+=v[1];apply();if(Math.hypot(...v)<.3)target=null}}
+  setTimeout(()=>moved=false,0)};
+svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+svg.addEventListener('wheel',e=>{e.preventDefault();release();
+  const px=e.deltaMode===1?16:e.deltaMode===2?innerHeight:1;
+  const mouseNotch=e.deltaMode!==0||(e.deltaX===0&&Math.abs(e.deltaY)>=100&&Number.isInteger(e.deltaY));
+  if(e.ctrlKey||e.metaKey) zoomAt(Math.exp(-e.deltaY*px*.01),e.clientX,e.clientY);       // trackpad pinch / ⌘+wheel
+  else if(mouseNotch) zoomAt(Math.exp(-e.deltaY*px*.0015),e.clientX,e.clientY);           // mouse wheel
+  else {view.x-=e.deltaX*px;view.y-=e.deltaY*px;apply();unhover()}                        // two-finger pan
+},{passive:false});
+// Safari pinch
+let gs=1;svg.addEventListener('gesturestart',e=>{e.preventDefault();gs=1});
+svg.addEventListener('gesturechange',e=>{e.preventDefault();release();zoomAt(e.scale/gs,e.clientX||innerWidth/2,e.clientY||innerHeight/2);gs=e.scale});
+svg.addEventListener('gestureend',e=>e.preventDefault());
+$('#zin').onclick=()=>{release();zoomAt(1.4,innerWidth/2,innerHeight/2)};
+$('#zout').onclick=()=>{release();zoomAt(1/1.4,innerWidth/2,innerHeight/2)};
+$('#zfit').onclick=()=>{release();fitTo(all.map(s=>[s.x,s.y]))};
+
+// ---------- hover / focus ----------
+function focusLine(L){
+  document.querySelectorAll('[data-line]').forEach(n=>{ if(n.closest('#legend'))return; n.classList.toggle('dim',!!L&&n.dataset.line!==L.key)});
+  gS.querySelectorAll('.station').forEach(g=>{const s=all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
+  
+}
+// hover only highlights the station's line; the details live in the click popup (no hover summary card)
+function hover(s,e){ if(ptrs.size)return; if(!current)focusLine(s.line)}
+function moveCard(e){}
+function unhover(){if(!current)focusLine(null)}
+
+// ---------- panel ----------
+let current=null; const panel=$('#panel');
+function openStation(s,fromHash,keepView){
+  current&&current.g.classList.remove('active'); current=s; s.g.classList.add('active');
+  focusLine(s.line);
+  const L=s.line;
+  $('#pb').innerHTML=`<span class="bul" style="background:${L.color};color:${L.textOn}">${s.b}</span>`;
+  $('#pname').textContent=s.s; $('#ptitle').textContent=s.t;
+  $('#pline').textContent=`${L.day}요일 · ${s.ser}`; $('#pdate').textContent=s.d; $('#pid').textContent=s.id;
+  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 <span class="bul" style="background:${x.line.color};color:${x.line.textOn}">${x.b}</span> ${x.line.day}요일 · ${x.s}`;b.onclick=()=>openStation(x);xr.appendChild(b)});
+  $('#pig').href=s.u;
+  const prev=L.st[s.i-1], next=L.st[s.i+1];
+  const pb=$('#pprev'),nb=$('#pnext');
+  pb.disabled=!prev; pb.querySelector('span').textContent=prev?prev.s:'기점'; pb.onclick=()=>prev&&openStation(prev);
+  nb.disabled=!next; nb.querySelector('span').textContent=next?next.s:'종점 (최신)'; nb.onclick=()=>next&&openStation(next);
+  panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); placePopup();
+  if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
+  follow=s;
+  if(!keepView) centerOn(s,DESIGN.motion.centerMs,true);
+}
+// ---------- camera lock: a clicked station stays centred until the user moves the map ----------
+let follow=null;
+function visibleCentre(){return innerWidth>640?[innerWidth/2,innerHeight/2]:[innerWidth/2,innerHeight*.3]}
+// popup sits beside its station and moves with the map
+function placePopup(){
+  if(!current||!panel.classList.contains('open'))return;
+  const s=current, sx=view.x+s.x*view.k, sy=view.y+s.y*view.k, w=panel.offsetWidth, h=panel.offsetHeight, m=12, gap=28;
+  let x,y;
+  if(innerWidth<=640){x=(innerWidth-w)/2;y=sy+gap}
+  else{x=sx+gap; if(x+w>innerWidth-m)x=sx-gap-w; y=sy-h*.3}
+  x=Math.max(m,Math.min(innerWidth-w-m,x)); y=Math.max(m,Math.min(innerHeight-h-m,y));
+  panel.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
+}
+function centerOn(s,ms,zoomIn){
+  const [cx,cy]=visibleCentre(), [z0,z1]=DESIGN.zoom.focus;
+  const k=zoomIn?Math.min(z1,Math.max(view.k,z0)):view.k;
+  const v={k,x:cx-s.x*k,y:cy-s.y*k}; if(ms)animateTo(v,ms); else {view=v;apply()}
+}
+function release(){follow=null;target=null}
+function closePanel(){release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+$('#pclose').onclick=closePanel;
+addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+svg.addEventListener('click',e=>{
+  if(moved)return;
+  const hit=document.elementFromPoint(e.clientX,e.clientY), g=hit&&hit.closest&&hit.closest('.station');
+  if(g){const s=all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g); if(s){openStation(s);return}}
+  if(current)closePanel();
+});
+
+// ---------- growth animation ----------
+const SPEED=DESIGN.motion.growPxPerMs;
+function cumDist(P){const c=[0];for(let i=1;i<P.length;i++)c.push(c[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));return c}
+function popStation(s,at){if(!s.g||s.g._popped===at)return;s.g._popped=at;const X=s.vx??s.x,Y=s.vy??s.y;
+  s.g.animate([{opacity:0,transform:`translate(${X}px,${Y}px) scale(.2)`},{opacity:1,transform:`translate(${X}px,${Y}px) scale(1.3)`,offset:.7},{opacity:1,transform:`translate(${X}px,${Y}px) scale(1)`}],{duration:DESIGN.motion.popMs,delay:at,easing:'ease-out',fill:'backwards'})}
+function growLine(L,start){
+  let end=start;
+  L.subs.forEach((p,si)=>{
+    const len=p._len,dur=Math.min(1600,Math.max(250,len/SPEED));
+    p.style.strokeDasharray=len;
+    p.animate([{strokeDashoffset:len},{strokeDashoffset:0}],{duration:dur,delay:start,easing:'cubic-bezier(.35,0,.25,1)',fill:'backwards'});
+    // stations along this sub-path
+    const P=p._P,c=cumDist(P),tot=c[c.length-1]||1;
+    p._seq.forEach((s,i)=>{ if(s.owner)return; popStation(s,start+dur*Math.pow(c[p._si[i]]/tot,.9)) });
+    end=Math.max(end,start+dur);
+  });
+  [...gB.querySelectorAll(`[data-line="${L.key}"]`),L.train].forEach(n=>n&&n.animate([{opacity:0},{opacity:1}],{duration:300,delay:end,fill:'backwards'}));
+  return end;
+}
+function intro(){
+  if(reduce)return;
+  // a line starts growing when its parent line's growth reaches the transfer
+  const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
+  const order=[main];for(let i=0;i<order.length;i++)LINES.forEach(L=>{if(L.parent===order[i]&&!order.includes(L))order.push(L)});
+  LINES.forEach(L=>{if(!order.includes(L))order.push(L)});
+  order.forEach(L=>{
+    let t0=0;const P=L.parent;
+    if(P&&start.has(P)){const c=cumDist(P.P),from=c[P.idx[P.k]],at=c[P.idx[L.pk]],fwd=at>=from,sub=P.subs[fwd||P.subs.length<2?0:1],
+      d=dur(P)[fwd||P.subs.length<2?0:1]||0,len=sub?sub._len:1;t0=start.get(P)+d*Math.pow(Math.min(1,Math.abs(at-from)/(len||1)),.9)+120}
+    start.set(L,t0);growLine(L,t0);
+  });
+}
+// ---------- loop ----------
+let lt=performance.now();
+function frame(t){
+  const dt=Math.min(50,t-lt); lt=t;
+  if(target)target(t);
+  { const mv=sdrag&&sdrag.active?sdrag.moving:settle&&settle.moving;
+    if(mv){const m=relax(mv); if(m>.05){geometry();draw();if(sdrag&&sdrag.snap&&sdrag.snap.g)sdrag.snap.g.classList.add('snap')}
+      else if(!sdrag&&settle){const mv2=settle.moving;settle=null;afterSettle(mv2)}} }
+  stepTween(t);
+  placePopup();
+  if(!reduce) LINES.forEach(L=>{ if(!L.plen)return;
+    L.tpos=(L.tpos+dt/(L.plen*DESIGN.train.speed))%2; const p=L.loop?L.tpos%1:(L.tpos<1?L.tpos:2-L.tpos);
+    const a=L.path.getPointAtLength(p*L.plen), b=L.path.getPointAtLength(Math.min(L.plen,p*L.plen+1));
+    const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+    L.train.setAttribute('transform',`translate(${a.x},${a.y}) rotate(${ang})`);
+  });
+  requestAnimationFrame(frame);
+}
+
+
+// ---------- replay & theme ----------
+function replay(){
+  if(reduce)return;
+  const ghost=el('g',{style:'pointer-events:none'},world);
+  [gL,gS,gB,gT].forEach(g=>[...g.childNodes].forEach(n=>ghost.appendChild(n)));
+  ghost.animate([{opacity:1},{opacity:0}],{duration:DESIGN.motion.rebuildFadeMs,easing:'ease-out'}).onfinish=()=>ghost.remove();
+  build(); refreshFocus(); setTimeout(intro,120);
+  if(!follow){const v=fitView(all.map(s=>[s.x,s.y]),innerWidth>640?110:60);animateTo(v,900)}
+}
+// grid toggle (shows the invisible grid the stations sit on)
+function setGrid(on){svg.classList.toggle('show-grid',on);$('#gridbtn').setAttribute('aria-pressed',on);try{localStorage.setItem('eee-grid',on?'1':'')}catch(e){}}
+try{if(localStorage.getItem('eee-grid')==='1')setGrid(true)}catch(e){}
+{const G=DESIGN.grid.unit,pt=$('#gridpat');pt.setAttribute('width',G);pt.setAttribute('height',G);pt.querySelector('.gl').setAttribute('d',`M${G} 0H0V${G}`)}
+$('#gridbtn').onclick=()=>setGrid(!svg.classList.contains('show-grid'));
+// ↻: a fresh random layout (start/end points, transfer stations, turns), saved so it survives a reload
+$('#replay').onclick=()=>{sdrag=null;settle=null;tween=null;if(current)closePanel();generate(Math.random);savePos();replay()};
+function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}}
+try{if(localStorage.getItem('eee-theme')==='dark')setTheme(true)}catch(e){}
+$('#theme').onclick=e=>{
+  const dark=document.documentElement.dataset.theme!=='dark';
+  const r=e.currentTarget.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+  const R=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+  if(reduce||!document.startViewTransition){setTheme(dark);return}
+  const vt=document.startViewTransition(()=>setTheme(dark));
+  vt.ready.then(()=>document.documentElement.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${R}px at ${x}px ${y}px)`]},
+    {duration:700,easing:'cubic-bezier(.65,0,.35,1)',pseudoElement:'::view-transition-new(root)'})).catch(()=>{});
+};
+
+// ---------- boot ----------
+view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
+function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=all.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
+fromHash(); addEventListener('hashchange',fromHash);
+addEventListener('resize',()=>{if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});
+</script>
+</body>
+</html>
