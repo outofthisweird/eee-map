@@ -304,7 +304,9 @@ function gridPlans(plans){
   all.forEach(s=>{if(!moving.has(s))taken.set(gkey([s.x,s.y]),s)});
   const at=new Map();all.forEach(s=>at.set(s,[s.x,s.y]));plans.forEach(p=>at.set(p.s,p.to));
   const vAt=s=>{if(!s)return false;const st=s.line.st,a=st[s.i-1],c=st[s.i+1];return!!(a&&c)&&isDiagV(at.get(a),at.get(s),at.get(c))};
+  const groupSpot=new Map();   // an interchange's stations all go to the same grid point
   plans.forEach(p=>{
+    if(groupSpot.has(grp(p.s))){p.to=groupSpot.get(grp(p.s));at.set(p.s,p.to);return}
     const free=q=>{const o=taken.get(gkey(q));return!o||grp(o)===grp(p.s)};
     const base=gsnap(p.to),st=p.s.line.st;let best=null;
     for(let r=0;r<=2;r++){if(r===2&&best)break;
@@ -312,7 +314,7 @@ function gridPlans(plans){
         const c=[base[0]+i*G,base[1]+j*G];if(!free(c))continue;at.set(p.s,c);
         const v=[p.s,st[p.s.i-1],st[p.s.i+1]].filter(vAt).length;                  // avoid spiky diagonal V's
         const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5;if(!best||sc<best.sc)best={c,sc}}}
-    const q=best?best.c:base;p.to=q;at.set(p.s,q);taken.set(gkey(q),p.s);
+    const q=best?best.c:base;p.to=q;at.set(p.s,q);taken.set(gkey(q),p.s);groupSpot.set(grp(p.s),q);
   });
   return plans.filter(p=>Math.hypot(p.to[0]-p.from[0],p.to[1]-p.from[1])>.5);
 }
@@ -436,7 +438,26 @@ function layoutOnce(rand){
 
 // ---------- saved arrangement (this browser) ----------
 const POS_KEY='eee-pos-v4';   // v3: every station's spot (random layouts survive a reload)
-function loadPos(){try{const m=JSON.parse(localStorage.getItem(POS_KEY)||'{}');all.forEach(s=>{if(m[s.id]){s.x=m[s.id][0];s.y=m[s.id][1]}})}catch(e){}}
+function loadPos(){let m={};try{m=JSON.parse(localStorage.getItem(POS_KEY)||'{}')||{}}catch(e){}
+  all.forEach(s=>{if(m[s.id]){s.x=m[s.id][0];s.y=m[s.id][1]}});
+  if(Object.keys(m).length)extendNew(new Set(Object.keys(m)));
+}
+// New posts (stations missing from the saved arrangement) continue on from their saved neighbours —
+// in the direction the line is already heading, 2 grid cells per station — instead of landing on the default layout.
+function extendNew(saved){
+  const G=gridU(),used=new Set(all.filter(s=>saved.has(s.id)).map(s=>gkey([s.x,s.y])));
+  LINES.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id)))return;   // a whole new line keeps its default spot
+    const place=(i,step)=>{const s=st[i],a=st[i-step],b=st[i-2*step];
+      const v=b?[a.x-b.x,a.y-b.y]:[1,0],h=mod8(Math.round(Math.atan2(v[1],v[0])/(Math.PI/4)));
+      for(const hh of[h,mod8(h+1),mod8(h-1),mod8(h+2),mod8(h-2)])for(const k of[2,3]){
+        const q=gsnap([a.x+DIRS[hh][0]*k*G,a.y+DIRS[hh][1]*k*G]);if(used.has(gkey(q)))continue;
+        s.x=q[0];s.y=q[1];used.add(gkey(q));return}
+      const q=gsnap([a.x+DIRS[h][0]*2*G,a.y+DIRS[h][1]*2*G]);s.x=q[0];s.y=q[1]};
+    for(let i=1;i<st.length;i++)if(!saved.has(st[i].id)&&(saved.has(st[i-1].id)||st[i-1]._ext)){place(i,1);st[i]._ext=true}
+    for(let i=st.length-2;i>=0;i--)if(!saved.has(st[i].id)&&!st[i]._ext&&(saved.has(st[i+1].id)||st[i+1]._ext)){place(i,-1);st[i]._ext=true}
+    st.forEach(s=>delete s._ext);
+  });
+}
 function savePos(){try{const m={};all.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
 function clearPos(){try{localStorage.removeItem(POS_KEY)}catch(e){}}
 
@@ -537,14 +558,15 @@ function refreshFocus(){const f=follow;if(current){const s=current;current=null;
 let sdrag=null;
 const SNAP_PX=16;
 // Rope: when a dragged station gets too far from its neighbour, the neighbour follows (and so on down the line).
-// Interchanges stay put — pulling one would drag other lines along too.
-const PULL={maxGap:160, ease:.28, personalSpace:48, push:.3};
+// An interchange follows too, with its whole group, so the rope also runs on along the other lines through it.
+const PULL={maxGap:160, ease:.28, xferEase:.18, personalSpace:48, push:.3,
+  settleMs:1500};   // after release the rope settles for at most this long, then the tidy-up starts
 let settle=null;   // after release, pulled stations keep catching up for a moment
 
 // ======================================================================
 // UNTANGLE — after a drag settles, badly tangled lines straighten themselves out.
 // Tangled = the line crosses itself, or folds back on itself (turn ≥ 120°) at a station.
-// The dragged station and interchanges stay where they are.
+// The dragged station stays where it is; interchanges move only if the rope pulled them (whole group at once).
 // ======================================================================
 const UNTANGLE={foldCos:-.5, gap:100, space:64, lineSpace:44, iters:220, tween:600, alignTol:12};
 function segX(a,b,c,d){const o=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
@@ -577,18 +599,21 @@ function straightenPos(pos,fixed,L){
   }
   return moved;
 }
-function planUntangle(L,keep){
-  const st=L.st, pos=st.map(s=>[s.x,s.y]), fixed=st.map(s=>keep.includes(s)||!!s.xfer);
+// P: planned spot of every station so far (lines are untangled one after another); locked: stations
+// an earlier line already settled. Interchanges the rope pulled may move here too, with their whole group.
+function planUntangle(L,keep,P,locked){
+  const st=L.st, pos=st.map(s=>[...P.get(s)]);
+  const fixed=st.map(s=>keep.includes(s)||locked.has(s)||(!!s.xfer&&(!pulled.has(s)||groupOf(s).some(g=>keep.includes(g)))));
   let t0=tangles(L,pos);
   if(!t0.bad){ const m=straightenPos(pos,fixed,L); if(!m.size)return null;
     return [...m].map(i=>({s:st[i],from:[st[i].x,st[i].y],to:pos[i]})); }
   // (no reversing of stretches here: that flips whole tails of a line around)
   // 2) relax folds and leftover knots: springs along the line + personal space
-  const others=all.filter(o=>o.line!==L).map(o=>[o.x,o.y]);
+  const others=all.filter(o=>o.line!==L).map(o=>P.get(o));
   const touched=new Set();
   const window=new Set(); const {cross:c2,folds:f2}=tangles(L,pos);
   [...f2,...c2.flat()].forEach(i=>{for(let k=i-4;k<=i+5;k++)if(k>=0&&k<st.length)window.add(k)});
-  const otherSegs=[];LINES.forEach(M=>{if(M===L)return;for(let i=1;i<M.st.length;i++)otherSegs.push([[M.st[i-1].x,M.st[i-1].y],[M.st[i].x,M.st[i].y]])});
+  const otherSegs=[];LINES.forEach(M=>{if(M===L)return;for(let i=1;i<M.st.length;i++)otherSegs.push([P.get(M.st[i-1]),P.get(M.st[i])])});
   for(let it=0;it<UNTANGLE.iters&&window.size;it++){
     window.forEach(i=>{ if(fixed[i])return; const p=pos[i],prev=pos[i-1],next=pos[i+1]; let fx=0,fy=0;
       if(prev&&next){fx+=((prev[0]+next[0])/2-p[0])*.5;fy+=((prev[1]+next[1])/2-p[1])*.5}
@@ -609,7 +634,7 @@ function planUntangle(L,keep){
   touched.forEach(i=>{if(fixed[i]||!pos[i-1])return;pos[i]=align(pos[i],pos[i-1],UNTANGLE.alignTol)});
   straightenPos(pos,fixed,L).forEach(i=>touched.add(i));
   const t1=tangles(L,pos); if(t1.bad>=t0.bad&&!touched.size)return null;
-  const plan=[];st.forEach((s,i)=>{if(Math.hypot(pos[i][0]-s.x,pos[i][1]-s.y)>.5)plan.push({s,from:[s.x,s.y],to:pos[i]})});
+  const plan=[];st.forEach((s,i)=>{const q=P.get(s);if(Math.hypot(pos[i][0]-q[0],pos[i][1]-q[1])>.5)plan.push({s,from:[s.x,s.y],to:pos[i]})});
   return plan.length?plan:null;
 }
 let tween=null;
@@ -619,38 +644,21 @@ function startTween(plans,done){
   tween={plans,t0:performance.now(),done};
 }
 function untangleLines(lines,keep){
-  const plans=[];lines.forEach(L=>{const p=planUntangle(L,keep);if(p)plans.push(...p)});
-  all.forEach(s=>{if(offGrid(s)&&!plans.some(p=>p.s===s))plans.push({s,from:[s.x,s.y],to:[s.x,s.y]})});
+  const P=new Map(all.map(s=>[s,[s.x,s.y]])), locked=new Set();
+  lines.forEach(L=>{
+    const p=planUntangle(L,keep,P,locked);
+    if(p)p.forEach(q=>(q.s.xfer?groupOf(q.s):[q.s]).forEach(g=>P.set(g,q.to)));   // an interchange moves as one
+    // later lines keep this line's interchanges where it left them
+    L.st.forEach(s=>{if(s.xfer)groupOf(s).forEach(g=>locked.add(g))});
+  });
+  const plans=[];all.forEach(s=>{const q=P.get(s);if(offGrid(s)||Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
   if(!plans.length){savePos();return false}
   startTween(plans); return true;
-}
-// Over-stretched links (next to interchanges, which don't follow) spring back to PULL.maxGap.
-// Interchanges stay; everything else — including the dragged station — is pulled back toward them.
-function planSnapBack(moving=[]){
-  // Interchanges stay — except one the user just dragged: that whole group may spring back too.
-  const P=new Map(all.map(s=>[s,[s.x,s.y]])), G=PULL.maxGap, movedGroup=new Set(moving);
-  const lockedLater=new Set();
-  LINES.forEach(L=>{
-    const st=L.st,pos=st.map(s=>P.get(s)),fixed=st.map(s=>lockedLater.has(s)||(!!s.xfer&&!movedGroup.has(s)));
-    let any=false;for(let i=1;i<st.length;i++)if(Math.hypot(pos[i][0]-pos[i-1][0],pos[i][1]-pos[i-1][1])>G+1)any=true;
-    if(any)for(let it=0;it<80;it++){let worst=0;
-      for(let i=0;i<st.length-1;i++){const a=pos[i],b=pos[i+1],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy);if(d<=G)continue;worst=Math.max(worst,d-G);
-        const ux=dx/d,uy=dy/d,ex=d-G;
-        if(fixed[i]&&fixed[i+1])continue;
-        if(fixed[i]){b[0]-=ux*ex;b[1]-=uy*ex}
-        else if(fixed[i+1]){a[0]+=ux*ex;a[1]+=uy*ex}
-        else{a[0]+=ux*ex/2;a[1]+=uy*ex/2;b[0]-=ux*ex/2;b[1]-=uy*ex/2}}
-      if(worst<.5)break}
-    // a moved interchange carries its whole group to the same spot; later lines treat it as fixed
-    st.forEach((s,i)=>{if(s.xfer&&movedGroup.has(s)){[s,...s.xfer].forEach(m=>{P.set(m,[pos[i][0],pos[i][1]]);lockedLater.add(m)})}});
-  });
-  const plans=[];all.forEach(s=>{const q=P.get(s);if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
-  return plans.length?plans:null;
 }
 // After a drag: the station the user put down stays where it is. The stations the rope pulled
 // along are laid out neatly again — evenly along a subway-style route to the next station that
 // did not move (or in a straight row, at the end of a line).
-const REALIGN={maxGap:200, tailGap:84, minLeg:56, rightBonus:.6};
+const REALIGN={tailGap:84, minLeg:56, rightBonus:.6};
 function evenOn(P,n){const g=polyLen(P)/(n+1);return[...Array(n)].map((_,k)=>pointAt(P,g*(k+1)))}
 // n stations along a one-corner path, one of them right on the corner; null if the gaps would be too uneven
 function cornerOn(P,n){
@@ -676,23 +684,30 @@ function pathScore(P,skip){ // fewer crossings with other line sections and fewe
   return sc;
 }
 function planRealign(moving){
-  const target=new Map(), keep=new Set(moving);
-  const groupOf=s=>[s.owner||s,...((s.owner||s).xfer||[])];
-  moving.forEach(m=>{
-    const L=m.line,st=L.st;
-    [1,-1].forEach(dir=>{
-      const run=[];let j=m.i+dir;
-      while(j>=0&&j<st.length&&pulled.has(st[j])&&!st[j].xfer&&!keep.has(st[j])){run.push(st[j]);j+=dir}
-      const anchor=(j>=0&&j<st.length)?st[j]:null;
+  const target=new Map(), held=new Set(moving);
+  // pulled interchanges stay where the rope left them (on the grid) and anchor the runs on every line through them
+  all.forEach(s=>{if(s.xfer&&!s.owner&&pulled.has(s)&&!held.has(s)){const q=gsnap([s.x,s.y]);groupOf(s).forEach(g=>target.set(g,q))}});
+  const at=s=>target.get(s)||[s.x,s.y];
+  const isAnchor=s=>held.has(s)||!pulled.has(s)||!!s.xfer;
+  LINES.forEach(L=>{const st=L.st;
+    for(let i=0;i<st.length;){
+      if(isAnchor(st[i])){i++;continue}
+      let j=i;while(j<st.length&&!isAnchor(st[j]))j++;
+      const before=st[i-1]||null, after=st[j]||null; let run=st.slice(i,j); i=j;
+      // lay the run out from the station the user holds if there is one, else from the station before it
+      let m=before,anchor=after;
+      if(!m||(after&&held.has(after)&&!held.has(before))){m=after;anchor=before;run=run.reverse()}
+      if(!m)continue;
+      realignRun(st,m,run,anchor,m.i<(run[0]?run[0].i:0)?1:-1,at(m),anchor&&at(anchor),target);
+    }
+  });
+  const plans=[];target.forEach((q,s)=>{if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
+  return plans.length?plans:null;
+}
+// one run of pulled stations between m (where it starts) and anchor (where it ends; null at the end of a line)
+function realignRun(st,m,run,anchor,dir,M,A,target){
       const skip=new Set([m,...run,...(anchor?[anchor]:[])]);
-      let M=[m.x,m.y];
       if(anchor){
-        const A=[anchor.x,anchor.y];
-        // only move the dragged station if the gaps would otherwise get too wide
-        const need=(run.length+1)*REALIGN.maxGap, dist=polyLen(routeVariants(M,A)[0]);
-        if(dist>need&&!run.length){const u=(dist-need)/dist;M=[M[0]+(A[0]-M[0])*u,M[1]+(A[1]-M[1])*u];
-          groupOf(m).forEach(g=>target.set(g,[M[0],M[1]]))}
-        if(!run.length)return;
         // candidates: the two Mini-Metro routes (straight + 45°), and clean right-angle routes
         // whose corner gets a station of its own. Right angles are slightly preferred.
         const back=st[m.i-dir], arr=back?Math.atan2(M[1]-back.y,M[0]-back.x):null;
@@ -713,13 +728,9 @@ function planRealign(moving){
           if(!best||s<best.s)best={D,s}});
         run.forEach((s,k)=>target.set(s,[M[0]+best.D[0]*(k+1),M[1]+best.D[1]*(k+1)]));
       }
-    });
-  });
-  const plans=[];target.forEach((q,s)=>{if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
-  return plans.length?plans:null;
 }
 function afterSettle(moving){
-  const lines=[...new Set(moving.map(m=>m.line))];
+  const lines=[...new Set([...moving,...pulled].map(m=>m.line))];   // every line the rope reached
   const plan=planRealign(moving);
   const then=()=>{untangleLines(lines,moving);pulled=new Set()};
   if(plan)startTween(plan,then); else then();
@@ -730,20 +741,31 @@ function stepTween(now){
   geometry();draw(); if(p>=1){const done=tween.done;tween=null;if(done)done();else{savePos();if(current)refreshFocus()}}
 }
 let pulled=new Set();   // stations the rope dragged along during the current drag
+// An interchange the rope reaches follows too (a little heavier), carrying its whole group, and the rope
+// carries on along every other line through it. Only the stations the user is holding never move.
+const groupOf=s=>{const o=s.owner||s;return[o,...(o.xfer||[])]};
 function relax(moving){
-  let movedBy=0; const lines=new Set(moving.map(m=>m.line));
-  const pinned=s=>moving.includes(s)||!!s.xfer;
-  lines.forEach(L=>{
-    const st=L.st, idx=st.map((s,i)=>moving.includes(s)?i:-1).filter(i=>i>=0);
-    const pass=(from,to,step)=>{for(let j=from;j!==to;j+=step){const prev=st[j-step],cur=st[j];if(pinned(cur))break;
-      const dx=cur.x-prev.x,dy=cur.y-prev.y,d=Math.hypot(dx,dy);if(d<=PULL.maxGap)continue;
-      const tx=prev.x+dx/d*PULL.maxGap,ty=prev.y+dy/d*PULL.maxGap,mx=(tx-cur.x)*PULL.ease,my=(ty-cur.y)*PULL.ease;
-      cur.x+=mx;cur.y+=my;movedBy+=Math.abs(mx)+Math.abs(my);pulled.add(cur);
-      // a pulled station keeps a little personal space from other stations
-      all.forEach(o=>{if(o===cur||o===prev||(o.owner||o)===(cur.owner||cur)||moving.includes(o))return;const ex=cur.x-o.x,ey=cur.y-o.y,e=Math.hypot(ex,ey);
-        if(e>0&&e<PULL.personalSpace){const k=(PULL.personalSpace-e)/e*PULL.push;cur.x+=ex*k;cur.y+=ey*k;movedBy+=Math.abs(ex*k)+Math.abs(ey*k)}})}};
-    idx.forEach(i=>{pass(i+1,st.length,1);pass(i-1,-1,-1)});
-  });
+  let movedBy=0; const held=new Set(moving), done=new Set(moving);
+  const queue=moving.map(m=>m);   // stations the rope pulls outward from, along their own line
+  const pull=(cur,prev)=>{
+    const dx=cur.x-prev.x,dy=cur.y-prev.y,d=Math.hypot(dx,dy);if(d<=PULL.maxGap)return false;
+    const grp=cur.xfer?groupOf(cur):[cur], ease=cur.xfer?PULL.xferEase:PULL.ease;
+    const tx=prev.x+dx/d*PULL.maxGap,ty=prev.y+dy/d*PULL.maxGap;let mx=(tx-cur.x)*ease,my=(ty-cur.y)*ease;
+    // a pulled station keeps a little personal space from other stations
+    const nx=cur.x+mx,ny=cur.y+my;
+    all.forEach(o=>{if(grp.includes(o)||o===prev||held.has(o))return;const ex=nx-o.x,ey=ny-o.y,e=Math.hypot(ex,ey);
+      if(e>0&&e<PULL.personalSpace){const k=(PULL.personalSpace-e)/e*PULL.push;mx+=ex*k;my+=ey*k}});
+    grp.forEach(g=>{g.x+=mx;g.y+=my;pulled.add(g)});movedBy+=Math.abs(mx)+Math.abs(my);
+    return true;
+  };
+  while(queue.length){
+    const src=queue.shift(), st=src.line.st;
+    [1,-1].forEach(step=>{for(let j=src.i+step;j>=0&&j<st.length;j+=step){const cur=st[j],prev=st[j-step];
+      if(held.has(cur)||done.has(cur))break;
+      pull(cur,prev);
+      if(cur.xfer){groupOf(cur).forEach(g=>{if(done.has(g))return;done.add(g);if(g!==cur)queue.push(g)})}
+      done.add(cur)}});
+  }
   return movedBy;
 }
 function stationAt(cx,cy){const h=document.elementFromPoint(cx,cy),g=h&&h.closest&&h.closest('.station');if(!g)return null;return all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g)}
@@ -795,7 +817,7 @@ function moveStationDrag(e){
   if(d.snap&&d.snap.g)d.snap.g.classList.add('snap');
 }
 function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('dragging-station');if(!d)return false;
-  if(d.active){settle={moving:d.moving};savePos();geometry();draw();if(current)refreshFocus();return true}return false}
+  if(d.active){settle={moving:d.moving,t0:performance.now()};savePos();geometry();draw();if(current)refreshFocus();return true}return false}
 
 // ---------- legend & sr list ----------
 const lg=$('#legend');
@@ -958,7 +980,7 @@ function frame(t){
   if(target)target(t);
   { const mv=sdrag&&sdrag.active?sdrag.moving:settle&&settle.moving;
     if(mv){const m=relax(mv); if(m>.05){geometry();draw();if(sdrag&&sdrag.snap&&sdrag.snap.g)sdrag.snap.g.classList.add('snap')}
-      else if(!sdrag&&settle){const mv2=settle.moving;settle=null;afterSettle(mv2)}} }
+      if(!sdrag&&settle&&(m<=.05||t-settle.t0>PULL.settleMs)){const mv2=settle.moving;settle=null;afterSettle(mv2)}} }
   stepTween(t);
   placePopup();
   if(!reduce) LINES.forEach(L=>{ if(!L.plen)return;
@@ -1003,6 +1025,8 @@ $('#theme').onclick=e=>{
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
 function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=all.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
 fromHash(); addEventListener('hashchange',fromHash);
+// closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
+addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});
 addEventListener('resize',()=>{if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});
 </script>
 </body>

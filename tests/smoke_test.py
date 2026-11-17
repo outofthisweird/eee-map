@@ -48,6 +48,22 @@ async def main():
             moved.append(((drop[0]-aft[0])**2 + (drop[1]-aft[1])**2) ** .5)
         check("all stations on grid after drags", await pg.evaluate("all.filter(offGrid).length") == 0)
         check("dragged station stays put (>=75%)", sum(m < 1 for m in moved) >= .75*len(moved), [round(m) for m in moved])
+        # 4. the arrangement survives a reload
+        await pg.wait_for_function("!tween&&!settle&&!sdrag", timeout=10000)
+        snap =await pg.evaluate("JSON.stringify(all.map(s=>[s.id,s.x,s.y]))")
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        check("arrangement survives reload", await pg.evaluate("JSON.stringify(all.map(s=>[s.id,s.x,s.y]))") == snap)
+
+        # 5. new posts (missing from the saved arrangement) carry on from the end of their saved line
+        await pg.evaluate("""(()=>{savePos=()=>{};   // (the reload's pagehide would save them right back)
+          const m=JSON.parse(localStorage.getItem(POS_KEY));const E=byLine.E.st;
+          delete m[E[E.length-1].id];delete m[E[E.length-2].id];localStorage.setItem(POS_KEY,JSON.stringify(m))})()""")
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        r = await pg.evaluate("""(()=>{const E=byLine.E.st,n=E.length,G=gridU();
+          const gap=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y))/G;
+          const clash=all.filter(o=>o!==E[n-1]&&o!==E[n-2]&&[E[n-1],E[n-2]].some(s=>o.x===s.x&&o.y===s.y)).length;
+          return {g1:gap(E[n-3],E[n-2]),g2:gap(E[n-2],E[n-1]),clash,off:all.filter(offGrid).length}})()""")
+        check("new stations extend the saved line", 2 <= r["g1"] <= 3 and 2 <= r["g2"] <= 3 and not r["clash"] and not r["off"], r)
         check("no JS errors", not errs, errs[:3])
         await b.close()
         raise SystemExit(0 if ok else 1)
