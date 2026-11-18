@@ -105,9 +105,9 @@
     background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
   :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
 
-  /* [eee] logo, legend and popup are module plates (GRID-012, DEC-030 extended to height): fitPlates() rounds the hug
-     size up to ½ ft steps, never below 1 ft (+½ ft when less than 1in room is left across). Copy hangs from the top-left
-     margin (GRID-003/004); the extra room stays empty at the bottom right. DESIGN.plate */
+  /* [eee] logo, legend and popup are standard module plates (GRID-012, SIGN-012): fitPlates() picks the shortest of
+     1/2/4/6/8 ft that leaves ≥ 1in beside the copy (DEC-030 room), 1 ft high (whole feet if the copy needs more).
+     Copy hangs from the top-left margin (GRID-003/004); the extra room stays empty at the bottom right. DESIGN.plate */
 
   /* logo: directional plate, Grid 2 (GRID-006, TYPE-006): two lines of 4¼in caps, pitch 5⅝in, hung from the top-left margin.
      [eee] the reverse-plate band (½ + ⅛in) comes out of GRID-006's 1⅝in bottom: 1⅛ + 4¼ + 1⅜ + 4¼ + 1in (descender guide, GRID-011) = 12in */
@@ -118,11 +118,17 @@
   @supports (text-box: trim-both cap alphabetic){#logo p{--l-trim:0px;text-box:trim-both cap alphabetic}}
 
   /* legend: [disc] [day] [series], hierarchy by order, rows split by ⅛in rules */
-  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:grid;padding:var(--rp-top) var(--rp-side) 0}
-  #legend button{display:flex;align-items:center;gap:calc(var(--doc-in) * .5);padding:calc(var(--rp-side) * 1.5) var(--rp-side) calc(var(--rp-side) * 1.5) 0;line-height:var(--lh-ko)}
-  #legend button+button{border-top:var(--rp-rule) solid currentColor}
-  #legend .bs{display:flex;gap:2px}
-  #legend .day{min-width:1.25em}
+  /* [eee] informational plate, Grid 1 (GRID-007, TYPE-007): five rows of 1⅜in caps at pitch 1⅞in in one 1 ft module,
+     discs inline (DEC-034); no rules between rows (a ⅛in rule does not fit the ½in gap). Bottom ½in below the descender guide, like DEC-031 */
+  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:block;line-height:var(--lh-g1);
+    --l-trim:calc((var(--trim-k) - var(--lh-g1) / 2) * 1em);
+    padding:calc(var(--rp-top) + var(--l-trim)) var(--rp-side) calc(var(--doc-in) * (.5 + .235 * 1.375) + var(--l-trim))}
+  @supports (text-box: trim-both cap alphabetic){#legend{--l-trim:0px}   /* trim on the rows: a button trims its own lines */
+    #legend button:first-child{text-box:trim-start cap alphabetic} #legend button:last-child{text-box:trim-end cap alphabetic}}
+  #legend button{display:block;white-space:nowrap;margin-inline-start:calc(-1 * var(--lsb-pull))}
+  #legend .bs{margin-inline-end:calc(var(--doc-in) * .5)}                                 /* GRID-009 disc → text ½in */
+  #legend .bs .disc+.disc{margin-inline-start:2px}
+  #legend .day{display:inline-block;min-width:1.25em;margin-inline-end:calc(var(--doc-in) * .5)}
   :lang(en) #legend .day{min-width:2.25em}            /* Mon / Wed / Fri / Sun line up */
 
   /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
@@ -224,7 +230,7 @@ const DESIGN = {
   label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, maxCharsEn: 18, size: 0 },   // ← map. maxChars: longer names end in … (Hangul / English)
   train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
   motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
-  plate:     { step: .5, min: 1, roomIn: 1 },   // UI plates (logo, legend, popup): ft steps, minimum ft, DEC-030 room across (in)
+  plate:     { lengths: [1, 2, 4, 6, 8], roomIn: 1 },   // UI plates (logo, legend, popup): GRID-012/SIGN-012 standard lengths (ft), 1 ft high; DEC-030 room across (in)
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
   // white on every other colour (DEC-004). Change a line's colour by naming another token here.
@@ -1081,17 +1087,17 @@ function applyLang(){
   $('#srlist').innerHTML=LINES.map(L=>`<h2>${T('dayLong')[L.day]}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
 }
 applyLang();
-// [eee] UI plates in module sizes (GRID-012): hug size rounded up to DESIGN.plate.step ft, at least .min ft;
-// across, DEC-030's rule: less than .roomIn inch to spare → another step. Width first, then the height it wraps to.
+// [eee] UI plates in module sizes (GRID-012): the shortest standard length (DESIGN.plate.lengths) that leaves ≥ .roomIn
+// inch beside the copy (DEC-030's room rule); then the height it wraps to, in whole 1 ft modules.
 function fitPlate(el){
   if(!el)return; el.style.width=el.style.height='';
   if(getComputedStyle(el).display==='none')return;
   const P=DESIGN.plate, probe=document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;width:var(--ft)';
   document.body.append(probe); const ft=probe.getBoundingClientRect().width; probe.remove();
-  const up=v=>Math.max(P.min,Math.ceil(v/ft/P.step-1e-6)*P.step);
-  const w0=el.getBoundingClientRect().width; let w=up(w0); if((w*ft-w0)/ft*12<P.roomIn)w+=P.step;
+  const w0=el.getBoundingClientRect().width/ft, n=P.lengths.length;
+  const w=P.lengths.find(l=>(l-w0)*12>=P.roomIn)||P.lengths[n-1];   // shortest standard plate with ≥ 1in to spare
   el.style.width=w*ft+'px';
-  el.style.height=up(el.getBoundingClientRect().height)*ft+'px';
+  el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
 }
 function fitPlates(){['#logo','#legend','#panel'].forEach(q=>fitPlate($(q)));placePopup()}
 function setLang(l){
