@@ -337,7 +337,7 @@
    file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
    토큰 블록 뒤에 와야 미리보기 값(굵기·cap 비율)이 이긴다. 만들기: tools/preview_font.sh */
 (function(){var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css">');}})();</script>
+if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css?'+Date.now()+'">');/* 캐시 무시: preview_font.sh로 다시 만들면 바로 보이게 */}})();</script>
 </head>
 <body>
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
