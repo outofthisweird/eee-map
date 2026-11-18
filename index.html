@@ -351,7 +351,7 @@ const DESIGN = {
   // nycta DEC-036 route map: every size below follows the station-name cap (Information tier, 1rem); filled in from these
   // ratios after the CSS tokens load. pitch = 2 cap; strand = pitch − ground; ground = ¼in; station D = cap × 1 11/16 ÷ 1 3/8;
   // innermost bend radius = 1 pitch; names ½in clear of the strand; a line ending at a station runs on by half the strand.
-  // Each series is its own one-strand bundle for now (no similar-series groups yet).
+  // Similar series run as one bundle of one colour (DESIGN.groups); every other series is its own one-strand bundle.
   map:       { nameRem: 1, pitchCaps: 2, groundIn: .25, stopCaps: 1.6875 / 1.375, radiusPitch: 1, labelGapIn: .5 },
   line:      { width: 0, casing: 0, cornerRadius: 0, stationRadius: 0, runOn: 0 },   // ← map (px)
   station:   { dot: 0, hitRadius: 16, hoverScale: 1.4 },                           // dot ← map (radius, px)
@@ -366,12 +366,18 @@ const DESIGN = {
     E: { token:'--c-yellow' },     // 수 · 지식채널 eee (main)
     R: { token:'--c-red' },        // 월 · Off the Reeecord
     M: { token:'--c-blue' },       // 금 · THE MEEETRO
-    X: { token:'--c-orange' },     // 일 · 전시 소개 (ended 07-26)
-    F: { token:'--c-green' },      // 일 · EFC
+    X: { group:'S' },              // 일 · 전시 소개 (ended 07-26)
+    F: { group:'S' },              // 일 · EFC
+  },
+  // Similar series = one group (DEC-036): one colour, one strand per series side by side, a page-colour ground between.
+  // `lines` order = strand order, the first on the left of travel. The series with the most posts lays the route;
+  // the others run beside it, station for station (their i-th post next to its i-th post).
+  groups: {
+    S: { token:'--c-green', lines:['X','F'] },   // 일요일: 전시 소개 + EFC
   },
 };
 {const cs=getComputedStyle(document.documentElement);
-  for(const k in DESIGN.lines){const d=DESIGN.lines[k];d.color=cs.getPropertyValue(d.token).trim()||'#000';
+  for(const k in DESIGN.lines){const d=DESIGN.lines[k];if(d.group)d.token=DESIGN.groups[d.group].token;d.color=cs.getPropertyValue(d.token).trim()||'#000';
     d.textOn=cs.getPropertyValue(d.token==='--c-yellow'?'--c-black':'--c-white').trim()||'#fff'}
   // DEC-036 sizes (same formulas as nycta.css .map): cap = name size × cap-em, 1in = cap ÷ 1 3/8 (DEC-002)
   const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
@@ -404,11 +410,21 @@ const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
 const mod8=h=>((h%8)+8)%8, diff8=(a,b)=>{let d=mod8(a-b);return d>4?d-8:d};
 function rng(seed){let s=seed>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const all=[];
+// stations: every station drawn. all: the stations that hold their own spot (layout, dragging, interchanges) —
+// a station on a group's side strand (s.lead) takes the spot of the route-laying series' station next to it.
+const all=[], stations=[];
 const SRC={E:DATA['수'],R:DATA['월'],M:DATA['금'],X:DATA['일'].filter(s=>s.b==='X'),F:DATA['일'].filter(s=>s.b==='F')};
-LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.st.forEach((s,i)=>{s.line=L;s.i=i;all.push(s)})});
+LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.offset=0;L.st.forEach((s,i)=>{s.line=L;s.i=i;stations.push(s)})});
 const byLine=Object.fromEntries(LINES.map(L=>[L.key,L])), main=byLine[MAIN];
-const BRANCHES=LINES.filter(L=>L!==main);
+for(const gk in DESIGN.groups){
+  const ms=DESIGN.groups[gk].lines.map(k=>byLine[k]).filter(Boolean),n=ms.length,lead=ms.reduce((a,b)=>b.st.length>a.st.length?b:a);
+  ms.forEach((L,i)=>{L.group=gk;L.offset=(i-(n-1)/2)*DESIGN.map.pitch;   // strand offset, + = right of travel
+    if(L!==lead){L.lead=lead;L.st.forEach(s=>{s.lead=lead.st[s.i]})}});
+}
+stations.forEach(s=>{if(!s.lead)all.push(s)});
+const syncTwins=()=>stations.forEach(s=>{if(s.lead){s.x=s.lead.x;s.y=s.lead.y}});
+const TRACK=LINES.filter(L=>!L.lead);   // lines that lay their own route
+const BRANCHES=TRACK.filter(L=>L!==main);
 
 // ---------- default transfers ----------
 // A branch starts at the main-line station published right before the branch's first post.
@@ -532,7 +548,7 @@ function generateRandom(rand){
     layoutOnce(rand);
     let bad=0;const S=all;
     for(let i=0;i<S.length;i++)for(let j=i+1;j<S.length;j++){const d=Math.hypot(S[i].x-S[j].x,S[i].y-S[j].y);if(d<1){const term=x=>x.i===0||x.i===x.line.st.length-1;if(term(S[i])||term(S[j]))bad+=50;else if(S[i].line===S[j].line||!S[i]._anchor&&!S[j]._anchor)bad+=3}else if(d<50)bad++}
-    LINES.forEach(L=>{const q=L.st.map(s=>[s.x,s.y]);for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))bad+=3});
+    TRACK.forEach(L=>{const q=L.st.map(s=>[s.x,s.y]);for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))bad+=3});
     if(!best||bad<best.bad)best={bad,pos:all.map(s=>[s.x,s.y])};
     if(!bad)break;
   }
@@ -626,7 +642,7 @@ function loadPos(){let m={};try{m=JSON.parse(localStorage.getItem(POS_KEY)||'{}'
 // in the direction the line is already heading, 2 grid cells per station — instead of landing on the default layout.
 function extendNew(saved){
   const G=gridU(),used=new Set(all.filter(s=>saved.has(s.id)).map(s=>gkey([s.x,s.y])));
-  LINES.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id)))return;   // a whole new line keeps its default spot
+  TRACK.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id)))return;   // a whole new line keeps its default spot
     const place=(i,step)=>{const s=st[i],a=st[i-step],b=st[i-2*step];
       const v=b?[a.x-b.x,a.y-b.y]:[1,0],h=mod8(Math.round(Math.atan2(v[1],v[0])/(Math.PI/4)));
       for(const hh of[h,mod8(h+1),mod8(h-1),mod8(h+2),mod8(h-2)])for(const k of[2,3]){
@@ -638,20 +654,36 @@ function extendNew(saved){
     st.forEach(s=>delete s._ext);
   });
 }
-function savePos(){try{const m={};all.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
+function savePos(){try{const m={};stations.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
 function clearPos(){try{localStorage.removeItem(POS_KEY)}catch(e){}}
 
 // ---------- geometry from positions: interchanges, paths, labels ----------
 function link(s,T){const g=[T,...(T.xfer||[])];g.forEach(m=>{m.xfer=(m.xfer||[]).filter(x=>x!==s).concat(s)});s.xfer=g;s.owner=T.owner||T}
 const posKey=s=>Math.round(s.x*10)+','+Math.round(s.y*10);
+// A group's side strand: the centre path moved d to the right of travel (mitred at every vertex). Bends stay
+// concentric (DEC-036): the inner strand's radius shrinks by d, the outer one's grows; a station corner stays a direct turn.
+function offsetLine(P,R,d){
+  const n=P.length,u=[],nr=v=>[-v[1],v[0]];   // right of travel on screen (y down)
+  for(let i=1;i<n;i++){const v=[P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]],l=Math.hypot(...v)||1;u.push([v[0]/l,v[1]/l])}
+  const Q=[],R2=[];
+  for(let j=0;j<n;j++){const a=u[j-1]||u[j],b=u[j]||u[j-1];if(!a){Q.push(P[j]);R2.push(0);continue}
+    const na=nr(a),nb=nr(b),k=d/Math.max(.2,1+na[0]*nb[0]+na[1]*nb[1]),cr=a[0]*b[1]-a[1]*b[0];
+    Q.push([P[j][0]+(na[0]+nb[0])*k,P[j][1]+(na[1]+nb[1])*k]);
+    R2.push(R[j]?Math.max(0,R[j]-Math.sign(cr)*d):0)}
+  return {P:Q,R:R2};
+}
 function geometry(){
-  all.forEach(s=>{delete s.xfer;delete s.owner});
+  syncTwins();
+  stations.forEach(s=>{delete s.xfer;delete s.owner});
   // stations at the same spot form an interchange; the first line in LINES owns it
   const groups=new Map(); all.forEach(s=>{const k=posKey(s);(groups.get(k)||groups.set(k,[]).get(k)).push(s)});
   groups.forEach(g=>{if(g.length<2)return;g.sort((a,b)=>LINES.indexOf(a.line)-LINES.indexOf(b.line));for(let i=1;i<g.length;i++)link(g[i],g[0])});
+  // a side-strand station beside an interchange joins it (one white circle covers the bundle)
+  stations.forEach(s=>{if(s.lead&&s.lead.xfer)link(s,s.lead.owner||s.lead)});
   samples=[];
   LINES.forEach(L=>{
-    const {P,R,idx}=linePolyline(L); L.P=P; L.R=R; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
+    let {P,R,idx}=linePolyline(L); if(L.offset)({P,R}=offsetLine(P,R,L.offset));
+    L.P=P; L.R=R; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
     for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/10));
       for(let k=0;k<=n;k++)samples.push({x:(a[0]+(b[0]-a[0])*k/n)/U,y:(a[1]+(b[1]-a[1])*k/n)/U})}
   });
@@ -661,21 +693,24 @@ function geometry(){
   {const seen=new Set([main]),q=[main];
    while(q.length){const P=q.shift();P.st.forEach(s=>(s.xfer||[]).forEach(x=>{if(seen.has(x.line))return;seen.add(x.line);
      x.line.parent=P;x.line.pk=s.i;x.line.k=x.i;q.push(x.line)}))}}
+  // a side strand grows alongside the series it runs beside
+  LINES.forEach(L=>{if(L.lead){L.parent=L.lead;L.pk=L.lead.k;L.k=Math.min(L.lead.k,L.st.length-1)}});
   // the drawn path (arc bends + run-on ends, DEC-036); a station on a corner sits on the middle of its arc
   LINES.forEach(L=>{L.model=pathModel(L.P,L.R,DESIGN.line.runOn);
     L.st.forEach((s,i)=>{const k=L.idx[i];[s.vx,s.vy]=L.model.vpos[k];s.len=L.model.vlen[k]})});
-  all.forEach(s=>{if(s.owner){s.vx=s.owner.vx;s.vy=s.owner.vy}});
-  all.forEach(s=>{const a=s.inDir||s.outDir||[1,0],b=s.outDir||s.inDir||[1,0];let tx=a[0]+b[0],ty=a[1]+b[1];const m=Math.hypot(tx,ty);s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
+  stations.forEach(s=>{if(s.owner){s.vx=s.owner.vx;s.vy=s.owner.vy}});
+  stations.forEach(s=>{const a=s.inDir||s.outDir||[1,0],b=s.outDir||s.inDir||[1,0];let tx=a[0]+b[0],ty=a[1]+b[1];const m=Math.hypot(tx,ty);s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
   // labels: pick a free side, ½in clear of every strand (DEC-036). Box = advance width × Hangul ink height (≈1.2 cap).
   const MP=DESIGN.map, fs=DESIGN.label.size, clear=DESIGN.label.offset-1, boxes=[],
     W=str=>[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?1:.585),0)*fs;
   const hitsLines=b=>samples.some(s=>{const x=s.x*U,y=s.y*U;return x>b[0]-clear&&x<b[2]+clear&&y>b[1]-clear&&y<b[3]+clear});
   const overlaps=b=>boxes.some(o=>b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]);
-  all.forEach(s=>{
+  stations.forEach(s=>{
     if(s.owner){s.lab=null;return}
     const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=W(str),h=MP.cap*1.2;
     const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1],[1,1,1],[-1,1,1],[1,-1,1],[-1,-1,1]]; let best=null;   // [x,y,1]: corner boxes, for interchanges with lines on all four sides
-    for(const n of cands){const off=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset,cx=s.x+n[0]*off,cy=s.y+n[1]*off;
+    if(s.line.offset<0)cands.unshift(cands.splice(1,1)[0]);   // a side strand's name goes on its outer side first
+    for(const n of cands){const off=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset,cx=s.vx+n[0]*off,cy=s.vy+n[1]*off;
       const anchor=Math.abs(n[0])>.3?(n[0]>0?'start':'end'):'middle';
       const x0=anchor==='start'?cx:anchor==='end'?cx-w:cx-w/2, y0=n[1]>.3?cy:n[1]<-.3?cy-h:cy-h/2, box=[x0,y0,x0+w,y0+h];
       const ok=!overlaps(box)&&!hitsLines(box); if(ok||!best)best={anchor,box,cx,cy:y0+(h+MP.cap)/2,n}; if(ok)break}
@@ -732,7 +767,9 @@ function subD(M,from,to,back){
 }
 function draw(){
   [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren());
-  // DEC-036: each line gets a page-colour casing drawn just before it, so a later line cuts a gap where it crosses an earlier one
+  // DEC-036: each group gets a page-colour casing drawn just before it, so a later group cuts a gap where it crosses an
+  // earlier one (a group's strands share one layer: all their casings, then all their strokes)
+  const layers=new Map();
   LINES.forEach(L=>{
     L.subs=[];
     const M=L.model, last=L.st.length-1, cases=[], strokes=[];
@@ -744,11 +781,13 @@ function draw(){
     const sK=L.k===0?0:L.k===last?M.total:L.st[L.k].len;
     mk(sK,M.total,false,L.st.slice(L.k));
     if(L.k>0)mk(0,sK,true,L.st.slice(0,L.k+1).reverse());
-    [...cases,...strokes].forEach(n=>gL.appendChild(n));
-    L.subs.forEach(p=>p._len=p.getTotalLength());
+    const ly=layers.get(L.group||L.key)||layers.set(L.group||L.key,{c:[],s:[]}).get(L.group||L.key);
+    ly.c.push(...cases);ly.s.push(...strokes);
     L.path=el('path',{d:subD(M,0,M.total),fill:'none',stroke:'none'},gL);
   });
-  all.forEach(s=>{
+  layers.forEach(ly=>[...ly.c,...ly.s].forEach(n=>gL.appendChild(n)));
+  LINES.forEach(L=>L.subs.forEach(p=>p._len=p.getTotalLength()));
+  stations.forEach(s=>{
     const L=s.line;
     if(s.owner){s.g=s.owner.g;return}
     const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${L.day}요일 ${s.s}`,'data-id':s.id},gS);
@@ -762,7 +801,7 @@ function draw(){
     g.addEventListener('mouseleave',unhover);
     g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openStation(s)}});
   });
-  all.forEach(s=>{if(s.owner)s.g=s.owner.g});
+  stations.forEach(s=>{if(s.owner)s.g=s.owner.g});
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
   LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.path.getTotalLength();L.tpos=L.tpos??Math.random()});
 }
@@ -831,7 +870,7 @@ function planUntangle(L,keep,P,locked){
   const touched=new Set();
   const window=new Set(); const {cross:c2,folds:f2}=tangles(L,pos);
   [...f2,...c2.flat()].forEach(i=>{for(let k=i-4;k<=i+5;k++)if(k>=0&&k<st.length)window.add(k)});
-  const otherSegs=[];LINES.forEach(M=>{if(M===L)return;for(let i=1;i<M.st.length;i++)otherSegs.push([P.get(M.st[i-1]),P.get(M.st[i])])});
+  const otherSegs=[];TRACK.forEach(M=>{if(M===L)return;for(let i=1;i<M.st.length;i++)otherSegs.push([P.get(M.st[i-1]),P.get(M.st[i])])});
   for(let it=0;it<UNTANGLE.iters&&window.size;it++){
     window.forEach(i=>{ if(fixed[i])return; const p=pos[i],prev=pos[i-1],next=pos[i+1]; let fx=0,fy=0;
       if(prev&&next){fx+=((prev[0]+next[0])/2-p[0])*.5;fy+=((prev[1]+next[1])/2-p[1])*.5}
@@ -896,7 +935,7 @@ function routeVariants(A,B){ // the two subway-style ways to join A and B: strai
 }
 function pathScore(P,skip){ // fewer crossings with other line sections and fewer stations close to the path = better
   let sc=0;
-  LINES.forEach(L=>{for(let i=1;i<L.st.length;i++){const a=L.st[i-1],b=L.st[i];if(skip.has(a)||skip.has(b))continue;
+  TRACK.forEach(L=>{for(let i=1;i<L.st.length;i++){const a=L.st[i-1],b=L.st[i];if(skip.has(a)||skip.has(b))continue;
     for(let k=1;k<P.length;k++)if(segX(P[k-1],P[k],[a.x,a.y],[b.x,b.y]))sc+=3}});
   all.forEach(o=>{if(skip.has(o))return;for(let k=1;k<P.length;k++)if(distToSeg([o.x,o.y],P[k-1],P[k])<40){sc+=1;break}});
   return sc;
@@ -907,7 +946,7 @@ function planRealign(moving){
   all.forEach(s=>{if(s.xfer&&!s.owner&&pulled.has(s)&&!held.has(s)){const q=gsnap([s.x,s.y]);groupOf(s).forEach(g=>target.set(g,q))}});
   const at=s=>target.get(s)||[s.x,s.y];
   const isAnchor=s=>held.has(s)||!pulled.has(s)||!!s.xfer;
-  LINES.forEach(L=>{const st=L.st;
+  TRACK.forEach(L=>{const st=L.st;
     for(let i=0;i<st.length;){
       if(isAnchor(st[i])){i++;continue}
       let j=i;while(j<st.length&&!isAnchor(st[j]))j++;
@@ -961,7 +1000,7 @@ function stepTween(now){
 let pulled=new Set();   // stations the rope dragged along during the current drag
 // An interchange the rope reaches follows too (a little heavier), carrying its whole group, and the rope
 // carries on along every other line through it. Only the stations the user is holding never move.
-const groupOf=s=>{const o=s.owner||s;return[o,...(o.xfer||[])]};
+const groupOf=s=>{const o=s.owner||s;return[o,...(o.xfer||[])].filter(g=>!g.lead)};   // side-strand stations just follow (syncTwins)
 function relax(moving){
   let movedBy=0; const held=new Set(moving), done=new Set(moving);
   const queue=moving.map(m=>m);   // stations the rope pulls outward from, along their own line
@@ -986,7 +1025,7 @@ function relax(moving){
   }
   return movedBy;
 }
-function stationAt(cx,cy){const h=document.elementFromPoint(cx,cy),g=h&&h.closest&&h.closest('.station');if(!g)return null;return all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g)}
+function stationAt(cx,cy){const h=document.elementFromPoint(cx,cy),g=h&&h.closest&&h.closest('.station');if(!g)return null;return stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)}
 function toWorld(cx,cy){return[(cx-view.x)/view.k,(cy-view.y)/view.k]}
 function startStationDrag(s,e){
   // finish anything still settling — but only redraw if something actually moved:
@@ -995,7 +1034,8 @@ function startStationDrag(s,e){
   if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null;changed=true}
   all.forEach(o=>{if(offGrid(o)){const q=gsnap([o.x,o.y]);o.x=q[0];o.y=q[1];changed=true}});
   settle=null; pulled=new Set(); if(changed){geometry();draw()}
-  const group=[s.owner||s,...((s.owner||s).xfer||[])];
+  if(s.lead)s=s.lead;   // a side-strand station moves with the station it runs beside
+  const group=[s.owner||s,...((s.owner||s).xfer||[])].filter(m=>!m.lead);
   let moving=group;
   if(e.shiftKey&&group.length>1){const pick=group[group.length-1];moving=[pick]}   // pull the last-joined station out
   const w=toWorld(e.clientX,e.clientY);
@@ -1102,7 +1142,7 @@ $('#zfit').onclick=()=>{release();fitTo(all.map(s=>[s.x,s.y]))};
 // ---------- hover / focus ----------
 function focusLine(L){
   document.querySelectorAll('[data-line]').forEach(n=>{ if(n.closest('#legend'))return; n.classList.toggle('dim',!!L&&n.dataset.line!==L.key)});
-  gS.querySelectorAll('.station').forEach(g=>{const s=all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
+  gS.querySelectorAll('.station').forEach(g=>{const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
   
 }
 // hover only highlights the station's line; the details live in the click popup (no hover summary card)
@@ -1153,7 +1193,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 svg.addEventListener('click',e=>{
   if(moved)return;
   const hit=document.elementFromPoint(e.clientX,e.clientY), g=hit&&hit.closest&&hit.closest('.station');
-  if(g){const s=all.find(x=>x.g===g&&!x.owner)||all.find(x=>x.g===g); if(s){openStation(s);return}}
+  if(g){const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g); if(s){openStation(s);return}}
   if(current)closePanel();
 });
 
@@ -1179,8 +1219,8 @@ function intro(){
   if(reduce)return;
   // a line starts growing when its parent line's growth reaches the transfer
   const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
-  const order=[main];for(let i=0;i<order.length;i++)LINES.forEach(L=>{if(L.parent===order[i]&&!order.includes(L))order.push(L)});
-  LINES.forEach(L=>{if(!order.includes(L))order.push(L)});
+  const order=[],add=L=>{if(order.includes(L))return;order.push(L);LINES.forEach(C=>{if(C.parent===L)add(C)})};
+  add(main);LINES.forEach(L=>{if(!L.lead)add(L)});LINES.forEach(add);   // a parent always starts before its children
   order.forEach(L=>{
     let t0=0;const P=L.parent;
     if(P&&start.has(P)){const c=cumDist(P.P),from=c[P.idx[P.k]],at=c[P.idx[L.pk]],fwd=at>=from,sub=P.subs[fwd||P.subs.length<2?0:1],
@@ -1238,7 +1278,7 @@ $('#theme').onclick=e=>{
 
 // ---------- boot ----------
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
-function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=all.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
+function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
 fromHash(); addEventListener('hashchange',fromHash);
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
 addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});
