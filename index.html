@@ -276,11 +276,13 @@
      size up to ½ ft steps, never below 1 ft (+½ ft when less than 1in room is left across). Copy hangs from the top-left
      margin (GRID-003/004); the extra room stays empty at the bottom right. DESIGN.plate */
 
-  /* logo: identification plate, name hung from the top-left margin (GRID-003/004) */
-  #logo{position:fixed;top:var(--edge);left:var(--edge);z-index:5;display:flex;align-items:flex-start;gap:calc(var(--doc-in) * 1.375);
-    padding:var(--rp-top) calc(var(--doc-in) * 1.375) calc(var(--doc-in) * 1.375) var(--rp-side)}
-  #logo b{font-weight:inherit;font-size:1.75rem;line-height:1;margin-inline-start:calc(-1 * var(--lsb-pull))}   /* DEC-005 Directional tier (lower bound) */
-  #logo span{font-size:max(12px, .75rem);line-height:var(--lh-g1)}
+  /* logo: directional plate, Grid 2 (GRID-006, TYPE-006): two lines of 4¼in caps, pitch 5⅝in, hung from the top-left margin.
+     [eee] the reverse-plate band (½ + ⅛in) comes out of GRID-006's 1⅝in bottom: 1⅛ + 4¼ + 1⅜ + 4¼ + 1in (descender guide, GRID-011) = 12in */
+  #logo{position:fixed;top:var(--edge);left:var(--edge);z-index:5;
+    --l-cap:4.25;--l-lh:var(--lh-g2);font-size:calc(var(--doc-in) * var(--l-cap) / var(--cap-em));line-height:var(--l-lh);
+    padding:var(--rp-top) var(--rp-side) calc(var(--doc-in) * var(--l-cap) * .235) var(--rp-side)}
+  #logo p{--l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);margin:var(--l-trim) 0 var(--l-trim) calc(-1 * var(--lsb-pull));white-space:nowrap}   /* DEC-025 */
+  @supports (text-box: trim-both cap alphabetic){#logo p{--l-trim:0px;text-box:trim-both cap alphabetic}}
 
   /* legend: [disc] [day] [series], hierarchy by order, rows split by ⅛in rules */
   #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:grid;padding:var(--rp-top) var(--rp-side) 0}
@@ -321,7 +323,7 @@
 
   @media (max-width:640px){
     :root{--edge:12px}
-    #logo span{display:none}
+    #logo{--l-cap:1.375;--l-lh:var(--lh-g1)}                        /* small screens: one tier down → Information (Grid 1), like .compact */
     #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
   }
 </style>
@@ -335,7 +337,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <svg id="map" role="img" data-i18n-label="map" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="trains"></g><g id="stations"></g><g id="bullets"></g></g></svg>
 
-<div id="logo" class="rplate" lang="en"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
+<div id="logo" class="rplate" lang="en"><p>Easy Exhibition<br>for Everyone</p></div>
 <div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
 <div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
 <div id="zoom" class="rplate"><button id="zin" data-i18n-label="zin" aria-label="확대">+</button><button id="zout" data-i18n-label="zout" aria-label="축소">−</button><button id="zfit" data-i18n-label="zfit" data-i18n="all" aria-label="전체 보기">전체</button></div>
