@@ -51,6 +51,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `src/map.html` | 프로토타입 전체. HTML, CSS, JS(바닐라, 외부 의존성 없음)가 한 파일에 있다. `__DATA__` 자리에 데이터가 들어간다. |
 | `data/stations.json` | 게시물 76개. `{월:[...], 수:[...], 금:[...], 일:[...]}` |
+| `data/en.json` | 영어 버전 문구. `series`(노선 키 → 범례 이름), `stations`(역 ID → `s` 지도 이름, `t` 팝업 제목). 빠진 역은 한국어로 나오고 `build.py`가 알려 준다. |
 | `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로), `nycta-map.js`를 끼워 넣어 `index.html`을 만든다. |
 | `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, `nycta-map.js`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
 | `tools/sync_nycta.sh` | nycta-gsm `web/`에서 CSS·서체·`js/nycta-map.js`만 복사한다. 비공개 원장이나 데이터는 가져오지 않는다. |
@@ -59,6 +60,14 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 | `tests/smoke_test.py` | Playwright 헤드리스 테스트 |
 | `tests/drag_stress.py` | 환승역 근처 드래그 스트레스 테스트 |
 | `docs/*.png` | 랜덤 배치 예시와 팝업 화면 캡처 |
+
+## 영어 버전 (2026-11-18 사용자 요청)
+
+- `<html lang>`을 바꾼다. 그래서 DEC-033 한국어 규칙(keep-all, 단어 간격, 첫 글자 보정)은 `:lang(ko)`와 함께 꺼지고 영문 값이 쓰인다. 역 이름 첫 글자 보정도 언어별이다(`DESIGN.map.lsbKo/lsbEn`).
+- 줄 높이는 영어에서 Grid 1(`--lh-g1`)로 돌아간다. [eee] 블록 간격(`--gap-ko` 1⅜in)은 두 언어가 같다(½in이면 팝업의 환승 줄이 제목 밑줄에 붙는다).
+- 지도 이름은 영어 18자, 한국어 8자까지 보인다(`DESIGN.label.maxCharsEn` / `maxChars`). 전환하면 이름 너비를 실제 글꼴로 다시 재고 자리를 다시 고른다. 배치는 그대로다.
+- UI 문구는 `src/map.html`의 `I18N`, 콘텐츠 문구는 `data/en.json`에 있다. HTML의 고정 문구는 `data-i18n`(글자) / `data-i18n-label`(aria-label·title)로 표시한다.
+- **`data/en.json` 번역은 Claude 초안이고 사용자 검토 전이다.** 시리즈 이름 '지식채널 eee' → 'Knowledge Channel eee', '전시 소개' → 'Exhibitions'도 임시다. 게시물을 추가하면 `en.json`에도 넣는다.
 
 ## 콘텐츠(노선) 구성
 
@@ -160,6 +169,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - ▦ 그리드 보기
   - ↻ 랜덤 배치: 출발 방향, 갈라지는 노선, 환승역 위치, 꺾임 성향을 매번 새로 섞는다. 고른 배치는 저장된다.
   - ◐ 흑백 반전: 버튼 자리에서 원이 퍼지며 전환된다.
+  - En / 한: 영어 버전 전환(2026-11-18). 버튼에는 바꿀 언어를 그 언어로 쓴다. 고른 언어는 이 브라우저에 저장된다(`eee-lang`). 주소에 `?lang=en`/`?lang=ko`를 붙여도 된다.
   - UI 박스 색은 배경과 반대로 한다. 흰 배경일 때 검은 박스, 반전일 때 흰 박스다.
 - 첫 방문 화면은 같은 랜덤 규칙에 고정 시드(`20261117`)를 넣어 만든 배치다.
 - `#E-14`처럼 주소 끝에 역 ID를 붙이면 그 역이 열린다. 범례를 클릭하면 그 노선 전체가 화면에 맞춰진다.

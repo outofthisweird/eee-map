@@ -3,6 +3,7 @@
 
 - src/map.html          the prototype (HTML + CSS + JS)
 - data/stations.json    pasted in at __DATA__
+- data/en.json          English version (series names, station names and titles by id), pasted in at __DATA_EN__
 - vendor/nycta/         NYCTA design system (public output of nycta-gsm, refreshed by tools/sync_nycta.sh):
                         sections 0–1 of nycta.css (typeface + tokens) pasted in at /*__NYCTA__*/,
                         followed by its generated disc glyph-mask block (DEC-035; rules live in src/map.html),
@@ -11,12 +12,16 @@
                         ahead of the map script that calls it.
 
 Usage: python3 build.py   (writes ./index.html)"""
-import base64, re
+import base64, json, re
 from pathlib import Path
 
 root = Path(__file__).parent
 src = (root / "src/map.html").read_text(encoding="utf-8")
 data = (root / "data/stations.json").read_text(encoding="utf-8")
+data_en = (root / "data/en.json").read_text(encoding="utf-8")
+missing = [s["id"] for day in json.loads(data).values() for s in day if s["id"] not in json.loads(data_en)["stations"]]
+if missing:   # they show their Korean text in the English version
+    print(f"data/en.json: no English for {len(missing)} station(s): {', '.join(missing)}")
 nycta = (root / "vendor/nycta/nycta.css").read_text(encoding="utf-8")
 
 # nycta.css is split into numbered sections ("/* ---…\n   N. Title"). Keep 0 (typeface) and 1 (tokens) only:
@@ -44,8 +49,8 @@ mapjs = (root / "vendor/nycta/nycta-map.js").read_text(encoding="utf-8")
 assert "geometry:" in mapjs and "window.NYCTAMap" in mapjs, "nycta-map.js no longer exports NYCTAMap.geometry: check build.py"
 mapjs = re.sub(r"</(script)", r"<\\/\1", mapjs, flags=re.I)   # inline: a '</script' (even in a comment) would end the tag
 
-for key in ("__DATA__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/"):
+for key in ("__DATA__", "__DATA_EN__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/"):
     assert src.count(key) == 1, f"src/map.html must contain {key} exactly once"
-out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA__", data).replace("/*__NYCTA_MAP__*/", mapjs)
+out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA_EN__", data_en).replace("__DATA__", data).replace("/*__NYCTA_MAP__*/", mapjs)
 (root / "index.html").write_text(out, encoding="utf-8")
 print(f"index.html built ({len(out) // 1024} KB)")

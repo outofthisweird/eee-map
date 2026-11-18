@@ -69,6 +69,17 @@ async def main():
           const clash=all.filter(o=>o!==E[n-1]&&o!==E[n-2]&&[E[n-1],E[n-2]].some(s=>o.x===s.x&&o.y===s.y)).length;
           return {g1:gap(E[n-3],E[n-2]),g2:gap(E[n-2],E[n-1]),clash,off:all.filter(offGrid).length}})()""")
         check("new stations extend the saved line", 2 <= r["g1"] <= 3 and 2 <= r["g2"] <= 3 and not r["clash"] and not r["off"], r)
+        # 6. English version: the 한/En button switches every text, names stay clear, the choice survives a reload
+        ko_clash = await pg.evaluate("nameClashes")   # this layout is crowded by the drags above: compare, don't demand 0
+        await pg.evaluate("setLang('en')"); await pg.wait_for_timeout(300)
+        r = await pg.evaluate("""(()=>({lang:document.documentElement.lang,btn:langbtn.textContent,all:zfit.textContent,
+          name:byLine.E.st[0].label,legend:legend.innerText.includes('Wed'),clash:nameClashes,curved:curvedNow.length}))()""")
+        await pg.reload(); await pg.wait_for_timeout(800)
+        r["kept"] = await pg.evaluate("document.documentElement.lang")
+        await pg.click("#langbtn"); r["back"] = await pg.evaluate("document.documentElement.lang+' '+byLine.E.st[0].label")
+        check("English version switches and is remembered", r["lang"] == "en" and r["btn"] == "한" and r["all"] == "All"
+              and r["name"] == "Diaspora" and r["legend"] and r["clash"] <= ko_clash + 3 and not r["curved"] and r["kept"] == "en"
+              and r["back"].startswith("ko "), {**r, "koClash": ko_clash})
         check("no 'sits on a bend' warnings", not bends, bends[:3])
         check("no JS errors", not errs, errs[:3])
         await b.close()

@@ -32,6 +32,10 @@
     color-scheme:light;
   }
   /* ◐ dark = white↔black swap; disc glyph colours stay (DEC-019) */
+  /* English version (the 한/En button sets <html lang="en">; DEC-033 rules switch off with :lang(ko)): Latin lines keep
+     Grid 1, so the Hangul line height falls back to it. [eee] The block gap stays 1⅜in in both languages: at ½in the
+     popup's transfer row runs into the title's underline. */
+  :root:lang(en){--lh-ko:var(--lh-g1)}
   :root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}
 
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}   /* DEC-009 */
@@ -112,13 +116,14 @@
   #legend button+button{border-top:var(--rp-rule) solid currentColor}
   #legend .bs{display:flex;gap:2px}
   #legend .day{min-width:1.25em}
+  :lang(en) #legend .day{min-width:2.25em}            /* Mon / Wed / Fri / Sun line up */
 
   /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
   #tools,#zoom{position:fixed;right:var(--edge);z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
   #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
   #zoom{bottom:var(--edge)}
   #tools button,#zoom button{width:var(--ui-btn);height:var(--ui-btn);display:flex;align-items:center;justify-content:center;font-size:1.125rem;line-height:1}
-  #zoom #zfit{font-size:max(12px, .75rem)}
+  #zoom #zfit,#tools #langbtn{font-size:max(12px, .75rem)}
   #tools button+button,#zoom button+button{border-top:var(--rp-rule) solid currentColor}
   #tools button:hover,#zoom button:hover,#tools button[aria-pressed=true]{background:var(--bg);color:var(--fg)}
 
@@ -156,29 +161,45 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 </head>
 <body>
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
-<svg id="map" role="img" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="trains"></g><g id="stations"></g><g id="bullets"></g></g></svg>
+<svg id="map" role="img" data-i18n-label="map" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="trains"></g><g id="stations"></g><g id="bullets"></g></g></svg>
 
 <div id="logo" class="rplate" lang="en"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
-<div id="legend" class="rplate" aria-label="노선 범례"></div>
-<div id="tools" class="rplate"><button id="gridbtn" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button></div>
-<div id="zoom" class="rplate"><button id="zin" aria-label="확대">+</button><button id="zout" aria-label="축소">−</button><button id="zfit" aria-label="전체 보기">전체</button></div>
+<div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
+<div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
+<div id="zoom" class="rplate"><button id="zin" data-i18n-label="zin" aria-label="확대">+</button><button id="zout" data-i18n-label="zout" aria-label="축소">−</button><button id="zfit" data-i18n-label="zfit" data-i18n="all" aria-label="전체 보기">전체</button></div>
 <aside id="panel" class="rplate" aria-hidden="true">
   <div class="body">
     <span id="pb"></span>
     <div class="text">
       <p><a id="ptitle" target="_blank" rel="noopener"></a></p>
       <div id="pxfer"></div>
-      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small>이전 역</small></button><button id="pnext"><small>다음 역</small> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
+      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small data-i18n="prev">이전 역</small></button><button id="pnext"><small data-i18n="next">다음 역</small> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
     </div>
   </div>
 </aside>
-<nav class="sr" id="srlist" aria-label="역 목록"></nav>
+<nav class="sr" id="srlist" data-i18n-label="list" aria-label="역 목록"></nav>
 
 <script>/* nycta-gsm web/js/nycta-map.js (vendor/nycta, inlined by build.py): route map geometry, NYCTAMap.geometry (DEC-036) */
 /*__NYCTA_MAP__*/
 </script>
 <script>
 const DATA = __DATA__;
+const DATA_EN = __DATA_EN__;   // data/en.json: English series names, station names and titles (missing ones show the Korean)
+// ---------- language: Korean (default) or English. The 한/En button, ?lang=en|ko, remembered in this browser ----------
+const I18N={
+  ko:{map:'EEE 노선도',legend:'노선 범례',grid:'그리드 보기',replay:'랜덤 배치 (노선 모양·환승역을 새로 섞기)',theme:'흑백 반전',
+      lang:'English',langBtn:'En',zin:'확대',zout:'축소',zfit:'전체 보기',all:'전체',prev:'이전 역',next:'다음 역',list:'역 목록',xfer:'환승',
+      day:{월:'월',수:'수',금:'금',일:'일'},dayLong:{월:'월요일',수:'수요일',금:'금요일',일:'일요일'}},
+  en:{map:'EEE route map',legend:'Lines',grid:'Show grid',replay:'Random layout (reshuffle the lines and transfers)',theme:'Invert',
+      lang:'한국어',langBtn:'한',zin:'Zoom in',zout:'Zoom out',zfit:'Show all',all:'All',prev:'Previous',next:'Next',list:'Stations',xfer:'Transfer',
+      day:{월:'Mon',수:'Wed',금:'Fri',일:'Sun'},dayLong:{월:'Monday',수:'Wednesday',금:'Friday',일:'Sunday'}},
+};
+let lang=(()=>{const q=location.search.match(/[?&]lang=(ko|en)\b/);if(q)return q[1];try{return localStorage.getItem('eee-lang')==='en'?'en':'ko'}catch(e){return'ko'}})();
+document.documentElement.lang=lang;
+const T=k=>I18N[lang][k];
+const EN=id=>lang==='en'&&DATA_EN.stations[id]||null;
+const stName=s=>(EN(s.id)||s).s, stTitle=s=>(EN(s.id)||s).t;
+const seriesName=(c,ko)=>lang==='en'&&DATA_EN.series[c]||ko;
 // ======================================================================
 // DESIGN — every visual value of the map lives here. Change these, not the code below.
 // (UI colours and type live in the CSS :root block; map geometry and marks live here.)
@@ -193,7 +214,7 @@ const DESIGN = {
   line:      { width: 0, casing: 0, cornerRadius: 0, runOn: 0 },   // ← map (px). cornerRadius = innermost strand; a bundle's centre line adds ½ pitch per extra strand (G.bundleRadius)
   station:   { dot: 0, hitRadius: 16, hoverScale: 1.4 },                           // dot ← map (radius, px)
   interchange:{ size: 0, stroke: 4 },        // [eee] layout-made interchange (white circle) kept until the transfer decision; size ← strand + 8
-  label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, size: 0 },          // ← map
+  label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, maxCharsEn: 18, size: 0 },   // ← map. maxChars: longer names end in … (Hangul / English)
   train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
   motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
@@ -219,7 +240,7 @@ const DESIGN = {
   // DEC-036 sizes (same formulas as nycta.css .map): cap = name size × cap-em, 1in = cap ÷ 1 3/8 (DEC-002)
   const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
     fs=rem*M.nameRem, cap=fs*capEm, inch=cap/1.375, pitch=cap*M.pitchCaps, ground=inch*M.groundIn, Ln=DESIGN.line;
-  Object.assign(M,{fs,cap,inch,pitch,ground,lsb:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs});
+  Object.assign(M,{fs,cap,inch,pitch,ground,lsbKo:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs,lsbEn:(parseFloat(cs.getPropertyValue('--lsb-comp'))||0)*fs});
   Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.runOn=(pitch-ground)/2;   // DEC-036: stations keep their grid points and are never corners (ROUTE); a line ending at a station runs on by half the strand
   DESIGN.station.dot=cap*M.stopCaps/2;
   const X=DESIGN.interchange; X.size=Ln.width+8;
@@ -684,7 +705,7 @@ function geometry(){
   nameClashes=0;
   stations.forEach(s=>{
     if(s.owner){s.lab=null;return}
-    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=labelWidth(str);
+    const nm=stName(s),mc=lang==='en'?DESIGN.label.maxCharsEn:DESIGN.label.maxChars,str=nm.length>mc?nm.replace('…','').slice(0,mc-1)+'…':nm; s.label=str; const w=labelWidth(str);
     const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1],[1,1,1],[-1,1,1],[1,-1,1],[-1,-1,1]]; let best=null,ok=false;   // [x,y,1]: corner boxes, for interchanges with lines on all four sides
     if(s.line.offset<0)cands.unshift(cands.splice(1,1)[0]);   // [eee] a side strand's name goes on its outer side first
     // [eee] crowded spots: the same sides once more, one pitch further out; if every one is blocked, the least
@@ -704,7 +725,7 @@ function geometry(){
 
 // ---------- draw ----------
 const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains');
-const labelAttrs=s=>({x:s.lab.cx-s.vx-(s.lab.anchor==='start'?DESIGN.map.lsb:0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor});   // flush-left: first-letter side bearing pull (DEC-025/033)
+const labelAttrs=s=>({x:s.lab.cx-s.vx-(s.lab.anchor==='start'?(lang==='en'?DESIGN.map.lsbEn:DESIGN.map.lsbKo):0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor});   // flush-left: first-letter side bearing pull (DEC-025/033)
 // Names again once the faces are in, or when the theme changes the weight: widths re-measured, nothing else redrawn
 // (the lines keep growing if the intro is still running).
 function relabel(){labelW.clear();geometry();
@@ -734,7 +755,7 @@ function draw(){
   stations.forEach(s=>{
     const L=s.line;
     if(s.owner){s.g=s.owner.g;return}
-    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${L.day}요일 ${s.s}`,'data-id':s.id},gS);
+    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${T('dayLong')[L.day]} ${stName(s)}`,'data-id':s.id},gS);
     g.setAttribute('transform',`translate(${s.vx},${s.vy})`);
     el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
     if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
@@ -1037,12 +1058,25 @@ function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('draggin
 const lg=$('#legend');
 LINES.forEach(L=>{
   const b=document.createElement('button'); b.dataset.line=L.key;
-  b.innerHTML=`<span class="day">${L.day}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span>${L.series.map(s=>s[1]).join(' → ')}</span>`;
   b.onmouseenter=()=>focusLine(L); b.onmouseleave=()=>focusLine(null);
   b.onclick=()=>{release();fitTo(L.px)};
   lg.appendChild(b);
 });
-$('#srlist').innerHTML=LINES.map(L=>`<h2>${L.day}요일</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${s.t}</a></li>`).join('')}</ul>`).join('');
+// every text that changes with the language: static UI (data-i18n = text, data-i18n-label = aria-label + title),
+// legend, screen-reader list. The map names and the popup follow in setLang()
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(n=>{n.textContent=T(n.dataset.i18n)});
+  document.querySelectorAll('[data-i18n-label]').forEach(n=>{const v=T(n.dataset.i18nLabel);n.setAttribute('aria-label',v);if(n.hasAttribute('title'))n.title=v});
+  $('#langbtn').lang=lang==='en'?'ko':'en';   // the button names the other language, in that language
+  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${T('day')[L.day]}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span>${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`});
+  $('#srlist').innerHTML=LINES.map(L=>`<h2>${T('dayLong')[L.day]}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
+}
+applyLang();
+function setLang(l){
+  lang=l; try{localStorage.setItem('eee-lang',l)}catch(e){}
+  applyLang(); labelW.clear(); geometry(); draw(); refreshFocus();   // names re-measured and re-placed; an open popup follows
+}
 
 // ---------- view (pan/zoom) ----------
 const svg=$('#map'), world=$('#world');
@@ -1113,8 +1147,8 @@ function openStation(s,fromHash,keepView){
   focusLine(s.line);
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
-  const pt=$('#ptitle'); pt.textContent=s.t; pt.href=s.u;   // [eee] popup = title (links to Instagram), transfers, prev/next in one row (2026-11-18)
-  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`환승: ${x.ser}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
+  const pt=$('#ptitle'); pt.textContent=stTitle(s); pt.href=s.u;   // [eee] popup = title (links to Instagram), transfers, prev/next in one row (2026-11-18)
+  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`${T('xfer')} ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`${T('xfer')}: ${seriesName(x.b,x.ser)}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
   const prev=L.st[s.i-1], next=L.st[s.i+1];
   const pb=$('#pprev'),nb=$('#pnext');
   pb.disabled=!prev; pb.onclick=()=>prev&&openStation(prev);
@@ -1218,6 +1252,7 @@ function setGrid(on){svg.classList.toggle('show-grid',on);$('#gridbtn').setAttri
 try{if(localStorage.getItem('eee-grid')==='1')setGrid(true)}catch(e){}
 {const G=DESIGN.grid.unit,pt=$('#gridpat');pt.setAttribute('width',G);pt.setAttribute('height',G);pt.querySelector('.gl').setAttribute('d',`M${G} 0H0V${G}`)}
 $('#gridbtn').onclick=()=>setGrid(!svg.classList.contains('show-grid'));
+$('#langbtn').onclick=()=>setLang(lang==='en'?'ko':'en');
 // ↻: a fresh random layout (start/end points, transfer stations, turns), saved so it survives a reload
 $('#replay').onclick=()=>{sdrag=null;settle=null;tween=null;if(current)closePanel();generate(Math.random);savePos();replay()};
 function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel()}
