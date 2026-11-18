@@ -73,13 +73,18 @@
   /* ---- disc (line badge): DISC-001/004 — glyph cap = 0.408 D; yellow takes black type, every other colour white (DEC-004) ---- */
   .disc{--d:28px;display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);border-radius:50%;
     background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
-    line-height:1;text-align:center;white-space:nowrap;vertical-align:top}
-  .disc>span{display:block}
+    line-height:1;text-align:center;white-space:nowrap;vertical-align:top;position:relative}
+  /* glyph = baked outline (DEC-035): circle = background, glyph = ::after in the same box painted currentColor through
+     --disc-mask (from the nycta block, picked by data-line), so circle and glyph never drift apart at any zoom.
+     The text stays for screen readers, transparent; labels without an outline fall back to it. */
+  .disc>span{display:block;color:var(--disc-text,inherit)}
+  .disc::after{content:"";position:absolute;inset:0;background:currentColor;pointer-events:none;
+    -webkit-mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat;mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat}
   /* inline disc beside 1rem copy (GRID-008, DEC-034): D = cap × 1 11/16 ÷ 1 3/8, no minimum size (DEC-021 20px floor retired).
-     Centred on the parent cap height from geometry only; overhang (mb) never changes line spacing; glyph out of flow,
-     centred on the circle so the two snap together (one layer). Same maths as nycta.css .disc--inline. */
+     Centred on the parent cap height from geometry only; overhang (mb) never changes line spacing; text out of flow so the
+     baseline is the margin edge. Same maths as nycta.css .disc--inline. */
   .disc--inline{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375);--disc-mb:.3;margin-block:calc(var(--d) * -1 * var(--disc-mb));
-    vertical-align:calc(var(--d) * (1.375 / 1.6875 / 2 - .5 + var(--disc-mb)));position:relative;will-change:transform}
+    vertical-align:calc(var(--d) * (1.375 / 1.6875 / 2 - .5 + var(--disc-mb)))}
   .disc--inline>span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 
   /* ---- arrow: ARROW-005 path (symbol #nyarrow), ARROW-001 directions only ---- */
@@ -197,7 +202,7 @@ const DESIGN = {
   for(const k in DESIGN.lines){const d=DESIGN.lines[k];d.color=cs.getPropertyValue(d.token).trim()||'#000';
     d.textOn=cs.getPropertyValue(d.token==='--c-yellow'?'--c-black':'--c-white').trim()||'#fff'}}
 // line disc (nycta DISC-001/004), used in the legend and the popup
-const disc=(L,c,cls='disc disc--inline')=>`<span class="${cls}" style="--line:${L.color};--on:${L.textOn}"><span>${c}</span></span>`;
+const disc=(L,c,cls='disc disc--inline')=>`<span class="${cls}" data-line="${c}" style="--line:${L.color};--on:${L.textOn}"><span>${c}</span></span>`;   // data-line picks the baked glyph (DEC-035)
 const U = DESIGN.grid.unit, STEP = DESIGN.grid.step, LW = DESIGN.line.width;
 document.documentElement.style.setProperty('--label-size', DESIGN.label.size+'px');
 document.documentElement.style.setProperty('--dot-hover', DESIGN.station.hoverScale);

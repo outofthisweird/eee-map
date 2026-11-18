@@ -5,6 +5,7 @@
 - data/stations.json    pasted in at __DATA__
 - vendor/nycta/         NYCTA design system (public output of nycta-gsm, refreshed by tools/sync_nycta.sh):
                         sections 0–1 of nycta.css (typeface + tokens) pasted in at /*__NYCTA__*/,
+                        followed by its generated disc glyph-mask block (DEC-035; rules live in src/map.html),
                         with every woff2 it references (Albert Sans NYCTA, NYCTA Hangul) embedded as a data URI.
 
 Usage: python3 build.py   (writes ./index.html)"""
@@ -27,7 +28,12 @@ assert "albert-sans-nycta-wght.woff2" in fonts and "nycta-hangul.woff2" in fonts
 for name in set(fonts):
     b64 = base64.b64encode((root / "vendor/nycta" / name).read_bytes()).decode()
     tokens = tokens.replace(f'url("../fonts/{name}")', f'url("data:font/woff2;base64,{b64}")')
-tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 (" + \
+# Disc glyphs (nycta DEC-035): the generated block of baked outlines, one --disc-mask per label. Only custom properties;
+# the .disc / ::after rules that use them are in src/map.html.
+MB, ME = "/* disc glyph masks — generated", "/* end of disc glyph masks */"
+assert nycta.count(MB) == 1 and nycta.count(ME) == 1, "nycta.css disc glyph-mask block not found: check build.py"
+tokens += "\n\n" + nycta[nycta.index(MB):nycta.index(ME) + len(ME)]
+tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (" + \
     (root / "vendor/nycta/SOURCE.txt").read_text(encoding="utf-8").splitlines()[-1].strip() + ") */\n" + tokens
 
 for key in ("__DATA__", "/*__NYCTA__*/"):

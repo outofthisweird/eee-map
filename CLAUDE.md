@@ -82,7 +82,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 
 **NYCTA 디자인 시스템 적용(2026-11-17)**
 - 규칙의 원본은 nycta-gsm(비공개 `nycta-gsm-src`)이다. eee-map은 그 공개 결과물을 `vendor/nycta/`에 복사해 쓴다.
-  - `build.py`가 `nycta.css` §0–1(서체·토큰)만 `/*__NYCTA__*/` 자리에 넣는다.
+  - `build.py`가 `nycta.css` §0–1(서체·토큰)과 원판 글자 윤곽 생성 블록(DEC-035)을 `/*__NYCTA__*/` 자리에 넣는다.
   - nycta의 기본 스타일, 구성요소, OS 다크 모드는 넣지 않는다. 다크 모드는 ◐ 버튼으로만 바뀐다.
   - 노선도에 필요한 새 규칙은 **nycta 원장에 먼저 ID를 만든 뒤** sync한다. 노선도에만 쓰는 결정은 CSS 주석에 `[eee]`로 표시한다.
 - 서체: 배포는 Albert Sans NYCTA, 로컬은 헬베티카 미리보기를 쓴다. 페이지 서체는 `--font: var(--font-sign)` 하나라서 미리보기 CSS가 `--font-sign`만 바꾸면 된다.
@@ -96,6 +96,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - 팝업도 DEC-031을 따른다: 왼쪽 원판, 정보 단계 1rem, 닫기는 밑줄 텍스트, 애니메이션 없음.
   - 화살표는 NYCTA 화살표(`#nyarrow`)를 쓴다.
 - **줄 안 원판(범례·환승 버튼)은 DEC-034**(2026-11-18 sync, nycta 02172e1): 크기는 cap × 1 11/16 ÷ 1 3/8(약 14px)이고 20px 최소 크기(DEC-021)는 없앴다. cap 높이 가운데에 맞추고, 줄 간격을 바꾸지 않는다. `nycta.css`의 이 규칙은 `build.py`가 넣지 않으므로 `src/map.html`의 `.disc--inline`에 직접 옮겨 둔다. 원판 규칙이 바뀌면 여기도 손으로 맞춘다.
+- **원판 글자는 구운 윤곽선(nycta DEC-035, 2026-11-18 sync 9c4aa4a)**: 원은 배경, 글자는 같은 상자의 `::after`를 `currentColor`로 칠해 `--disc-mask`(라벨별 SVG 경로)로 오려 낸다. 텍스트로 그리면 Chrome 확대 125%에서 원 안 글자가 최대 지름의 4.3% 밀렸다(환승 R). 윤곽 블록은 `build.py`가 넣고, `.disc`·`::after` 규칙은 `src/map.html`에 있다. **원판에는 `data-line`(라벨 글자)이 있어야 한다**: `disc()`가 붙인다. 윤곽선이 없는 라벨은 텍스트로 나온다. 헬베티카 미리보기는 `preview/helvetica.css`가 자기 윤곽선으로 덮어쓰므로, nycta가 바뀌면 `tools/preview_font.sh`도 다시 돌린다.
 - **[eee] 한글 행간:** (Noto Sans KR 시절 결정. NYCTA Hangul은 윗선이 cap 선에 맞아 nycta는 Grid 1/2 피치를 그대로 쓴다. 이 예외를 없앨지는 미정) 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
 - 노선 굵기, 역 점, 환승역, 그리드 같은 노선도 기하는 매뉴얼에 근거가 없어 그대로 두었다. 열차 모서리만 직각(`DESIGN.train.radius: 0`)으로 바꿨다.
 

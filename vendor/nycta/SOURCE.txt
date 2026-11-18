@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 02172e1 2026-11-18 Inline discs: manual ratio, centred on cap height, glyph locked to circle (DEC-034)
+commit: 9c4aa4a 2026-11-18 Discs: glyphs as baked outlines in a mask layer over the circle (DEC-035)
