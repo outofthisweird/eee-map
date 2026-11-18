@@ -357,7 +357,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 <div id="logo" class="rplate" lang="en"><p>Easy Exhibition<br>for Everyone</p></div>
 <div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
 <div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
-<div id="snaptune" class="rplate" hidden><label lang="en">snap <input id="snapr" type="range" min="0" max="2" step="0.05"> <output id="snapv"></output></label><label lang="en">cursor <select id="cursel"><option value="system">system</option><option value="disc">disc</option><option value="arrow">arrow</option><option value="line">line</option><option value="train">train</option><option value="set">set</option></select></label></div>
+<div id="snaptune" class="rplate" hidden><label lang="en">snap <input id="snapr" type="range" min="0" max="2" step="0.05"> <output id="snapv"></output></label><label lang="en">cursor <select id="cursel"><option value="system">system</option><option value="disc">disc</option><option value="arrow">arrow</option></select></label></div>
 <div id="zoom" class="rplate"><button id="zin" data-i18n-label="zin" aria-label="확대">+</button><button id="zout" data-i18n-label="zout" aria-label="축소">−</button><button id="zfit" data-i18n-label="zfit" data-i18n="all" aria-label="전체 보기">전체</button></div>
 <aside id="panel" class="rplate" aria-hidden="true">
   <div class="body">
@@ -1496,7 +1496,7 @@ function draw(){
   stations.forEach(s=>{
     const L=s.line;
     if(s.owner){s.g=s.owner.g;return}
-    const g=el('g',{class:'station','data-ln':L.key,tabindex:0,role:'button','aria-label':`${T('dayLong')[L.day]} ${stName(s)}`,'data-id':s.id},gS);
+    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${T('dayLong')[L.day]} ${stName(s)}`,'data-id':s.id},gS);
     g.setAttribute('transform',`translate(${s.vx},${s.vy})`);
     el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
     if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
@@ -1530,49 +1530,44 @@ const SNAP_PX=16;
   r.addEventListener('dblclick',()=>{r.value=1;r.dispatchEvent(new Event('input'))});   // double-click: back to 1
 })();
 // [test] cursor candidates (2026-11-19 사용자 요청): pick one from #cursel (same local/?tune rule as the snap slider).
-// Each mode is a set of states fed to CSS variables (--cur-map/pan/station/hold/line/ui) or per-line rules in #curstyle.
-// Colours come from the theme and DESIGN.lines, so they follow ◐. Remembered in localStorage 'eee-cursor'.
-const CURSOR={size:32,
-  modes:{system:'시스템 기본',disc:'역 원판',arrow:'NYCTA 화살표',line:'노선 색 원판',train:'열차',set:'추천 세트'}};
+// Each mode feeds CSS variables (--cur-map/pan/station/hold/line/ui); unset = the plain cursors. Colours come from the
+// theme, so they follow ◐. Remembered in localStorage 'eee-cursor'.
+// arrow: the NYCTA arrow always points at the centre of the map (the drawn stations' bounding box, on screen), in the
+// eight ARROW-001 directions; it keeps its last heading within CURSOR.still px of the centre.
+const CURSOR={size:32,arrow:24,still:24,
+  modes:{system:'시스템 기본',disc:'역 원판',arrow:'NYCTA 화살표 (노선도 중심을 가리킴)'}};
 (()=>{const sel=document.getElementById('cursel');
   const local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   if(!(local||/[?&]tune\b/.test(location.search)))return;
   [...sel.options].forEach(o=>o.title=CURSOR.modes[o.value]||'');
-  const Z=CURSOR.size,C=Z/2,root=document.documentElement.style,sheet=document.createElement('style');sheet.id='curstyle';document.head.appendChild(sheet);
+  const Z=CURSOR.size,C=Z/2,root=document.documentElement.style;
   const ARROW=document.querySelector('#nyarrow path').getAttribute('d');
-  // glyph outlines of the line discs (DEC-035 --disc-mask, 1000-unit box = the disc's own box)
-  const glyph={};{const probe=document.createElement('span');probe.className='disc';probe.hidden=true;document.body.appendChild(probe);
-    LINES.forEach(L=>{probe.dataset.line=L.key;const m=decodeURIComponent(getComputedStyle(probe).getPropertyValue('--disc-mask')).match(/ d='([^']+)'/);glyph[L.key]=m?m[1]:''});probe.remove()}
   const uri=(body,hx,hy,fb)=>`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${Z}' height='${Z}' viewBox='0 0 ${Z} ${Z}'>${body}</svg>`)}") ${Math.round(hx)} ${Math.round(hy)}, ${fb}`;
   const col=()=>{const cs=getComputedStyle(document.documentElement);return{fg:cs.getPropertyValue('--fg').trim()||'#000',bg:cs.getPropertyValue('--bg').trim()||'#fff'}};
   // shapes
   const dot=(r,fill,edge)=>uri(`<circle cx='${C}' cy='${C}' r='${r}' fill='${fill}' stroke='${edge}' stroke-width='1.5'/>`,C,C,'crosshair');
   const ring=(r,k)=>uri(`<circle cx='${C}' cy='${C}' r='${r}' fill='${k.bg}' stroke='${k.fg}' stroke-width='2.5'/>`,C,C,'pointer');
   const held=k=>uri(`<circle cx='${C}' cy='${C}' r='12' fill='none' stroke='${k.fg}' stroke-width='1.5'/><circle cx='${C}' cy='${C}' r='7' fill='${k.fg}'/>`,C,C,'grabbing');
-  const arrow=(fill,edge,deg=-135,fb='default')=>{const a=deg*Math.PI/180,L=24;
+  const arrow=(fill,edge,deg,fb)=>{const a=deg*Math.PI/180,L=CURSOR.arrow;   // hotspot = the tip
     return uri(`<g transform='translate(${C} ${C}) rotate(${deg}) scale(${L})'><path d='${ARROW}' fill='${fill}' stroke='${edge}' stroke-width='1.5' stroke-linejoin='miter' vector-effect='non-scaling-stroke' paint-order='stroke'/></g>`,C+L/2*Math.cos(a),C+L/2*Math.sin(a),fb)};
-  const lineDisc=(L,r,k)=>{const s=2*r/1000;
-    return uri(`<circle cx='${C}' cy='${C}' r='${r+1}' fill='${k.bg}'/><circle cx='${C}' cy='${C}' r='${r}' fill='${L.color}'/>${glyph[L.key]?`<path transform='translate(${C-r} ${C-r}) scale(${s})' d='${glyph[L.key]}' fill='${L.textOn}'/>`:''}`,C,C,'pointer')};
-  const train=(deg,stroke,k)=>{const h=12,w=22,sw=3.6;
-    return uri(`<g transform='translate(${C} ${C}) rotate(${deg})'><rect x='${-w/2}' y='${-h/2}' width='${w}' height='${h}' fill='${k.bg}' stroke='${stroke}' stroke-width='${sw}'/></g>`,C,C,'move')};
-  // train mode: the train turns to the way the pointer travels (8 directions, DEC-036 octilinear)
-  let mode='system',heading=0,acc=[0,0],over=null;const tcache=new Map();
-  const trainVar=()=>{const k=col(),L=over&&LINES.find(l=>l.key===over),key=`${heading}|${L?L.key:''}|${k.fg}`;
-    if(!tcache.has(key))tcache.set(key,train(heading,L?L.color:k.fg,k));root.setProperty('--cur-train',tcache.get(key))};
-  addEventListener('pointermove',e=>{if(mode!=='train')return;acc[0]+=e.movementX;acc[1]+=e.movementY;
-    const n=e.target.closest&&e.target.closest('[data-ln],.line-path');const o=n?(n.dataset.ln||n.dataset.line):null;
-    let ch=o!==over;over=o;
-    if(Math.hypot(acc[0],acc[1])>8){const h=Math.round(Math.atan2(acc[1],acc[0])/(Math.PI/4))*45;acc=[0,0];
-      const hh=((h%360)+360)%360;if(hh!==heading){heading=hh;ch=true}}
-    if(ch)trainVar()},{passive:true});
-  const VARS=['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-line','--cur-ui','--cur-train'];
-  function apply(){VARS.forEach(v=>root.removeProperty(v));sheet.textContent='';const k=col(),set=(v,x)=>root.setProperty(v,x);
+  let mode='system',heading=-135;const cache=new Map();
+  function arrows(){const k=col(),key=`${heading}|${k.fg}`;
+    if(!cache.has(key))cache.set(key,{plain:arrow(k.fg,k.bg,heading,'default'),inv:arrow(k.bg,k.fg,heading,'pointer')});
+    const a=cache.get(key);['--cur-map','--cur-pan','--cur-line'].forEach(v=>root.setProperty(v,a.plain));
+    ['--cur-station','--cur-ui'].forEach(v=>root.setProperty(v,a.inv))}
+  function aim(cx,cy){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    stations.forEach(s=>{const x=s.vx??s.x,y=s.vy??s.y;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y});
+    const mx=(x0+x1)/2*view.k+view.x,my=(y0+y1)/2*view.k+view.y,dx=mx-cx,dy=my-cy;
+    if(Math.hypot(dx,dy)<CURSOR.still)return;
+    const h=((Math.round(Math.atan2(dy,dx)/(Math.PI/4))*45)%360+360)%360;
+    if(h!==heading){heading=h;arrows()}}
+  let last=null;
+  addEventListener('pointermove',e=>{last=[e.clientX,e.clientY];if(mode==='arrow')aim(e.clientX,e.clientY)},{passive:true});
+  addEventListener('wheel',e=>{if(mode==='arrow')requestAnimationFrame(()=>aim(e.clientX,e.clientY))},{passive:true});   // zoom moves the centre too
+  const VARS=['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-line','--cur-ui'];
+  function apply(){VARS.forEach(v=>root.removeProperty(v));const k=col(),set=(v,x)=>root.setProperty(v,x);
     if(mode==='disc'){set('--cur-map',dot(6,k.fg,k.bg));set('--cur-pan',dot(4,k.fg,k.bg));set('--cur-station',ring(9,k));set('--cur-hold',held(k));set('--cur-ui',ring(7,k))}
-    else if(mode==='arrow'){set('--cur-map',arrow(k.fg,k.bg));set('--cur-station',arrow(k.bg,k.fg,-135,'pointer'));set('--cur-ui',arrow(k.bg,k.fg,-135,'pointer'))}
-    else if(mode==='line'){set('--cur-map',dot(4,k.fg,k.bg));
-      sheet.textContent=LINES.map(L=>`.line-path[data-line="${L.key}"]{cursor:${lineDisc(L,10,k)}}\n.station[data-ln="${L.key}"]{cursor:${lineDisc(L,13,k)}}`).join('\n')}
-    else if(mode==='train'){tcache.clear();trainVar();['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-line'].forEach(v=>set(v,'var(--cur-train)'))}
-    else if(mode==='set'){set('--cur-map',arrow(k.fg,k.bg));set('--cur-station',ring(9,k));set('--cur-hold',held(k))}}
+    else if(mode==='arrow'){arrows();if(last)aim(...last)}}
   const pick=m=>{mode=CURSOR.modes[m]?m:'system';sel.value=mode;apply();try{localStorage.setItem('eee-cursor',mode)}catch(e){}};
   try{pick(localStorage.getItem('eee-cursor')||'system')}catch(e){pick('system')}
   sel.addEventListener('change',()=>pick(sel.value));
