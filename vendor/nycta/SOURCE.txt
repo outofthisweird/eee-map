@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 3fab9a3 2026-11-18 Add Hangul companion font and Korean text rules (DEC-032/033); stop plates scrolling (DEC-023)
+commit: 02172e1 2026-11-18 Inline discs: manual ratio, centred on cap height, glyph locked to circle (DEC-034)

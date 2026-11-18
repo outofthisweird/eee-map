@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EEE — Map</title>
 <style>
-/* NYCTA design system — vendor/nycta/nycta.css §0–1 (commit: 3fab9a3 2026-11-18 Add Hangul companion font and Korean text rules (DEC-032/033); stop plates scrolling (DEC-023)) */
+/* NYCTA design system — vendor/nycta/nycta.css §0–1 (commit: 02172e1 2026-11-18 Inline discs: manual ratio, centred on cap height, glyph locked to circle (DEC-034)) */
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -192,9 +192,12 @@
     background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
     line-height:1;text-align:center;white-space:nowrap;vertical-align:top}
   .disc>span{display:block}
-  /* inline disc beside 1rem copy: D = cap × 1 11/16 ÷ 1 3/8 with the 20px floor (GRID-008, DEC-021); unlike nycta.css the glyph
-     follows the floored D (glyph cap = 0.408 D), so the letter stays legible at 20px */
-  .disc--inline{--d:max(20px, calc(1rem * var(--cap-em) * 1.6875 / 1.375));vertical-align:middle;margin-block:-.6em}
+  /* inline disc beside 1rem copy (GRID-008, DEC-034): D = cap × 1 11/16 ÷ 1 3/8, no minimum size (DEC-021 20px floor retired).
+     Centred on the parent cap height from geometry only; overhang (mb) never changes line spacing; glyph out of flow,
+     centred on the circle so the two snap together (one layer). Same maths as nycta.css .disc--inline. */
+  .disc--inline{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375);--disc-mb:.3;margin-block:calc(var(--d) * -1 * var(--disc-mb));
+    vertical-align:calc(var(--d) * (1.375 / 1.6875 / 2 - .5 + var(--disc-mb)));position:relative;will-change:transform}
+  .disc--inline>span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 
   /* ---- arrow: ARROW-005 path (symbol #nyarrow), ARROW-001 directions only ---- */
   .arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:0 0 auto;fill:currentColor;overflow:visible;
