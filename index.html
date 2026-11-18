@@ -377,7 +377,7 @@ const DESIGN = {
   const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
     fs=rem*M.nameRem, cap=fs*capEm, inch=cap/1.375, pitch=cap*M.pitchCaps, ground=inch*M.groundIn, Ln=DESIGN.line;
   Object.assign(M,{fs,cap,inch,pitch,ground,lsb:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs});
-  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.stationRadius=0;   // DEC-036: stations keep their grid points; a station on a corner is turned on directly Ln.runOn=(pitch-ground)/2;
+  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.stationRadius=0; Ln.runOn=(pitch-ground)/2;   // DEC-036: stations keep their grid points; a station on a corner is turned on directly; a line ending at a station runs on by half the strand
   DESIGN.station.dot=cap*M.stopCaps/2;
   const X=DESIGN.interchange; X.size=Ln.width+8;
   DESIGN.label.size=fs; DESIGN.label.offset=pitch/2+inch*M.labelGapIn; DESIGN.label.offsetAtInterchange=(X.size+X.stroke)/2+inch*M.labelGapIn;
