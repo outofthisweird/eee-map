@@ -243,7 +243,8 @@
   #pxfer{display:grid;gap:calc(var(--gap-ko) / 2)} #pxfer:empty{display:none}
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
   #panel button:disabled{text-decoration:none;cursor:default}
-  #panel .nav{display:grid;gap:calc(var(--gap-ko) / 2)}
+  #panel .nav{display:flex;justify-content:space-between;gap:calc(var(--p-in) * 1.375)}      /* [eee] prev ← … → next on one row */
+  #panel .nav button:disabled{visibility:hidden}                                            /* line end: keep the other button in place */
   #panel .nav button{display:flex;align-items:baseline;gap:.3em}   /* flex gaps: the underline stops between words */
   #panel small{font-size:inherit}
 
@@ -271,11 +272,9 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
   <div class="body">
     <span id="pb"></span>
     <div class="text">
-      <p id="ptitle"></p>
+      <p><a id="ptitle" target="_blank" rel="noopener"></a></p>
       <div id="pxfer"></div>
-      <p><a id="pig" target="_blank" rel="noopener">인스타그램에서 보기</a> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></p>
       <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small>이전 역</small></button><button id="pnext"><small>다음 역</small> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
-      <p><button id="pclose">닫기</button></p>
     </div>
   </div>
 </aside>
@@ -1008,9 +1007,8 @@ function openStation(s,fromHash,keepView){
   focusLine(s.line);
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
-  $('#ptitle').textContent=s.t;   // [eee] popup = title, transfers, Instagram, prev/next, close (no day·date·id·series, 2026-11-18)
+  const pt=$('#ptitle'); pt.textContent=s.t; pt.href=s.u;   // [eee] popup = title (links to Instagram), transfers, prev/next in one row (2026-11-18)
   const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`환승 ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`환승: ${x.ser}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
-  $('#pig').href=s.u;
   const prev=L.st[s.i-1], next=L.st[s.i+1];
   const pb=$('#pprev'),nb=$('#pnext');
   pb.disabled=!prev; pb.onclick=()=>prev&&openStation(prev);
@@ -1040,7 +1038,7 @@ function centerOn(s,ms,zoomIn){
 }
 function release(){follow=null;target=null}
 function closePanel(){release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
-$('#pclose').onclick=closePanel;
+// no close button: Esc or a click on the empty map closes the popup
 addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 svg.addEventListener('click',e=>{
   if(moved)return;
