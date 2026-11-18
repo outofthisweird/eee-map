@@ -51,7 +51,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `src/map.html` | 프로토타입 전체. HTML, CSS, JS(바닐라, 외부 의존성 없음)가 한 파일에 있다. `__DATA__` 자리에 데이터가 들어간다. |
 | `data/stations.json` | 게시물 76개. `{월:[...], 수:[...], 금:[...], 일:[...]}` |
-| `data/en.json` | 영어 버전 문구. `series`(노선 키 → 범례 이름), `stations`(역 ID → `s` 지도 이름, `t` 팝업 제목). 빠진 역은 한국어로 나오고 `build.py`가 알려 준다. |
+| `data/en.json` | 영어 버전 문구. `series`(노선 키 → 범례 이름), `stations`(역 ID → `s` 지도 이름, `t` 팝업 제목, 둘은 같은 짧은 이름). 빠진 역은 한국어로 나오고 `build.py`가 알려 준다. |
 | `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로), `nycta-map.js`를 끼워 넣어 `index.html`을 만든다. |
 | `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, `nycta-map.js`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
 | `tools/sync_nycta.sh` | 공개 nycta-gsm(publish 결과, 형제 폴더. 먼저 `git pull`)에서 CSS·서체·`js/nycta-map.js`만 복사하고 `vendor/nycta/SOURCE.txt`에 공개 저장소 커밋을 적는다. 없으면 nycta-gsm-src의 `web/`을 쓴다. 비공개 원장이나 데이터는 가져오지 않는다. |
@@ -81,6 +81,8 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 
 - **제외한 콘텐츠:** The Neeews와 공지사항.
 - **노선이 없는 릴스:** 11/9(월) 릴스와 10월 중순 릴스는 시리즈를 정하지 못해 넣지 않았다.
+
+**역 이름·제목(2026-11-18 사용자 요청):** 지도 이름(`s`)과 팝업 제목(`t`)은 같은 짧은 이름이다. 한국어도 영어 역명처럼 핵심어만 남겼다(8자 이내, 예: '파레르곤이란 무엇일까요?' → '파레르곤'). 게시물 원래 제목은 인스타그램과 git 기록(b943689 이전)에 있다. 새 게시물도 이렇게 짧게 짓는다.
 
 **역 데이터** 형식은 `{id:'E-01', b:'E', s:역이름(짧게), t:제목, d:'YYYY-MM-DD', u:인스타 URL, ser:시리즈명}`이다.
 
