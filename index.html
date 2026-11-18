@@ -1541,7 +1541,7 @@ const SNAP_PX=16;
 // centre of the map (the drawn stations' bounding box, on screen). The system cursor is hidden meanwhile. Within
 // CURSOR.still px of the centre it keeps its last angle. Over stations, buttons and links it inverts. Colours are
 // CSS variables, so ◐ needs nothing. Touch input hides it.
-const CURSOR={size:32,arrow:24,still:24,
+const CURSOR={size:32,arrow:34,still:24,
   modes:{system:'시스템 기본',disc:'역 원판',arrow:'NYCTA 화살표 (노선도 중심을 가리킴)'}};
 (()=>{const sel=document.getElementById('cursel');
   const local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
