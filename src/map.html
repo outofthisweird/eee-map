@@ -25,6 +25,7 @@
     --rp-rule:max(1px, calc(var(--doc-in) * .125));/* DEC-031, SIGN-023 | ⅛in rule */
     --rp-top:calc(var(--rp-gap) * 2 + var(--rp-rule)); /* DEC-031 | ½ + ⅛ + ½in to the first cap line */
     --rp-side:calc(var(--doc-in) * .5);            /* GRID-003 | ½in side margin */
+    --ft:calc(var(--doc-in) * 12);                 /* GRID-002 | 1 ft module = 12in (≈ 100px) */
     /* [eee 설계결정] Hangul rises above the cap line and drops below the baseline, so Grid 1 (pitch 1⅞in, lh .95)
        makes Korean lines touch. Korean copy: lh 1.4, and block gap = Grid 2 gap 1⅜in instead of ½in. */
     --lh-ko:1.4;
@@ -104,6 +105,10 @@
     background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
   :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
 
+  /* [eee] logo, legend and popup are module plates (GRID-012, DEC-030 extended to height): fitPlates() rounds the hug
+     size up to ½ ft steps, never below 1 ft (+½ ft when less than 1in room is left across). Copy hangs from the top-left
+     margin (GRID-003/004); the extra room stays empty at the bottom right. DESIGN.plate */
+
   /* logo: identification plate, name hung from the top-left margin (GRID-003/004) */
   #logo{position:fixed;top:var(--edge);left:var(--edge);z-index:5;display:flex;align-items:flex-start;gap:calc(var(--doc-in) * 1.375);
     padding:var(--rp-top) calc(var(--doc-in) * 1.375) calc(var(--doc-in) * 1.375) var(--rp-side)}
@@ -135,7 +140,7 @@
   #panel.open{opacity:1;pointer-events:auto}
   #panel .body{display:flex;align-items:flex-start;gap:calc(var(--p-in) * .5)}              /* GRID-009 disc → text ½in */
   #pb .disc{--d:calc(1rem * (var(--cap-em) + var(--lh-ko)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch, Korean pitch) */
-  #panel .text{min-width:0;max-width:calc(var(--p-in) * 40)}
+  #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--p-in) * 40)}                 /* fills a module-sized plate: next → on the right margin */
   #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-ko) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull))}   /* DEC-025, DEC-033 */
   #panel .text>*+*{margin-block-start:calc(var(--gap-ko) + var(--p-trim))}                  /* GRID-007 → [eee] Korean gap */
   @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
@@ -217,6 +222,7 @@ const DESIGN = {
   label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, maxCharsEn: 18, size: 0 },   // ← map. maxChars: longer names end in … (Hangul / English)
   train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
   motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
+  plate:     { step: .5, min: 1, roomIn: 1 },   // UI plates (logo, legend, popup): ft steps, minimum ft, DEC-030 room across (in)
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
   // white on every other colour (DEC-004). Change a line's colour by naming another token here.
@@ -1073,9 +1079,22 @@ function applyLang(){
   $('#srlist').innerHTML=LINES.map(L=>`<h2>${T('dayLong')[L.day]}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
 }
 applyLang();
+// [eee] UI plates in module sizes (GRID-012): hug size rounded up to DESIGN.plate.step ft, at least .min ft;
+// across, DEC-030's rule: less than .roomIn inch to spare → another step. Width first, then the height it wraps to.
+function fitPlate(el){
+  if(!el)return; el.style.width=el.style.height='';
+  if(getComputedStyle(el).display==='none')return;
+  const P=DESIGN.plate, probe=document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;width:var(--ft)';
+  document.body.append(probe); const ft=probe.getBoundingClientRect().width; probe.remove();
+  const up=v=>Math.max(P.min,Math.ceil(v/ft/P.step-1e-6)*P.step);
+  const w0=el.getBoundingClientRect().width; let w=up(w0); if((w*ft-w0)/ft*12<P.roomIn)w+=P.step;
+  el.style.width=w*ft+'px';
+  el.style.height=up(el.getBoundingClientRect().height)*ft+'px';
+}
+function fitPlates(){['#logo','#legend','#panel'].forEach(q=>fitPlate($(q)));placePopup()}
 function setLang(l){
   lang=l; try{localStorage.setItem('eee-lang',l)}catch(e){}
-  applyLang(); labelW.clear(); geometry(); draw(); refreshFocus();   // names re-measured and re-placed; an open popup follows
+  applyLang(); fitPlates(); labelW.clear(); geometry(); draw(); refreshFocus();   // names re-measured and re-placed; an open popup follows
 }
 
 // ---------- view (pan/zoom) ----------
@@ -1153,7 +1172,7 @@ function openStation(s,fromHash,keepView){
   const pb=$('#pprev'),nb=$('#pnext');
   pb.disabled=!prev; pb.onclick=()=>prev&&openStation(prev);
   nb.disabled=!next; nb.onclick=()=>next&&openStation(next);
-  panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); placePopup();
+  panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPlate(panel); placePopup();
   if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
   follow=s;
   if(!keepView) centerOn(s,DESIGN.motion.centerMs,true);
@@ -1255,7 +1274,7 @@ $('#gridbtn').onclick=()=>setGrid(!svg.classList.contains('show-grid'));
 $('#langbtn').onclick=()=>setLang(lang==='en'?'ko':'en');
 // ↻: a fresh random layout (start/end points, transfer stations, turns), saved so it survives a reload
 $('#replay').onclick=()=>{sdrag=null;settle=null;tween=null;if(current)closePanel();generate(Math.random);savePos();replay()};
-function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel()}
+function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel();fitPlates()}
 try{if(localStorage.getItem('eee-theme')==='dark')setTheme(true)}catch(e){}
 $('#theme').onclick=e=>{
   const dark=document.documentElement.dataset.theme!=='dark';
@@ -1269,12 +1288,13 @@ $('#theme').onclick=e=>{
 
 // ---------- boot ----------
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
-if(document.fonts){document.fonts.ready.then(relabel);document.fonts.addEventListener('loadingdone',relabel)}
+fitPlates();
+if(document.fonts){const f=()=>{relabel();fitPlates()};document.fonts.ready.then(f);document.fonts.addEventListener('loadingdone',f)}
 function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
 fromHash(); addEventListener('hashchange',fromHash);
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
 addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});
-addEventListener('resize',()=>{if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});
+addEventListener('resize',()=>{fitPlates();if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});
 </script>
 </body>
 </html>
