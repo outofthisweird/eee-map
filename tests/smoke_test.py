@@ -10,6 +10,7 @@ async def main():
         b = await p.chromium.launch(executable_path=__import__("os").environ.get("CHROME") or None, args=["--no-sandbox"])
         pg = await b.new_page(viewport={"width": 1440, "height": 900})
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+        bends = []; pg.on("console", lambda m: bends.append(m.text) if m.type == "warning" and "sits on a bend" in m.text else None)
         await pg.goto(URL); await pg.evaluate("localStorage.clear()")
         await pg.goto(URL); await pg.wait_for_timeout(3500)
         ok = True
@@ -23,12 +24,13 @@ async def main():
         await pg.keyboard.press("Escape")
 
         # 2. random layouts (↻): on the grid, no terminal transfers, no self-crossing
-        bad = {"offgrid": 0, "termXfer": 0, "selfCross": 0}
+        bad = {"offgrid": 0, "termXfer": 0, "selfCross": 0, "corner": 0, "curved": 0}
         for _ in range(20):
             await pg.evaluate("document.querySelector('#replay').click()"); await pg.wait_for_timeout(120)
             r = await pg.evaluate("""(()=>({offgrid:all.filter(offGrid).length,
               termXfer:all.filter(s=>s.xfer&&(s.i===0||s.i===s.line.st.length-1)).length,
-              selfCross:LINES.reduce((n,L)=>n+tangles(L,L.st.map(s=>[s.x,s.y])).cross.length,0)}))()""")
+              selfCross:LINES.reduce((n,L)=>n+tangles(L,L.st.map(s=>[s.x,s.y])).cross.length,0),
+              corner:TRACK.reduce((n,L)=>n+L.route.bad,0),curved:curvedNow.length}))()""")
             for k in bad: bad[k] += r[k]
         check("20 random layouts clean", not any(bad.values()), bad)
         await pg.wait_for_timeout(3000)
@@ -47,6 +49,9 @@ async def main():
             aft = await pg.evaluate(f"(()=>{{const s=all.find(x=>x.id==='{sid}');return [s.x,s.y]}})()")
             moved.append(((drop[0]-aft[0])**2 + (drop[1]-aft[1])**2) ** .5)
         check("all stations on grid after drags", await pg.evaluate("all.filter(offGrid).length") == 0)
+        await pg.wait_for_function("!tween&&!settle&&!sdrag", timeout=10000)
+        r = await pg.evaluate("({corner:TRACK.reduce((n,L)=>n+L.route.bad,0),curved:curvedNow.length})")
+        check("no station on a corner after drags (DEC-036)", not r["corner"] and not r["curved"], r)
         check("dragged station stays put (>=75%)", sum(m < 1 for m in moved) >= .75*len(moved), [round(m) for m in moved])
         # 4. the arrangement survives a reload
         await pg.wait_for_function("!tween&&!settle&&!sdrag", timeout=10000)
@@ -64,6 +69,7 @@ async def main():
           const clash=all.filter(o=>o!==E[n-1]&&o!==E[n-2]&&[E[n-1],E[n-2]].some(s=>o.x===s.x&&o.y===s.y)).length;
           return {g1:gap(E[n-3],E[n-2]),g2:gap(E[n-2],E[n-1]),clash,off:all.filter(offGrid).length}})()""")
         check("new stations extend the saved line", 2 <= r["g1"] <= 3 and 2 <= r["g2"] <= 3 and not r["clash"] and not r["off"], r)
+        check("no 'sits on a bend' warnings", not bends, bends[:3])
         check("no JS errors", not errs, errs[:3])
         await b.close()
         raise SystemExit(0 if ok else 1)

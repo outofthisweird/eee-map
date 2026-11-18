@@ -6,7 +6,9 @@
 - vendor/nycta/         NYCTA design system (public output of nycta-gsm, refreshed by tools/sync_nycta.sh):
                         sections 0–1 of nycta.css (typeface + tokens) pasted in at /*__NYCTA__*/,
                         followed by its generated disc glyph-mask block (DEC-035; rules live in src/map.html),
-                        with every woff2 it references (Albert Sans NYCTA, NYCTA Hangul) embedded as a data URI.
+                        with every woff2 it references (Albert Sans NYCTA, NYCTA Hangul) embedded as a data URI;
+                        and nycta-map.js (route map geometry, NYCTAMap.geometry) inlined at /*__NYCTA_MAP__*/,
+                        ahead of the map script that calls it.
 
 Usage: python3 build.py   (writes ./index.html)"""
 import base64, re
@@ -36,8 +38,14 @@ tokens += "\n\n" + nycta[nycta.index(MB):nycta.index(ME) + len(ME)]
 tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (" + \
     (root / "vendor/nycta/SOURCE.txt").read_text(encoding="utf-8").splitlines()[-1].strip() + ") */\n" + tokens
 
-for key in ("__DATA__", "/*__NYCTA__*/"):
+# Route map geometry (nycta DEC-036): the same NYCTAMap.geometry the nycta map draws with. Never edited here; rules
+# change in nycta, then tools/sync_nycta.sh. Its auto-draw only touches .map elements holding a JSON <script> (none here).
+mapjs = (root / "vendor/nycta/nycta-map.js").read_text(encoding="utf-8")
+assert "geometry:" in mapjs and "window.NYCTAMap" in mapjs, "nycta-map.js no longer exports NYCTAMap.geometry: check build.py"
+mapjs = re.sub(r"</(script)", r"<\\/\1", mapjs, flags=re.I)   # inline: a '</script' (even in a comment) would end the tag
+
+for key in ("__DATA__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/"):
     assert src.count(key) == 1, f"src/map.html must contain {key} exactly once"
-out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA__", data)
+out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA__", data).replace("/*__NYCTA_MAP__*/", mapjs)
 (root / "index.html").write_text(out, encoding="utf-8")
 print(f"index.html built ({len(out) // 1024} KB)")

@@ -12,7 +12,8 @@ STATS = """(()=>{let cross=0,folds=0,long=0;LINES.forEach(L=>{const q=L.st.map(s
   cross+=t.cross.length;folds+=t.folds.length;
   for(let i=1;i<q.length;i++)if(Math.hypot(q[i][0]-q[i-1][0],q[i][1]-q[i-1][1])>PULL.maxGap*1.6)long++});
   const split=all.filter(s=>(s.i===0||s.i===s.line.st.length-1)&&s.xfer).length;
-  return {cross,folds,long,offgrid:all.filter(offGrid).length,termXfer:split}})()"""
+  return {cross,folds,long,offgrid:all.filter(offGrid).length,termXfer:split,
+    corner:TRACK.reduce((n,L)=>n+L.route.bad,0),curved:curvedNow.length,nameClash:nameClashes}})()"""
 
 async def main():
     async with async_playwright() as p:
@@ -22,7 +23,7 @@ async def main():
         await pg.goto(URL); await pg.evaluate("localStorage.clear()")
         await pg.goto(URL); await pg.wait_for_timeout(3000)
         random.seed(7)
-        tot = {"cross": 0, "folds": 0, "long": 0, "offgrid": 0, "termXfer": 0}; moved = []; worst = []
+        tot = {"cross": 0, "folds": 0, "long": 0, "offgrid": 0, "termXfer": 0, "corner": 0, "curved": 0, "nameClash": 0}; moved = []; worst = []
         for n in range(N):
             if n % 10 == 0:   # 10번마다 새 랜덤 배치
                 await pg.evaluate(f"(()=>{{sdrag=null;settle=null;tween=null;generate(rng({1000+n}));savePos();build()}})()")

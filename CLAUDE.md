@@ -28,7 +28,7 @@
 python3 build.py                 # src/map.html + data/stations.json → index.html (단일 파일)
 open index.html                  # 브라우저로 바로 열면 됨 (서버 불필요)
 pip install playwright && playwright install chromium   # 또는 ../nycta-gsm/.venv/bin/python 으로 테스트 실행
-python3 tests/smoke_test.py      # 팝업·랜덤 배치·드래그·그리드·저장 회귀 테스트
+python3 tests/smoke_test.py      # 팝업·랜덤 배치·드래그·그리드·저장·모서리 역(DEC-036) 회귀 테스트
 python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬임·늘어난 구간 개수, 수정 전후 비교용)
 ```
 
@@ -39,7 +39,8 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - 미리보기 서체는 Medium 한 가지다. 그래서 `font-weight:700`도 Medium으로 보인다.
   - 앱 브라우저 창용 로컬 서버: `.claude/launch.json`(`eee-map`, 127.0.0.1:8766)
 - **수정:** 항상 `src/map.html`과 `data/stations.json`을 고친다. `index.html`은 빌드 결과물이므로 직접 고치지 않는다.
-- **위치 저장:** 배치는 브라우저 localStorage(`eee-pos-v4`)에 저장된다. 저장 형식을 바꾸면 `POS_KEY` 버전을 올린다.
+- **위치 저장:** 배치는 브라우저 localStorage(`eee-pos-v5`)에 저장된다. 저장 형식을 바꾸면 `POS_KEY` 버전을 올린다.
+  - v5(2026-11-18): 역이 모서리에 오지 않는 배치. v5가 없으면 v4를 한 번 읽어 `fixCorners()`로 모서리 역만 옮긴 뒤 v5로 저장한다. v4는 백업으로 남겨 둔다.
   - 배치 편집(드래그·↻)은 **사용자가 디자인할 때 쓰는 도구**다. 방문자 공유 기능은 지금 필요 없고, 이 브라우저에 상태가 잘 저장되기만 하면 된다.
   - 저장된 배치에 없는 새 역(게시물 추가)은 `extendNew()`가 같은 노선의 저장된 이웃 역에서 진행 방향으로 2~3칸 이어 붙인다.
   - 탭을 닫을 때(`pagehide`) 진행 중이던 정렬 애니메이션의 도착 위치로 저장한다.
@@ -50,9 +51,9 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `src/map.html` | 프로토타입 전체. HTML, CSS, JS(바닐라, 외부 의존성 없음)가 한 파일에 있다. `__DATA__` 자리에 데이터가 들어간다. |
 | `data/stations.json` | 게시물 76개. `{월:[...], 수:[...], 금:[...], 일:[...]}` |
-| `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로)을 끼워 넣어 `index.html`을 만든다. |
-| `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
-| `tools/sync_nycta.sh` | nycta-gsm `web/`에서 CSS·서체만 복사한다. 비공개 원장이나 데이터는 가져오지 않는다. |
+| `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로), `nycta-map.js`를 끼워 넣어 `index.html`을 만든다. |
+| `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, `nycta-map.js`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
+| `tools/sync_nycta.sh` | nycta-gsm `web/`에서 CSS·서체·`js/nycta-map.js`만 복사한다. 비공개 원장이나 데이터는 가져오지 않는다. |
 | `tools/preview_font.sh` | 로컬 헬베티카 미리보기를 만든다(아래 참고). |
 | `index.html` | 빌드 결과. 이 파일 하나로 동작한다. |
 | `tests/smoke_test.py` | Playwright 헤드리스 테스트 |
@@ -98,12 +99,21 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 - **줄 안 원판(범례·환승 버튼)은 DEC-034**(2026-11-18 sync, nycta 02172e1): 크기는 cap × 1 11/16 ÷ 1 3/8(약 14px)이고 20px 최소 크기(DEC-021)는 없앴다. cap 높이 가운데에 맞추고, 줄 간격을 바꾸지 않는다. `nycta.css`의 이 규칙은 `build.py`가 넣지 않으므로 `src/map.html`의 `.disc--inline`에 직접 옮겨 둔다. 원판 규칙이 바뀌면 여기도 손으로 맞춘다.
 - **원판 글자는 구운 윤곽선(nycta DEC-035, 2026-11-18 sync 9c4aa4a)**: 원은 배경, 글자는 같은 상자의 `::after`를 `currentColor`로 칠해 `--disc-mask`(라벨별 SVG 경로)로 오려 낸다. 텍스트로 그리면 Chrome 확대 125%에서 원 안 글자가 최대 지름의 4.3% 밀렸다(환승 R). 윤곽 블록은 `build.py`가 넣고, `.disc`·`::after` 규칙은 `src/map.html`에 있다. **원판에는 `data-line`(라벨 글자)이 있어야 한다**: `disc()`가 붙인다. 윤곽선이 없는 라벨은 텍스트로 나온다. 헬베티카 미리보기는 `preview/helvetica.css`가 자기 윤곽선으로 덮어쓰므로, nycta가 바뀌면 `tools/preview_font.sh`도 다시 돌린다.
 - **[eee] 한글 행간:** (Noto Sans KR 시절 결정. NYCTA Hangul은 윗선이 cap 선에 맞아 nycta는 Grid 1/2 피치를 그대로 쓴다. 이 예외를 없앨지는 미정) 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
-- **노선도 그리기는 nycta DEC-036**(2026-11-18 1단계, nycta 77700de까지): 아티클 = 역, 시리즈 = 노선. 크기는 모두 역 이름 cap(1rem)에서 나온다(`DESIGN.map` 비율 → 로드 때 `line`·`station`·`label`·`train` 값을 채움).
-  - 선 굵기 = pitch − ground(약 21px), pitch = 2 cap, ground = ¼in. 꺾임은 반지름 1 pitch 원호(`pathModel()`/`subD()`).
-  - **역이 기준점**(nycta 77700de): 역 원은 늘 자기 격자점에 있다. 원호는 역 사이의 꺾는 점에서만 생기고, 역 앞에서 휘기 시작하지 않게 줄어든다. 꺾이는 점에 놓인 역은 그 자리에서 바로 꺾인다(바깥 모서리는 round join).
+- **노선도 그리기는 nycta DEC-036**(2026-11-18, nycta b204cd3까지): 아티클 = 역, 시리즈 = 노선. 크기는 모두 역 이름 cap(1rem)에서 나온다(`DESIGN.map` 비율 → 로드 때 `line`·`station`·`label`·`train` 값을 채움).
+  - **계산은 nycta의 공유 함수 `NYCTAMap.geometry`**(`vendor/nycta/nycta-map.js`, `build.py`가 인라인으로 넣음, 코드에서는 `GEO`. 이 파일에서 `G`는 그리드 칸이라 이름을 달리 했다): `GEO.strand`(꺾임 원호·가닥 오프셋·역 위치·`curved`), `GEO.runOn`, `GEO.offset`/`GEO.bundleRadius`, `GEO.pointAt`/`GEO.subPath`(자라나는 애니메이션·열차), `GEO.samples`/`GEO.blocked`(이름 충돌).
+    - **꺾임·선 길이·이름 자리 규칙은 nycta에서만 고친다.** eee-map은 `tools/sync_nycta.sh` → `python3 build.py`로 따라간다. `vendor/nycta/nycta-map.js`를 직접 고치거나 규칙을 `src/map.html`에 옮겨 적지 않는다(옮겨 적다 어긋나서 역이 모서리에 올라가고 안쪽이 네모가 된 적이 있다).
+    - `GEO.version`(지금 1)이 바뀌면 `src/map.html`의 `GEO.*` 호출부를 모두 확인한다. 버전이 다르면 콘솔에 경고가 뜬다.
+  - 선 굵기 = pitch − ground(약 21px), pitch = 2 cap, ground = ¼in. 꺾임 반지름은 가장 안쪽 가닥 1 pitch, 묶음 중심선은 `GEO.bundleRadius`.
+  - **역은 절대 모서리가 아니다**(nycta b204cd3): 역 원은 늘 자기 격자점에 있고, 선은 역을 곧게 지나간다. 꺾임은 역 사이의 빈 점에서만, 늘 정해진 반지름으로 일어난다. 역에서 꺾는 점까지는 곡선 길이(R0 × tan(꺾인 각/2)) 이상 떨어진다.
+    - eee-map의 `ROUTE`(`routePts()`)가 역마다 지나가는 방향(8방향 중 하나)을 동적 계획법으로 정하고, 역 사이를 꺾임 1개(안 되면 2개, 지그재그)로 잇는다. 꺾임은 45°, 또는 직선끼리의 90°만(대각선 V자·135° 없음).
+    - 그래도 모서리가 되는 구간은 `bad`로 세고, `fixCorners()`가 가까운 빈 격자점으로 역을 옮긴다(손으로 놓은 역·끌려오지 않은 환승역은 고정, 이웃 역이나 이웃 두 역을 옮김). 랜덤 배치·v4 이전·새 역 추가·드래그 정리 끝에 돈다. 드래그 스냅과 `gridPlans()`도 모서리가 생기는 자리를 피한다(`SNAP.cornerPenalty`).
+    - 그래도 `GEO.strand`가 곡선 위의 역(`curved`)을 찾으면 화면이 멈췄을 때 콘솔에 `sits on a bend` 경고를 한 번 남긴다(`curvedNow`). 드래그 스트레스 60회에서 1건 남는 정도(고정된 환승역과 손으로 놓은 역 사이에서 노선이 접힌 경우)다.
+    - 예전의 `tidyCorner`(드래그 뒤 역을 직각 모서리로 끌어당기던 동작)는 없앴다. 정렬 가이드(`evenOn`/`cornerOn`)도 역을 가이드 꺾임에서 반 칸 이상 떼어 둔다. 랜덤 배치의 90° 꺾임은 한 칸 간 뒤 역 사이에서 꺾고, 갈래 노선은 환승역을 곧게 지난다.
   - 역은 글자 없는 검은 원(지름 cap × 1 11/16 ÷ 1 3/8 ≈ 14px). 늘 색 선 위에 있어서 다크 모드에서도 테두리가 없다.
   - 종점에서 선이 반 굵기만큼 더 나간다(butt 끝). 노선마다 바탕색 테두리(`.line-case`)가 있어 나중 노선이 앞 노선을 끊고 지나간다(LINES 순서 = 그리는 순서).
-  - 역 이름은 1rem, 가닥에서 ½in 떨어진다. 사방이 막힌 환승역은 대각선 모서리에 이름을 둔다. 열차는 역 아래에 그린다.
+  - 역 이름은 1rem, 가닥에서 ½in 떨어진다. 충돌 검사는 `GEO.samples` + `GEO.blocked`(호 포함 모든 가닥, 먼저 놓인 이름), 상자는 cap 상자(대문자 윗선~기준선), 너비는 실제 글꼴로 잰다(`labelWidth()`, 서체 로드·테마 전환 때 `relabel()`).
+    - 후보 순서는 eee 규칙 그대로: 선을 가로질러(곁가닥은 바깥쪽 먼저) → 네 방향 → 대각선 모서리(사방이 막힌 환승역). [eee] 다 막히면 한 pitch 더 바깥에서 다시 찾고, 그래도 막히면 가장 덜 막힌 자리(`nameClashes`로 셈). 랜덤 배치는 이름이 막히는 배치를 감점한다(`RANDOM.nameClash`), 꺾임이 하나도 없는 긴 노선도 감점한다(`RANDOM.straightLine`).
+  - 열차는 역 아래에 그린다.
   - **시리즈 묶음(2026-11-18 사용자 요청):** 전시 소개(X)와 EFC(F)를 그룹 S로 묶어 한 색 두 가닥으로 그린다. `DESIGN.groups`의 `lines` 순서가 가닥 순서다(첫 가닥이 진행 방향 왼쪽). 가닥 간격 1 pitch, 굽은 곳은 같은 중심의 원호(`offsetLine()`).
     - 역이 가장 많은 시리즈(지금은 X)가 경로를 깐다. 나머지(F)는 i번째 역이 X의 i번째 역 옆에 붙는다(`s.lead`, `syncTwins()`). 그래서 `all`(위치를 직접 가진 역: 배치·드래그·환승 계산)과 `stations`(그려지는 모든 역)가 따로 있고, 배치 코드는 `TRACK`(경로를 까는 노선)만 돈다.
     - F 역을 끌면 옆의 X 역이 움직인다. X 역이 환승역이면 옆 F 역도 그 환승역에 붙는다(흰 원 하나). 역 이름은 가닥 바깥쪽에 먼저 놓는다.
@@ -160,15 +170,18 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `DESIGN` | 그리드, 선, 역, 환승역, 라벨, 열차, 모션, 줌, 노선 색 같은 시각 토큰. CSS 변수와 함께 디자인을 바꾸는 곳이다. |
 | `LINES`, `SRC`, `main` | 노선 정의. 메인 노선은 `'E'`이고, 일요일 데이터는 `b`(X/F)로 둘로 나눈다. |
-| `GEN`, `route()`, `linePolyline()`, `pathModel()`, `subD()` | 역 사이 경로. Mini Metro처럼 직선 한 번과 45° 한 번으로 잇는다. `pathModel()`이 꺾임을 원호로, 끝을 run-on으로 만들고 `subD()`가 그 일부를 SVG로 뽑는다. |
+| `GEO` | `NYCTAMap.geometry`(nycta 공유 계산). 원호·오프셋·run-on·이름 충돌. 직접 고치지 않는다. |
+| `GEN`, `route()` | 랜덤 배치가 쓰는 Mini Metro식 역 사이 경로(직선 한 번 + 45° 한 번). 그려지는 경로가 아니라 배치 검사용이다. |
+| `ROUTE`, `segRoute()`, `routePts()`, `cornersOf()`, `fixCorners()` | 그려지는 경로. 역마다 지나가는 방향을 정하고 역 사이에만 꺾임을 둔다. 모서리 역을 세고 옮긴다. |
 | `RANDOM`, `generate()`, `generateRandom()`, `layoutOnce()` | 배치 생성. 한 번 생성할 때 6개를 만들어 보고 가장 깔끔한 것을 고른다. 역끼리 너무 가깝거나, 자기 교차가 있거나, 종점에 환승역이 생기면 감점한다. |
 | `SNAP`, `gsnap()`, `gridPlans()`, `rightCorner(s)` | 그리드 스냅, 직각 스냅, 겹침 회피, V자 회피 |
-| `geometry()`, `draw()` | 좌표를 바탕으로 환승 그룹, 경로, 라벨 위치, 꺾인 곡선 위의 역 위치(`s.vx/vy`)를 계산하고 SVG를 그린다. |
+| `geometry()`, `draw()` | 좌표를 바탕으로 환승 그룹, 경로(`routePts` → `GEO.runOn` → `GEO.strand`), 역 위치(`s.vx/vy`), 라벨 위치를 계산하고 SVG를 그린다(`GEO.subPath`). |
 | 드래그: `PULL`, `relax()`, `REALIGN`, `planRealign()`, `UNTANGLE`, `planUntangle()`, `startTween()` | 끈 역 고정, 끌려온 역 재배치, 꼬임 해소와 일자 펴기, 트윈 애니메이션, 저장 |
 | 팝업, 카메라 잠금, 성장 애니메이션(`intro`/`replay`), 테마, 그리드 토글 | 화면 상호작용 |
 
 ## 알려진 이슈 · 다음 단계
 
+- **지그재그·머리핀:** 역이 모서리가 될 수 없어서, 예전 배치에서 역이 날카로운 꺾임에 놓여 있던 곳은 역 사이에 작은 지그재그나 머리핀 꺾임이 생길 수 있다(예: 사용자 배치의 E-18~E-21). 그 역을 끌어 다시 놓으면 정리된다.
 - **남는 꼬임:** 무작위로 많이 끌면 꼬인 곳이 가끔 남는다. 이미 역이 빽빽한 곳에서 주로 생긴다. 환승역이 고정돼 생기던 문제(끈 역이 환승역 쪽으로 되돌아가는 현상, 꼬임)는 2026-11-17에 고쳤다. 남은 것은 대부분 사용자가 끈 역 자체에서 노선이 접히는 경우다.
 - **위치 공유:** 각자의 브라우저에만 저장된다. 사용자가 공유는 당분간 필요 없다고 했다. 나중에 사이트로 옮길 때 배치를 JSON으로 확정하는 구조를 검토한다.
 - **미뤄 둔 일(사용자 결정):** 콘텐츠(캐러셀 이미지) 추가 방식은 미정이다. 실제 사이트 전환은 시기상조다. NYC 디자인은 다른 프로젝트에서 준비 중이다.

@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 77700de 2026-11-18 Route map: articles pinned to grid points, curves only between them (DEC-036)
+commit: b204cd3 2026-11-18 Route map: export the geometry core as NYCTAMap.geometry (DEC-036)

@@ -50,7 +50,8 @@
   #map{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none;user-select:none}
   #map.dragging{cursor:grabbing}
   .label{font-size:var(--label-size,13px);font-weight:var(--font-weight);fill:var(--fg);pointer-events:none}
-  .hide-labels .label{display:none}
+  .hide-labels .label:not(.lm){display:none}
+  .lm{visibility:hidden}                         /* the name-width ruler (labelWidth) */
   /* DEC-036: butt ends (the run-on carries the strand past the end station), page-colour casing cuts crossings */
   .line-path,.line-case{fill:none;stroke-linecap:butt;stroke-linejoin:round;transition:opacity .2s}
   .line-case{stroke:var(--bg)}
@@ -173,6 +174,9 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 </aside>
 <nav class="sr" id="srlist" aria-label="역 목록"></nav>
 
+<script>/* nycta-gsm web/js/nycta-map.js (vendor/nycta, inlined by build.py): route map geometry, NYCTAMap.geometry (DEC-036) */
+/*__NYCTA_MAP__*/
+</script>
 <script>
 const DATA = __DATA__;
 // ======================================================================
@@ -186,7 +190,7 @@ const DESIGN = {
   // innermost bend radius = 1 pitch; names ½in clear of the strand; a line ending at a station runs on by half the strand.
   // Similar series run as one bundle of one colour (DESIGN.groups); every other series is its own one-strand bundle.
   map:       { nameRem: 1, pitchCaps: 2, groundIn: .25, stopCaps: 1.6875 / 1.375, radiusPitch: 1, labelGapIn: .5 },
-  line:      { width: 0, casing: 0, cornerRadius: 0, stationRadius: 0, runOn: 0 },   // ← map (px)
+  line:      { width: 0, casing: 0, cornerRadius: 0, runOn: 0 },   // ← map (px). cornerRadius = innermost strand; a bundle's centre line adds ½ pitch per extra strand (G.bundleRadius)
   station:   { dot: 0, hitRadius: 16, hoverScale: 1.4 },                           // dot ← map (radius, px)
   interchange:{ size: 0, stroke: 4 },        // [eee] layout-made interchange (white circle) kept until the transfer decision; size ← strand + 8
   label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, size: 0 },          // ← map
@@ -216,7 +220,7 @@ const DESIGN = {
   const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
     fs=rem*M.nameRem, cap=fs*capEm, inch=cap/1.375, pitch=cap*M.pitchCaps, ground=inch*M.groundIn, Ln=DESIGN.line;
   Object.assign(M,{fs,cap,inch,pitch,ground,lsb:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs});
-  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.stationRadius=0; Ln.runOn=(pitch-ground)/2;   // DEC-036: stations keep their grid points; a station on a corner is turned on directly; a line ending at a station runs on by half the strand
+  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.runOn=(pitch-ground)/2;   // DEC-036: stations keep their grid points and are never corners (ROUTE); a line ending at a station runs on by half the strand
   DESIGN.station.dot=cap*M.stopCaps/2;
   const X=DESIGN.interchange; X.size=Ln.width+8;
   DESIGN.label.size=fs; DESIGN.label.offset=pitch/2+inch*M.labelGapIn; DESIGN.label.offsetAtInterchange=(X.size+X.stroke)/2+inch*M.labelGapIn;
@@ -246,12 +250,16 @@ function rng(seed){let s=seed>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.im
 // stations: every station drawn. all: the stations that hold their own spot (layout, dragging, interchanges) —
 // a station on a group's side strand (s.lead) takes the spot of the route-laying series' station next to it.
 const all=[], stations=[];
+// Route map geometry from nycta (vendor/nycta/nycta-map.js, DEC-036): bends, strand offsets, run-ons, name clearance.
+// Never copy or patch those rules here: change them in nycta, then tools/sync_nycta.sh. A new version = check every GEO.* call.
+const GEO=NYCTAMap.geometry;   // (G is the grid unit in this file)
+if(GEO.version!==1)console.warn(`NYCTAMap.geometry version ${GEO.version} (eee-map was written for 1): check the GEO.* calls in src/map.html`);
 const SRC={E:DATA['수'],R:DATA['월'],M:DATA['금'],X:DATA['일'].filter(s=>s.b==='X'),F:DATA['일'].filter(s=>s.b==='F')};
-LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.offset=0;L.st.forEach((s,i)=>{s.line=L;s.i=i;stations.push(s)})});
+LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.offset=0;L.R0=DESIGN.line.cornerRadius;L.st.forEach((s,i)=>{s.line=L;s.i=i;stations.push(s)})});
 const byLine=Object.fromEntries(LINES.map(L=>[L.key,L])), main=byLine[MAIN];
 for(const gk in DESIGN.groups){
   const ms=DESIGN.groups[gk].lines.map(k=>byLine[k]).filter(Boolean),n=ms.length,lead=ms.reduce((a,b)=>b.st.length>a.st.length?b:a);
-  ms.forEach((L,i)=>{L.group=gk;L.offset=(i-(n-1)/2)*DESIGN.map.pitch;   // strand offset, + = right of travel
+  ms.forEach((L,i)=>{L.group=gk;L.offset=GEO.offset(i,n,DESIGN.map.pitch);L.R0=GEO.bundleRadius(DESIGN.line.cornerRadius,DESIGN.map.pitch,n);   // strand offset (+ = right of travel), centre-line bend radius
     if(L!==lead){L.lead=lead;L.st.forEach(s=>{s.lead=lead.st[s.i]})}});
 }
 stations.forEach(s=>{if(!s.lead)all.push(s)});
@@ -278,7 +286,6 @@ const GEN = {
   minLineGap: 30,              // px: ...and this far from other lines' paths
   alignTol: 18,                // px: used when tidying hand-placed stations
 };
-let samples=[];               // points along every drawn path (grid units), for label placement
 
 // One segment between two stations, Mini Metro style: a straight run and a 45° run joined by one bend.
 // Which run comes first follows the direction the line arrived from, so the line flows on.
@@ -292,16 +299,85 @@ function route(A,B,prevDir){
   if(prevDir){const dS=straight[0]*prevDir[0]+straight[1]*prevDir[1], dD=diagU[0]*prevDir[0]+diagU[1]*prevDir[1]; straightFirst=dS>=dD}
   return straightFirst?{bends:[bendS],out:diagU,first:straight}:{bends:[bendD],out:straight,first:diagU};
 }
-function linePolyline(L){ // stations + bends, with a corner radius per vertex
-  const P=[[L.st[0].x,L.st[0].y]],R=[0],idx=[0]; let prev=null;
-  for(let i=1;i<L.st.length;i++){
-    const A=[L.st[i-1].x,L.st[i-1].y],B=[L.st[i].x,L.st[i].y], r=route(A,B,prev);
-    r.bends.forEach(p=>{P.push(p);R.push(DESIGN.line.cornerRadius)});
-    idx.push(P.length); P.push(B); R.push(DESIGN.line.stationRadius); prev=r.out;
-    L.st[i-1].outDir=r.first; L.st[i].inDir=r.out;
+// ======================================================================
+// ROUTE — where a line bends between its stations (nycta DEC-036: a station is never a corner).
+// Every station gets a through direction (one of the 8): the line enters and leaves it straight and bends only at
+// bare points between stations, at least one curve length (R0 × tan(turn/2)) from each station, so GEO.strand
+// never finds a station on a curve. Turns are 45°, or 90° between straight runs (no diagonal V, no 135°).
+// One bend between two stations when it fits, else two (a jog). A pair that fits neither keeps the plain
+// Mini Metro route and a station there becomes a corner: counted in `bad`, and fixCorners() moves stations off it.
+// ======================================================================
+const ROUTE={margin:.5,   // px: extra room between a station and the start of a curve
+  cost45:1, cost90:1.3, cost2:.6, fallback:50};   // what the route search weighs: a 45° bend, a 90° bend, a second bend, a corner at a station
+const sgn=v=>v>.01?1:v<-.01?-1:0;
+const dirOf=v=>DIRS.findIndex(d=>d[0]===sgn(v[0])&&d[1]===sgn(v[1]));
+const cr2=(a,b)=>a[0]*b[1]-a[1]*b[0];
+const dlen=h=>h%2?Math.SQRT2:1;                                              // px per step along DIRS[h]
+const turnOK=(h1,h2)=>{const d=Math.abs(diff8(h2,h1));return d===1||(d===2&&h1%2===0)};
+const turnCost=(h1,h2)=>Math.abs(diff8(h2,h1))===1?ROUTE.cost45:ROUTE.cost90;
+const curveLen=(h1,h2,R0)=>R0*Math.tan(Math.abs(diff8(h2,h1))*Math.PI/8);   // R0 × tan(turn/2)
+// the directions a stretch A→B may leave or arrive in: its own (when octilinear), or straight / 45° (Mini Metro)
+function segDirs(A,B){const dx=B[0]-A[0],dy=B[1]-A[1],ax=Math.abs(dx),ay=Math.abs(dy);
+  if(ax<.01&&ay<.01)return[];
+  if(ax<.01||ay<.01||Math.abs(ax-ay)<.01)return[dirOf([dx,dy])];
+  return[dirOf(ax>ay?[dx,0]:[0,dy]),dirOf([dx,dy])]}
+// the bends from A (leaving along hA) to B (arriving along hB): {pts, cost}, or null when no octilinear route fits
+function segRoute(A,hA,B,hB,R0){
+  const D=[B[0]-A[0],B[1]-A[1]],M=ROUTE.margin;
+  if(Math.abs(D[0])<.01&&Math.abs(D[1])<.01)return{pts:[],cost:0};
+  const dA=DIRS[hA],dB=DIRS[hB];
+  if(hA===hB&&Math.abs(cr2(D,dA))<.01&&D[0]*dA[0]+D[1]*dA[1]>0)return{pts:[],cost:0};      // straight on
+  if(hA!==hB&&turnOK(hA,hB)){                                                              // one bend
+    const det=cr2(dA,dB),a=cr2(D,dB)/det,b=cr2(dA,D)/det,t=curveLen(hA,hB,R0)+M;
+    if(a*dlen(hA)>=t&&b*dlen(hB)>=t)return{pts:[[A[0]+a*dA[0],A[1]+a*dA[1]]],cost:turnCost(hA,hB)};
   }
-  R[R.length-1]=0; return {P,R,idx};
+  let best=null;                                                                           // two bends
+  for(let hM=0;hM<8;hM++){
+    if(hM===hA||hM===hB||!turnOK(hA,hM)||!turnOK(hM,hB))continue;
+    const dM=DIRS[hM],det=cr2(dM,dB),t1=curveLen(hA,hM,R0),t2=curveLen(hM,hB,R0);
+    // A + a·dA + m·dM + b·dB = B with one free parameter a: m and b are linear in it
+    const m0=cr2(D,dB)/det,m1=-cr2(dA,dB)/det,b0=cr2(dM,D)/det,b1=-cr2(dM,dA)/det;
+    let lo=(t1+M)/dlen(hA),hi=Infinity;
+    const atLeast=(c0,c1,need)=>{if(Math.abs(c1)<1e-9){if(c0<need)lo=Infinity;return}const v=(need-c0)/c1;if(c1>0)lo=Math.max(lo,v);else hi=Math.min(hi,v)};
+    atLeast(m0,m1,(t1+t2+M)/dlen(hM)); atLeast(b0,b1,(t2+M)/dlen(hB));
+    if(!(lo<=hi)||!isFinite(lo))continue;
+    // the middle of the room (or as short as it goes), on a grid step when one fits
+    const Gu=gridU(),mid=hi<Infinity?(lo+hi)/2:lo,g=Math.round(mid/Gu)*Gu,a=g>=lo&&g<=hi?g:mid;
+    const m=m0+m1*a,b=b0+b1*a,cost=turnCost(hA,hM)+turnCost(hM,hB)+ROUTE.cost2+(a*dlen(hA)+m*dlen(hM)+b*dlen(hB))*1e-4;
+    if(!best||cost<best.cost)best={pts:[[A[0]+a*dA[0],A[1]+a*dA[1]],[B[0]-b*dB[0],B[1]-b*dB[1]]],cost};
+  }
+  return best;
 }
+// A line through the stations at P (centre line, px). Picks every station's through direction (dynamic programming
+// over the line) for the fewest and gentlest bends. Returns the centre-line points (stations + bends), each station's
+// index in them, and `bad`: stretches with no corner-free route (their stations are in badAt).
+function routePts(P,R0){
+  const n=P.length;
+  const cand=P.map((p,i)=>{const c=new Set([...(i?segDirs(P[i-1],p):[]),...(i<n-1?segDirs(p,P[i+1]):[])]);return c.size?[...c]:[0]});
+  const dp=[new Map(cand[0].map(h=>[h,{c:0}]))];
+  for(let i=1;i<n;i++){const m=new Map();
+    cand[i].forEach(h=>{let best=null;
+      dp[i-1].forEach((v,h0)=>{const r=segRoute(P[i-1],h0,P[i],h,R0),c=v.c+(r?r.cost:ROUTE.fallback);if(!best||c<best.c)best={c,h0,r}});
+      m.set(h,best)});
+    dp.push(m)}
+  let h=null,cMin=Infinity;dp[n-1].forEach((v,k)=>{if(v.c<cMin){cMin=v.c;h=k}});
+  const segs=[];for(let i=n-1;i>0;i--){const v=dp[i].get(h);segs[i-1]=v.r;h=v.h0}
+  const pts=[],idx=[],badAt=new Set();let bad=0;
+  const push=q=>{const l=pts[pts.length-1];if(!l||Math.abs(l[0]-q[0])>.01||Math.abs(l[1]-q[1])>.01)pts.push(q)};
+  for(let i=0;i<n;i++){push(P[i]);idx.push(pts.length-1);if(i===n-1)break;
+    let r=segs[i];
+    if(!r){r={pts:route(P[i],P[i+1],null).bends};bad++;badAt.add(i);badAt.add(i+1)}   // no way round: a corner at a station
+    r.pts.forEach(push)}
+  // a stretch that doubles straight back (a fold, while a drag is being tidied) gets a small sideways step: GEO.strand
+  // cannot offset a strand through a 180° turn
+  for(let k=1;k<pts.length-1;k++){const a=pts[k-1],v=pts[k],c=pts[k+1],u1=[v[0]-a[0],v[1]-a[1]],u2=[c[0]-v[0],c[1]-v[1]];
+    const l1=Math.hypot(...u1),l2=Math.hypot(...u2);if(Math.abs(cr2(u1,u2))>.01*l1*l2||u1[0]*u2[0]+u1[1]*u2[1]>=0)continue;
+    const w=[v[0]-u1[1]/l1*R0,v[1]+u1[0]/l1*R0];pts.splice(k+1,0,w);idx.forEach((j,i)=>{if(j>k)idx[i]++})}
+  return{pts,idx,bad,badAt};
+}
+// stretches of line L without a corner-free route, with its stations at pos(s). The whole line, not a window round
+// the station: a window's free ends hide what the stations further on demand.
+const cornersOf=(L,pos)=>routePts(L.st.map(pos),L.R0).bad;
 // Pull a point onto the straight or 45° line from `from` when it is nearly there (avoids tiny jogs).
 function align(q,from,tol){
   let dx=q[0]-from[0],dy=q[1]-from[1];const ax=Math.abs(dx),ay=Math.abs(dy);
@@ -313,8 +389,8 @@ function align(q,from,tol){
 const SNAP={
   alignBonus:.45,   // in grid cells: while dragging, a grid point in a straight line with a neighbour wins over
                     // a nearer one by this much (45° lines count 60%; a 90° turn between two diagonals counts nothing)
-  rightCos:.42,     // a turn counts as "nearly a right angle" when |cos| < this (≈ 65°–115°)
-  tidyCorner:28,    // px: after a drag, stations this close to a clean right-angle corner move onto it
+  // (no pull onto right-angle corners any more: a station is never a corner, DEC-036; ROUTE bends between stations)
+  cornerPenalty:1.2,// in grid cells: a spot that leaves its line a station on a corner (cornersOf) loses this much
   straightCos:.85, straightDist:26,  // px: stations this close to the straight line between neighbours go onto it
   minGap:40,        // px: a snap never puts a station closer than this to another station
 };
@@ -342,23 +418,64 @@ function gridPlans(plans){
       for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){if(Math.max(Math.abs(i),Math.abs(j))!==r)continue;
         const c=[base[0]+i*G,base[1]+j*G];if(!free(c))continue;at.set(p.s,c);
         const v=[p.s,st[p.s.i-1],st[p.s.i+1]].filter(vAt).length;                  // avoid spiky diagonal V's
-        const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5;if(!best||sc<best.sc)best={c,sc}}}
+        const k=cornersOf(p.s.line,s=>at.get(s));                                    // ...and stations on corners
+        const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5+k*SNAP.cornerPenalty;if(!best||sc<best.sc)best={c,sc}}}
     const q=best?best.c:base;p.to=q;at.set(p.s,q);taken.set(gkey(q),p.s);groupSpot.set(grp(p.s),q);
   });
   return plans.filter(p=>Math.hypot(p.to[0]-p.from[0],p.to[1]-p.from[1])>.5);
 }
-// The point nearest p where a horizontal/vertical line leaving a and one arriving at c meet at exactly 90°
-// (only right angles between straight runs: two diagonals meeting at 90° make a spiky V, so those are skipped).
+// Stations a line would have to turn on (no room to bend between stations, see ROUTE) move to the nearest free grid
+// point that lets it bend between them instead: the station itself if it may move, else a neighbour, an interchange
+// with its whole group. P: Map station → [x,y] (changed in place); fixed: stations that stay (the one the user put
+// down, interchanges the rope did not pull). Interchanges are read off P (same spot), not off the last geometry().
+function fixCorners(P,fixed=new Set()){
+  const G=gridU(),pos=s=>P.get(s);let moved=0;
+  // self-crossings and folds (turn ≥ 120° at a station), counted here: this runs at boot, before UNTANGLE exists
+  const crossings=q=>{let n=0;for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))n++;
+    for(let i=1;i<q.length-1;i++)if(turnCos(q[i-1],q[i],q[i+1])<-.5)n++;return n};
+  const unitOf=c=>{const o=P.get(c);return all.filter(t=>{const v=P.get(t);return Math.abs(v[0]-o[0])<.5&&Math.abs(v[1]-o[1])<.5})};
+  const score=lines=>lines.reduce((m,M)=>{const q=M.st.map(pos);return[m[0]+routePts(q,M.R0).bad,m[1]+crossings(q)]},[0,0]);
+  for(let pass=0;pass<3;pass++){let any=false;
+    TRACK.forEach(L=>{const st=L.st;
+      [...routePts(st.map(pos),L.R0).badAt].forEach(i=>{
+        if(!cornersOf(L,pos))return;
+        let best=null;
+        [i,i-1,i+1,i-2,i+2].forEach(j=>{const c=st[j];if(!c)return;const unit=unitOf(c);if(unit.some(t=>fixed.has(t)))return;
+          const lines=[...new Set([L,...unit.map(t=>t.line)])],[k0,x0]=score(lines),o=P.get(c);
+          for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){if(!dx&&!dy)continue;const q=[o[0]+dx*G,o[1]+dy*G];
+            let near=false;P.forEach((v,t)=>{if(!unit.includes(t)&&Math.hypot(v[0]-q[0],v[1]-q[1])<SNAP.minGap)near=true});if(near)continue;
+            unit.forEach(t=>P.set(t,q));const [k,x]=score(lines);unit.forEach(t=>P.set(t,o));
+            if(k>=k0||x>x0)continue;
+            const sc=(k-k0)*100+Math.hypot(dx,dy)+(j===i?0:.5)+(unit.length>1?1:0);if(!best||sc<best.sc)best={unit,q,sc}}});
+        // no single move helps (say, a station boxed in between an interchange that stays and a line end): two
+        // neighbouring plain stations move together
+        if(!best)for(let j=i-2;j<=i+1;j++){const c1=st[j],c2=st[j+1];
+          if(!c1||!c2||[c1,c2].some(t=>fixed.has(t)||unitOf(t).length>1))continue;
+          const [k0,x0]=score([L]),o1=P.get(c1),o2=P.get(c2),spots=[];
+          for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)spots.push([dx,dy]);
+          const free=(q,skip)=>{let ok=true;P.forEach((v,t)=>{if(!skip.includes(t)&&Math.hypot(v[0]-q[0],v[1]-q[1])<SNAP.minGap)ok=false});return ok};
+          spots.forEach(([ax,ay])=>{const q1=[o1[0]+ax*G,o1[1]+ay*G];if(!free(q1,[c1,c2]))return;
+            spots.forEach(([bx,by])=>{if(!ax&&!ay||!bx&&!by)return;const q2=[o2[0]+bx*G,o2[1]+by*G];
+              if(Math.hypot(q1[0]-q2[0],q1[1]-q2[1])<SNAP.minGap||!free(q2,[c1,c2]))return;
+              P.set(c1,q1);P.set(c2,q2);const [k,x]=score([L]);P.set(c1,o1);P.set(c2,o2);
+              if(k>=k0||x>x0)return;
+              const sc=(k-k0)*100+Math.hypot(ax,ay)+Math.hypot(bx,by);if(!best||sc<best.sc)best={pair:[[c1,q1],[c2,q2]],sc}})})}
+        if(best){if(best.pair)best.pair.forEach(([t,q])=>P.set(t,q));else best.unit.forEach(t=>P.set(t,best.q));moved++;any=true}
+      })});
+    if(!any)break}
+  return moved;
+}
+const posMap=()=>new Map(all.map(s=>[s,[s.x,s.y]]));
+const applyPos=P=>P.forEach((q,s)=>{s.x=q[0];s.y=q[1]});
+// The points where a horizontal/vertical line leaving a and one arriving at c meet at exactly 90° (only right angles
+// between straight runs: two diagonals meeting at 90° make a spiky V). A guide for realigning pulled stations, which
+// are spread along its legs, never on the corner itself (cornerOn).
 function rightCorners(a,c,minLeg=20){ // every such corner (two straight ones, two 45°-turned ones)
   const out=[],rx=c[0]-a[0],ry=c[1]-a[1];
   for(let h=0;h<8;h+=2)for(const sd of[2,-2]){const d1=U8N[h],d2=U8N[mod8(h+sd)],det=d1[0]*d2[1]-d1[1]*d2[0];
     const t=(rx*d2[1]-ry*d2[0])/det,u=(d1[0]*ry-d1[1]*rx)/det; if(t<minLeg||u<minLeg)continue;
     if(!out.some(o=>Math.abs(o.q[0]-a[0]-t*d1[0])+Math.abs(o.q[1]-a[1]-t*d1[1])<.5))out.push({q:[a[0]+t*d1[0],a[1]+t*d1[1]],t,u,h})}
   return out;
-}
-function rightCorner(a,c,p,minLeg=20){
-  let best=null;rightCorners(a,c,minLeg).forEach(o=>{const d=Math.hypot(o.q[0]-p[0],o.q[1]-p[1]);if(!best||d<best.d)best={...o,d}});
-  return best;
 }
 // Is q clear of every other station (by SNAP.minGap)? `skip` stations don't count.
 const clearOf=(q,skip)=>!all.some(o=>!skip.has(o)&&Math.hypot(o.x-q[0],o.y-q[1])<SNAP.minGap);
@@ -373,13 +490,19 @@ const RANDOM={
   runMin:[2,4], runMax:[4,9],   // straight-run length range is itself random per layout
   turn90P:[.1,.55], longP:[0,.5], maxDrift:[1,3],
   parentMainP:.55,              // a branch joins the main line with this chance, otherwise any line already drawn
+  straightLine:3,               // a line of 8+ stations without a single bend counts as this many conflicts (NYC lines turn at key points)
+  nameClash:1,                  // each station name that touches a line or a name on every side counts as this many
   // a transfer is never a line's first or last station: branches always run through it
 };
 function generateRandom(rand){
   let best=null;
   for(let t=0;t<RANDOM.tries;t++){
     layoutOnce(rand);
+    {const P=posMap();fixCorners(P);applyPos(P)}
     let bad=0;const S=all;
+    TRACK.forEach(L=>{const r=routePts(L.st.map(s=>[s.x,s.y]),L.R0);bad+=r.bad*5;   // stations left on corners
+      if(L.st.length>=8&&r.pts.length===L.st.length)bad+=RANDOM.straightLine});    // a long line with no bend at all
+    geometry();bad+=nameClashes*RANDOM.nameClash;                                   // names with no free side (a cramped curl)
     for(let i=0;i<S.length;i++)for(let j=i+1;j<S.length;j++){const d=Math.hypot(S[i].x-S[j].x,S[i].y-S[j].y);if(d<1){const term=x=>x.i===0||x.i===x.line.st.length-1;if(term(S[i])||term(S[j]))bad+=50;else if(S[i].line===S[j].line||!S[i]._anchor&&!S[j]._anchor)bad+=3}else if(d<50)bad++}
     TRACK.forEach(L=>{const q=L.st.map(s=>[s.x,s.y]);for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))bad+=3});
     if(!best||bad<best.bad)best={bad,pos:all.map(s=>[s.x,s.y])};
@@ -416,12 +539,13 @@ function layoutOnce(rand){
         const sides=[1,-1].filter(sd=>Math.abs(diff8(h+sd*mag,h0))<=C.maxDrift); if(rand()<.5)sides.reverse();
         turnTo=sides.length?mod8(h+sides[0]*mag):null; left=ri(rand,C.runMin,C.runMax); kAx=newK(); last90=mag===2&&turnTo!==null;
       }
-      // every spot is a whole number of grid cells away, so all stations land on the grid.
-      // 45° turn: one cell on along the old heading, the rest along the new one (the bend falls between stations)
+      // every spot is a whole number of grid cells away, so all stations land on the grid. A turn is never at a
+      // station (DEC-036): one cell on along the old heading, then the bend (ROUTE), then the new heading —
+      // k−1 cells after a 45° turn, k after a 90° one (a right angle needs a full cell on both legs)
       const spot=(hNew,k)=>{const a=DIRS[h],b=DIRS[hNew];
         if(hNew===h)return[p[0]+a[0]*k*G,p[1]+a[1]*k*G];
-        if(Math.abs(diff8(hNew,h))===2)return[p[0]+b[0]*k*G,p[1]+b[1]*k*G];   // 90°: a clean right angle right at the station
-        return[p[0]+(a[0]+b[0]*(k-1))*G,p[1]+(a[1]+b[1]*(k-1))*G]};
+        const kb=Math.abs(diff8(hNew,h))===2?k:k-1;
+        return[p[0]+(a[0]+b[0]*kb)*G,p[1]+(a[1]+b[1]*kb)*G]};
       const tries=[];
       if(turnTo!==null)tries.push([turnTo,steps(turnTo)]); tries.push([h,steps(h)]);
       [1,-1,2,-2].forEach(t2=>{if(Math.abs(t2)===2&&h%2)return;const hh=mod8(h+t2);if(Math.abs(diff8(hh,h0))<=C.maxDrift)tries.push([hh,steps(hh)])});
@@ -444,7 +568,8 @@ function layoutOnce(rand){
       const t=1+Math.floor(R()*(L.st.length-2));   // which of its stations is the transfer (never the first or last)
       const X=L.st[t]; X.x=a[0]; X.y=a[1]; A._anchor=X._anchor=true;
       walk(L,L.st.slice(t+1),a,h1,R);
-      walk(L,L.st.slice(0,t).reverse(),a,mod8(h1+4+(R()<.35?(R()<.5?1:-1):0)),R);
+      R();R();   // (the old backward wobble: drawn and ignored, so the rest of the layout keeps its random sequence)
+      walk(L,L.st.slice(0,t).reverse(),a,mod8(h1+4),R);   // straight on through the transfer (never a corner)
       done.push(L);
     });
     return;
@@ -466,45 +591,53 @@ function layoutOnce(rand){
 }
 
 // ---------- saved arrangement (this browser) ----------
-const POS_KEY='eee-pos-v4';   // v3: every station's spot (random layouts survive a reload)
-function loadPos(){let m={};try{m=JSON.parse(localStorage.getItem(POS_KEY)||'{}')||{}}catch(e){}
+const POS_KEY='eee-pos-v5';   // every station's spot (random layouts survive a reload); v5 = no station on a corner (DEC-036)
+const POS_OLD='eee-pos-v4';   // read once and moved off corners (fixCorners), then saved as v5; left in place as a backup
+function loadPos(){let m=null,old=false;
+  try{m=JSON.parse(localStorage.getItem(POS_KEY)||'null');if(!m){m=JSON.parse(localStorage.getItem(POS_OLD)||'null');old=!!m}}catch(e){}
+  m=m||{};const saved=new Set(Object.keys(m));if(!saved.size)return;
   all.forEach(s=>{if(m[s.id]){s.x=m[s.id][0];s.y=m[s.id][1]}});
-  if(Object.keys(m).length)extendNew(new Set(Object.keys(m)));
+  const added=extendNew(saved);
+  // a v4 arrangement may have stations on corners: move them off once. New posts: only they may move.
+  if(old||added){const P=posMap();fixCorners(P,old?new Set():new Set(all.filter(s=>saved.has(s.id))));applyPos(P)}
+  if(old)savePos();
 }
 // New posts (stations missing from the saved arrangement) continue on from their saved neighbours —
 // in the direction the line is already heading, 2 grid cells per station — instead of landing on the default layout.
-function extendNew(saved){
-  const G=gridU(),used=new Set(all.filter(s=>saved.has(s.id)).map(s=>gkey([s.x,s.y])));
+function extendNew(saved){   // → how many stations it placed
+  const G=gridU(),used=new Set(all.filter(s=>saved.has(s.id)).map(s=>gkey([s.x,s.y])));let added=0;
   TRACK.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id)))return;   // a whole new line keeps its default spot
     const place=(i,step)=>{const s=st[i],a=st[i-step],b=st[i-2*step];
       const v=b?[a.x-b.x,a.y-b.y]:[1,0],h=mod8(Math.round(Math.atan2(v[1],v[0])/(Math.PI/4)));
+      // straight on, or one cell on and then turned (the bend between the stations, not at the saved one)
+      const spot=(hh,k)=>{if(hh===h)return[a.x+DIRS[h][0]*k*G,a.y+DIRS[h][1]*k*G];
+        const kb=Math.abs(diff8(hh,h))===2?k:k-1;return[a.x+(DIRS[h][0]+DIRS[hh][0]*kb)*G,a.y+(DIRS[h][1]+DIRS[hh][1]*kb)*G]};
       for(const hh of[h,mod8(h+1),mod8(h-1),mod8(h+2),mod8(h-2)])for(const k of[2,3]){
-        const q=gsnap([a.x+DIRS[hh][0]*k*G,a.y+DIRS[hh][1]*k*G]);if(used.has(gkey(q)))continue;
+        const q=gsnap(spot(hh,k));if(used.has(gkey(q)))continue;
         s.x=q[0];s.y=q[1];used.add(gkey(q));return}
       const q=gsnap([a.x+DIRS[h][0]*2*G,a.y+DIRS[h][1]*2*G]);s.x=q[0];s.y=q[1]};
     for(let i=1;i<st.length;i++)if(!saved.has(st[i].id)&&(saved.has(st[i-1].id)||st[i-1]._ext)){place(i,1);st[i]._ext=true}
     for(let i=st.length-2;i>=0;i--)if(!saved.has(st[i].id)&&!st[i]._ext&&(saved.has(st[i+1].id)||st[i+1]._ext)){place(i,-1);st[i]._ext=true}
-    st.forEach(s=>delete s._ext);
+    st.forEach(s=>{if(s._ext)added++;delete s._ext});
   });
+  return added;
 }
-function savePos(){try{const m={};stations.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
+function savePos(){syncTwins();try{const m={};stations.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
 function clearPos(){try{localStorage.removeItem(POS_KEY)}catch(e){}}
 
 // ---------- geometry from positions: interchanges, paths, labels ----------
 function link(s,T){const g=[T,...(T.xfer||[])];g.forEach(m=>{m.xfer=(m.xfer||[]).filter(x=>x!==s).concat(s)});s.xfer=g;s.owner=T.owner||T}
 const posKey=s=>Math.round(s.x*10)+','+Math.round(s.y*10);
-// A group's side strand: the centre path moved d to the right of travel (mitred at every vertex). Bends stay
-// concentric (DEC-036): the inner strand's radius shrinks by d, the outer one's grows; a station corner stays a direct turn.
-function offsetLine(P,R,d){
-  const n=P.length,u=[],nr=v=>[-v[1],v[0]];   // right of travel on screen (y down)
-  for(let i=1;i<n;i++){const v=[P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]],l=Math.hypot(...v)||1;u.push([v[0]/l,v[1]/l])}
-  const Q=[],R2=[];
-  for(let j=0;j<n;j++){const a=u[j-1]||u[j],b=u[j]||u[j-1];if(!a){Q.push(P[j]);R2.push(0);continue}
-    const na=nr(a),nb=nr(b),k=d/Math.max(.2,1+na[0]*nb[0]+na[1]*nb[1]),cr=a[0]*b[1]-a[1]*b[0];
-    Q.push([P[j][0]+(na[0]+nb[0])*k,P[j][1]+(na[1]+nb[1])*k]);
-    R2.push(R[j]?Math.max(0,R[j]-Math.sign(cr)*d):0)}
-  return {P:Q,R:R2};
-}
+// Stations GEO.strand finds on a curve (a data error in DEC-036; ROUTE and fixCorners keep it from happening).
+// Reported once each in the console when the map is at rest (not mid-drag or mid-tidy, when stations pass corners).
+let curvedNow=[], nameClashes=0; const warnedCurved=new Set();
+function reportCurved(){curvedNow.forEach(k=>{if(warnedCurved.has(k))return;warnedCurved.add(k);
+  console.warn(`map: station ${k} sits on a bend: the line should bend between stations, not at one (nycta DEC-036)`)})}
+// Name widths, measured once per name in the label face (cleared when the fonts or the theme weight change: relabel())
+const labelMeasure=el('text',{class:'label lm','aria-hidden':'true'},$('#map')), labelW=new Map();
+function labelWidth(str){if(!labelW.has(str)){labelMeasure.textContent=str;
+  labelW.set(str,labelMeasure.getComputedTextLength()||[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?1:.585),0)*DESIGN.label.size)}
+  return labelW.get(str)}
 function geometry(){
   syncTwins();
   stations.forEach(s=>{delete s.xfer;delete s.owner});
@@ -513,13 +646,6 @@ function geometry(){
   groups.forEach(g=>{if(g.length<2)return;g.sort((a,b)=>LINES.indexOf(a.line)-LINES.indexOf(b.line));for(let i=1;i<g.length;i++)link(g[i],g[0])});
   // a side-strand station beside an interchange joins it (one white circle covers the bundle)
   stations.forEach(s=>{if(s.lead&&s.lead.xfer)link(s,s.lead.owner||s.lead)});
-  samples=[];
-  LINES.forEach(L=>{
-    let {P,R,idx}=linePolyline(L); if(L.offset)({P,R}=offsetLine(P,R,L.offset));
-    L.P=P; L.R=R; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
-    for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/10));
-      for(let k=0;k<=n;k++)samples.push({x:(a[0]+(b[0]-a[0])*k/n)/U,y:(a[1]+(b[1]-a[1])*k/n)/U})}
-  });
   // for the growth animation: each line grows out of its transfer to the line it hangs off,
   // found by walking out from the main line
   LINES.forEach(L=>{L.parent=null;L.pk=0;L.k=0});
@@ -528,76 +654,62 @@ function geometry(){
      x.line.parent=P;x.line.pk=s.i;x.line.k=x.i;q.push(x.line)}))}}
   // a side strand grows alongside the series it runs beside
   LINES.forEach(L=>{if(L.lead){L.parent=L.lead;L.pk=L.lead.k;L.k=Math.min(L.lead.k,L.st.length-1)}});
-  // the drawn path (arc bends + run-on ends, DEC-036); a station on a corner sits on the middle of its arc
-  LINES.forEach(L=>{L.model=pathModel(L.P,L.R,DESIGN.line.runOn);
-    L.st.forEach((s,i)=>{const k=L.idx[i];[s.vx,s.vy]=L.model.vpos[k];s.len=L.model.vlen[k]})});
+  // The drawn lines (nycta DEC-036, GEO = NYCTAMap.geometry): ROUTE puts the bends between stations, GEO.runOn carries
+  // each end past its last station by half the strand, GEO.strand fillets every bend at full radius (concentric
+  // across a bundle) and shifts a side strand by its offset. A group's other series run along the route its
+  // longest series lays, station for station.
+  TRACK.forEach(L=>{L.route=routePts(L.st.map(s=>[s.x,s.y]),L.R0)});
+  curvedNow=[];
+  const unit=(a,b)=>{const v=[b[0]-a[0],b[1]-a[1]],m=Math.hypot(...v)||1;return[v[0]/m,v[1]/m]};
+  LINES.forEach(L=>{
+    const r=(L.lead||L).route,n=L.st.length,ro=GEO.runOn(r.pts.slice(0,r.idx[n-1]+1),DESIGN.line.runOn,true,true);
+    const P=ro.pts,idx=r.idx.slice(0,n).map(k=>k+ro.shift);
+    L.pts=P; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
+    L.model=GEO.strand(P,L.offset,L.R0);
+    L.st.forEach((s,i)=>{const k=idx[i];[s.vx,s.vy]=L.model.at[k];s.len=L.model.len[k];
+      if(L.model.curved[k])curvedNow.push(`${s.id} (line ${L.key})`);
+      // the direction the line runs through the station (names go across it first)
+      const a=unit(P[k-1]||P[k],P[k]),b=unit(P[k],P[k+1]||P[k]),tx=a[0]+b[0],ty=a[1]+b[1],m=Math.hypot(tx,ty);
+      s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
+  });
   stations.forEach(s=>{if(s.owner){s.vx=s.owner.vx;s.vy=s.owner.vy}});
-  stations.forEach(s=>{const a=s.inDir||s.outDir||[1,0],b=s.outDir||s.inDir||[1,0];let tx=a[0]+b[0],ty=a[1]+b[1];const m=Math.hypot(tx,ty);s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
-  // labels: pick a free side, ½in clear of every strand (DEC-036). Box = advance width × Hangul ink height (≈1.2 cap).
-  const MP=DESIGN.map, fs=DESIGN.label.size, clear=DESIGN.label.offset-1, boxes=[],
-    W=str=>[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?1:.585),0)*fs;
-  const hitsLines=b=>samples.some(s=>{const x=s.x*U,y=s.y*U;return x>b[0]-clear&&x<b[2]+clear&&y>b[1]-clear&&y<b[3]+clear});
-  const overlaps=b=>boxes.some(o=>b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]);
+  // Names (nycta DEC-036 clearance via GEO.samples + GEO.blocked): ½in clear of every stretch of every strand, arcs
+  // included, and of every name placed before. Box = cap box (cap line to baseline). The order the sides are tried in
+  // stays eee's: across the line first (a side strand's outer side first), then the four sides, then the corners.
+  const MP=DESIGN.map, gap=MP.inch*MP.labelGapIn, hw=LW/2, h=MP.cap, boxes=[], B=64, buckets=new Map();
+  LINES.forEach(L=>GEO.samples(L.model,hw,4).forEach(q=>{const k=Math.floor(q[0]/B)+','+Math.floor(q[1]/B);(buckets.get(k)||buckets.set(k,[]).get(k)).push(q)}));
+  const nearBox=b=>{const e=hw+gap,out=[];   // the samples that could touch box b (GEO.blocked checks them)
+    for(let x=Math.floor((b[0]-e)/B);x<=Math.floor((b[2]+e)/B);x++)for(let y=Math.floor((b[1]-e)/B);y<=Math.floor((b[3]+e)/B);y++){const q=buckets.get(x+','+y);if(q)out.push(...q)}
+    return out};
+  nameClashes=0;
   stations.forEach(s=>{
     if(s.owner){s.lab=null;return}
-    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=W(str),h=MP.cap*1.2;
-    const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1],[1,1,1],[-1,1,1],[1,-1,1],[-1,-1,1]]; let best=null;   // [x,y,1]: corner boxes, for interchanges with lines on all four sides
-    if(s.line.offset<0)cands.unshift(cands.splice(1,1)[0]);   // a side strand's name goes on its outer side first
-    for(const n of cands){const off=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset,cx=s.vx+n[0]*off,cy=s.vy+n[1]*off;
+    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=labelWidth(str);
+    const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1],[1,1,1],[-1,1,1],[1,-1,1],[-1,-1,1]]; let best=null,ok=false;   // [x,y,1]: corner boxes, for interchanges with lines on all four sides
+    if(s.line.offset<0)cands.unshift(cands.splice(1,1)[0]);   // [eee] a side strand's name goes on its outer side first
+    // [eee] crowded spots: the same sides once more, one pitch further out; if every one is blocked, the least
+    // blocked (fewest line samples and names it touches, each judged by GEO.blocked)
+    const off0=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset;
+    const tries=[...cands.map(n=>[n,off0]),...cands.slice(2).map(n=>[n,off0+MP.pitch])];
+    for(const [n,off] of tries){const cx=s.vx+n[0]*off,cy=s.vy+n[1]*off;
       const anchor=Math.abs(n[0])>.3?(n[0]>0?'start':'end'):'middle';
       const x0=anchor==='start'?cx:anchor==='end'?cx-w:cx-w/2, y0=n[1]>.3?cy:n[1]<-.3?cy-h:cy-h/2, box=[x0,y0,x0+w,y0+h];
-      const ok=!overlaps(box)&&!hitsLines(box); if(ok||!best)best={anchor,box,cx,cy:y0+(h+MP.cap)/2,n}; if(ok)break}
+      const near=nearBox(box);ok=!GEO.blocked(box,near,boxes,gap);
+      const bad=ok?0:near.filter(q=>GEO.blocked(box,[q],[],gap)).length+boxes.filter(o=>GEO.blocked(box,[],[o],gap)).length*20;
+      if(!best||bad<best.bad)best={anchor,box,cx,cy:y0+h,n,bad}; if(ok)break}
+    if(!ok)nameClashes++;
     boxes.push(best.box); s.lab=best; s.n=best.n;
   });
 }
 
 // ---------- draw ----------
 const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains');
-// A line as straight pieces and circular arcs (DEC-036: every bend is an arc of radius R, shrunk only when the legs are
-// too short). runOn: a line ending at a station carries on past it by half the strand, so the end circle sits inside.
-// Returns the pieces, their total length, and per vertex of P where it is drawn (vpos) and how far along it is (vlen).
-function fillet(a,b,c,r,k1=.5,k2=.5){   // k1/k2: share of each leg the arc may use (1 when the far end is a station)
-  const v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
-  if(!r||l1<1e-6||l2<1e-6)return null;
-  const u1=[v1[0]/l1,v1[1]/l1],u2=[v2[0]/l2,v2[1]/l2],cr=u1[0]*u2[1]-u1[1]*u2[0],th=Math.acos(Math.max(-1,Math.min(1,u1[0]*u2[0]+u1[1]*u2[1])));
-  if(Math.abs(cr)<1e-6||th<1e-3)return null;
-  const tn=Math.tan(th/2),t=Math.min(r*tn,l1*k1,l2*k2),rr=t/tn,sg=cr>0?1:-1;          // sg 1 = clockwise on screen
-  const p1=[b[0]-u1[0]*t,b[1]-u1[1]*t],p2=[b[0]+u2[0]*t,b[1]+u2[1]*t],c0=[p1[0]-sg*u1[1]*rr,p1[1]+sg*u1[0]*rr];
-  return {p1,p2,r:rr,sg,th,c:c0,a0:Math.atan2(p1[1]-c0[1],p1[0]-c0[0]),len:rr*th};
-}
-function pathModel(P,R,runOn){
-  const segs=[],vpos=[],vlen=[];let len=0,cur;
-  const push=s=>{segs.push({...s,s0:len});len+=s.len};
-  const line=(a,b)=>{const l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l>1e-6)push({t:'L',a,b,len:l})};
-  const n=P.length, ext=(p,q)=>{const l=Math.hypot(p[0]-q[0],p[1]-q[1])||1;return[p[0]+(p[0]-q[0])/l*runOn,p[1]+(p[1]-q[1])/l*runOn]};
-  cur=n>1&&runOn?ext(P[0],P[1]):P[0];
-  for(let j=0;j<n;j++){
-    // stations are fixed points (R 0): the arc may run right up to a station, but shares a leg with another bend
-    const f=j>0&&j<n-1?fillet(P[j-1],P[j],P[j+1],R[j],R[j-1]?.5:1,R[j+1]?.5:1):null;
-    if(f){line(cur,f.p1);vlen[j]=len+f.len/2;push({t:'A',...f,b:f.p2});cur=f.p2;
-      const m=f.a0+f.sg*f.th/2;vpos[j]=[f.c[0]+f.r*Math.cos(m),f.c[1]+f.r*Math.sin(m)]}
-    else{line(cur,P[j]);vlen[j]=len;vpos[j]=P[j];cur=P[j]}
-  }
-  if(n>1&&runOn)line(cur,ext(P[n-1],P[n-2]));
-  return {segs,total:len,vpos,vlen};
-}
-function pointOn(s,d){ // point d along piece s
-  if(s.t==='L'){const u=s.len?d/s.len:0;return[s.a[0]+(s.b[0]-s.a[0])*u,s.a[1]+(s.b[1]-s.a[1])*u]}
-  const m=s.a0+s.sg*d/s.r;return[s.c[0]+s.r*Math.cos(m),s.c[1]+s.r*Math.sin(m)];
-}
-// SVG path for the stretch [from,to] of a model, optionally drawn backwards (to → from)
-function subD(M,from,to,back){
-  const parts=[];
-  M.segs.forEach(s=>{const a=Math.max(from,s.s0),b=Math.min(to,s.s0+s.len);if(b-a<1e-6)return;
-    parts.push({s,p:pointOn(s,a-s.s0),q:pointOn(s,b-s.s0)})});
-  if(!parts.length){const p=pointOn(M.segs[0]||{t:'L',a:[0,0],b:[0,0],len:0},0);return `M${p[0]},${p[1]}`}
-  if(back)parts.reverse();
-  const f=v=>Math.round(v*100)/100;
-  let d=`M${f((back?parts[0].q:parts[0].p)[0])},${f((back?parts[0].q:parts[0].p)[1])}`;
-  parts.forEach(({s,p,q})=>{const e=back?p:q;
-    d+=s.t==='L'?` L${f(e[0])},${f(e[1])}`:` A${f(s.r)},${f(s.r)} 0 0 ${(s.sg>0)!==!!back?1:0} ${f(e[0])},${f(e[1])}`});
-  return d;
-}
+const labelAttrs=s=>({x:s.lab.cx-s.vx-(s.lab.anchor==='start'?DESIGN.map.lsb:0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor});   // flush-left: first-letter side bearing pull (DEC-025/033)
+// Names again once the faces are in, or when the theme changes the weight: widths re-measured, nothing else redrawn
+// (the lines keep growing if the intro is still running).
+function relabel(){labelW.clear();geometry();
+  stations.forEach(s=>{if(s.owner||!s.g||!s.lab)return;const t=s.g.querySelector('text.label');if(!t)return;
+    const a=labelAttrs(s);for(const k in a)t.setAttribute(k,a[k])})}
 function draw(){
   [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren());
   // DEC-036: each group gets a page-colour casing drawn just before it, so a later group cuts a gap where it crosses an
@@ -606,7 +718,7 @@ function draw(){
   LINES.forEach(L=>{
     L.subs=[];
     const M=L.model, last=L.st.length-1, cases=[], strokes=[];
-    const mk=(from,to,back,seq)=>{if(to-from<.5)return;const d=subD(M,from,to,back);
+    const mk=(from,to,back,seq)=>{if(to-from<.5)return;const d=GEO.subPath(M,from,to,back);   // nycta path model → SVG
       const c=el('path',{d,class:'line-case','stroke-width':DESIGN.line.casing,'data-line':L.key});
       const p=el('path',{d,class:'line-path',stroke:L.color,'stroke-width':LW,'data-line':L.key});
       cases.push(c);strokes.push(p);p._case=c;p._seq=seq;p._sd=seq.map(s=>back?to-s.len:s.len-from);L.subs.push(p)};
@@ -616,10 +728,9 @@ function draw(){
     if(L.k>0)mk(0,sK,true,L.st.slice(0,L.k+1).reverse());
     const ly=layers.get(L.group||L.key)||layers.set(L.group||L.key,{c:[],s:[]}).get(L.group||L.key);
     ly.c.push(...cases);ly.s.push(...strokes);
-    L.path=el('path',{d:subD(M,0,M.total),fill:'none',stroke:'none'},gL);
   });
   layers.forEach(ly=>[...ly.c,...ly.s].forEach(n=>gL.appendChild(n)));
-  LINES.forEach(L=>L.subs.forEach(p=>p._len=p.getTotalLength()));
+  LINES.forEach(L=>L.subs.forEach(p=>p._len=p.getTotalLength()));   // (dash length = the SVG's own measure)
   stations.forEach(s=>{
     const L=s.line;
     if(s.owner){s.g=s.owner.g;return}
@@ -628,7 +739,7 @@ function draw(){
     el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
     if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
     else el('circle',{class:'dot',r:DESIGN.station.dot},g);
-    if(s.lab){const t=el('text',{class:'label',x:s.lab.cx-s.vx-(s.lab.anchor==='start'?DESIGN.map.lsb:0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor},g);t.textContent=s.label}   // flush-left: first-letter side bearing pull (DEC-025/033)
+    if(s.lab){const t=el('text',{class:'label',...labelAttrs(s)},g);t.textContent=s.label}
     s.g=g;
     g.addEventListener('mouseenter',e=>hover(s,e)); g.addEventListener('mousemove',moveCard);
     g.addEventListener('mouseleave',unhover);
@@ -636,7 +747,7 @@ function draw(){
   });
   stations.forEach(s=>{if(s.owner)s.g=s.owner.g});
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
-  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.path.getTotalLength();L.tpos=L.tpos??Math.random()});
+  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.model.total;L.tpos=L.tpos??Math.random()});
 }
 function build(fresh){ if(fresh){generate();} geometry(); draw(); }
 generate(); loadPos(); geometry(); draw();
@@ -670,7 +781,8 @@ function tangles(L,pos){ // pos: array of [x,y] per station
 }
 function badness(L,pos,fixed){const t=tangles(L,pos);return t.cross.length+t.folds.filter(i=>!fixed[i]).length}
 // Straighten: a station that sits just off the straight line between its neighbours goes onto it,
-// then lines up exactly (straight or 45°) with the previous station. Big deliberate turns are left alone.
+// then lines up exactly (straight or 45°) with the previous station. Big deliberate turns are left alone
+// (and never pulled onto a corner: ROUTE turns them between stations).
 function straightenPos(pos,fixed,L){
   const moved=new Set(), st=L?L.st:[];
   const roomy=(q,i)=>{ // keep clear of other lines' stations and of this line's own (non-neighbour) stations
@@ -682,8 +794,6 @@ function straightenPos(pos,fixed,L){
     if(cos>=SNAP.straightCos&&distToSeg(p,a,c)<=SNAP.straightDist){        // nearly straight: onto the line
       const vx=c[0]-a[0],vy=c[1]-a[1],l=vx*vx+vy*vy||1,u=((p[0]-a[0])*vx+(p[1]-a[1])*vy)/l;
       q=align([a[0]+u*vx,a[1]+u*vy],a,GEN.alignTol);
-    }else if(Math.abs(cos)<SNAP.rightCos){                                // nearly a right angle: make it exact
-      const rc=rightCorner(a,c,p,30); if(rc&&rc.d<=SNAP.tidyCorner)q=rc.q;
     }
     if(q&&Math.hypot(q[0]-p[0],q[1]-p[1])>.5&&roomy(q,i)){pos[i]=q;moved.add(i)}
   }
@@ -742,22 +852,25 @@ function untangleLines(lines,keep){
     L.st.forEach(s=>{if(s.xfer)groupOf(s).forEach(g=>locked.add(g))});
   });
   const plans=[];all.forEach(s=>{const q=P.get(s);if(offGrid(s)||Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
-  if(!plans.length){savePos();return false}
-  startTween(plans); return true;
+  // on the grid, then no station left on a corner (the one the user put down stays; a neighbour moves instead)
+  const F=posMap();gridPlans(plans).forEach(p=>F.set(p.s,p.to));
+  fixCorners(F,new Set([...keep,...all.filter(s=>s.xfer&&!pulled.has(s))]));
+  const final=[];all.forEach(s=>{const q=F.get(s);if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)final.push({s,from:[s.x,s.y],to:q})});
+  if(!final.length){savePos();return false}
+  startTween(final); return true;
 }
 // After a drag: the station the user put down stays where it is. The stations the rope pulled
 // along are laid out neatly again — evenly along a subway-style route to the next station that
 // did not move (or in a straight row, at the end of a line).
 const REALIGN={tailGap:84, minLeg:56, rightBonus:.6};
-function evenOn(P,n){const g=polyLen(P)/(n+1);return[...Array(n)].map((_,k)=>pointAt(P,g*(k+1)))}
-// n stations along a one-corner path, one of them right on the corner; null if the gaps would be too uneven
-function cornerOn(P,n){
-  const l1=Math.hypot(P[1][0]-P[0][0],P[1][1]-P[0][1]),l2=Math.hypot(P[2][0]-P[1][0],P[2][1]-P[1][1]);let best=null;
-  for(let k1=0;k1<n;k1++){const k2=n-1-k1,g1=l1/(k1+1),g2=l2/(k2+1),r=Math.max(g1,g2)/Math.min(g1,g2);if(!best||r<best.r)best={k1,k2,g1,g2,r}}
-  if(!best||best.r>2||Math.min(best.g1,best.g2)<50)return null;
-  const out=[];for(let j=1;j<=best.k1;j++)out.push(pointAt([P[0],P[1]],best.g1*j));out.push(P[1]);
-  for(let j=1;j<=best.k2;j++)out.push(pointAt([P[1],P[2]],best.g2*j));return out;
-}
+// Stations never go on a bend of the guide path (DEC-036), nor within half a cell of one (grid snapping would put them on it).
+const bendKeep=()=>gridU()/2+1;
+// n stations evenly along the guide path P, nudged off its bends
+function evenOn(P,n){const L=polyLen(P),g=L/(n+1),bends=cumDist(P).slice(1,-1),keep=bendKeep();
+  return[...Array(n)].map((_,k)=>{let d=g*(k+1);bends.forEach(b=>{if(Math.abs(d-b)<keep)d=d<b?b-keep:b+keep});return pointAt(P,Math.max(0,Math.min(L,d)))})}
+// n stations along a right-angle path: evenly, as on any guide, the one that would land on the corner nudged off it
+// (the line turns between two stations)
+const cornerOn=(P,n)=>evenOn(P,n);
 function polyLen(P){let l=0;for(let i=1;i<P.length;i++)l+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return l}
 function pointAt(P,d){for(let i=1;i<P.length;i++){const s=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(d<=s||i===P.length-1){const u=s?Math.min(1,d/s):0;return[P[i-1][0]+(P[i][0]-P[i-1][0])*u,P[i-1][1]+(P[i][1]-P[i-1][1])*u]}d-=s}return P[P.length-1]}
 function routeVariants(A,B){ // the two subway-style ways to join A and B: straight first, or 45° first
@@ -799,7 +912,7 @@ function realignRun(st,m,run,anchor,dir,M,A,target){
       const skip=new Set([m,...run,...(anchor?[anchor]:[])]);
       if(anchor){
         // candidates: the two Mini-Metro routes (straight + 45°), and clean right-angle routes
-        // whose corner gets a station of its own. Right angles are slightly preferred.
+        // (the corner between two stations, never on one). Right angles are slightly preferred.
         const back=st[m.i-dir], arr=back?Math.atan2(M[1]-back.y,M[0]-back.x):null;
         const headOf=(P)=>mod8(Math.round(Math.atan2(P[1][1]-P[0][1],P[1][0]-P[0][0])/(Math.PI/4)));
         const cands=routeVariants(M,A).map(P=>({P,pts:evenOn(P,run.length),bias:0}));
@@ -860,11 +973,18 @@ function relax(moving){
 }
 function stationAt(cx,cy){const h=document.elementFromPoint(cx,cy),g=h&&h.closest&&h.closest('.station');if(!g)return null;return stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)}
 function toWorld(cx,cy){return[(cx-view.x)/view.k,(cy-view.y)/view.k]}
+// A new drag while the last one is still being tidied: run the rest of the tidy-up at once (realign, untangle,
+// fixCorners), so no station is left on a corner halfway through it.
+function finishTidy(){
+  let changed=false;
+  if(settle){const mv=settle.moving;settle=null;afterSettle(mv);changed=true}
+  for(let k=0;tween&&k<5;k++){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});const done=tween.done;tween=null;changed=true;if(done)done();else savePos()}
+  return changed;
+}
 function startStationDrag(s,e){
   // finish anything still settling — but only redraw if something actually moved:
   // redrawing on every press swapped the station under the pointer, which swallowed the click (no popup)
-  let changed=false;
-  if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null;changed=true}
+  let changed=finishTidy();
   all.forEach(o=>{if(offGrid(o)){const q=gsnap([o.x,o.y]);o.x=q[0];o.y=q[1];changed=true}});
   settle=null; pulled=new Set(); if(changed){geometry();draw()}
   if(s.lead)s=s.lead;   // a side-strand station moves with the station it runs beside
@@ -900,6 +1020,9 @@ function moveStationDrag(e){
         const ka=kind(a),kc=kind(c);
         if(a&&c&&isDiagV(a,q,c)){sc+=.6;return}                          // two diagonals at 90°: avoid
         [ka,kc].forEach(k=>{if(k===2)sc-=SNAP.alignBonus;else if(k===1)sc-=SNAP.alignBonus*.6})});
+      // a spot where the line would have to turn right at a station (no room to bend between stations) loses
+      const at=new Map(all.map(o=>[o,[o.x,o.y]]));d.moving.forEach(m=>at.set(m,q));
+      d.moving.forEach(m=>{sc+=cornersOf(m.line,o=>at.get(o))*SNAP.cornerPenalty});
       if(!best||sc<best.sc)best={q,sc}}
     if(best){x=best.q[0];y=best.q[1]}else{x=base[0];y=base[1]}
   }
@@ -1056,7 +1179,7 @@ function intro(){
   add(main);LINES.forEach(L=>{if(!L.lead)add(L)});LINES.forEach(add);   // a parent always starts before its children
   order.forEach(L=>{
     let t0=0;const P=L.parent;
-    if(P&&start.has(P)){const c=cumDist(P.P),from=c[P.idx[P.k]],at=c[P.idx[L.pk]],fwd=at>=from,sub=P.subs[fwd||P.subs.length<2?0:1],
+    if(P&&start.has(P)){const from=P.st[P.k].len,at=P.st[L.pk].len,fwd=at>=from,sub=P.subs[fwd||P.subs.length<2?0:1],
       d=dur(P)[fwd||P.subs.length<2?0:1]||0,len=sub?sub._len:1;t0=start.get(P)+d*Math.pow(Math.min(1,Math.abs(at-from)/(len||1)),.9)+120}
     start.set(L,t0);growLine(L,t0);
   });
@@ -1070,12 +1193,12 @@ function frame(t){
     if(mv){const m=relax(mv); if(m>.05){geometry();draw();if(sdrag&&sdrag.snap&&sdrag.snap.g)sdrag.snap.g.classList.add('snap')}
       if(!sdrag&&settle&&(m<=.05||t-settle.t0>PULL.settleMs)){const mv2=settle.moving;settle=null;afterSettle(mv2)}} }
   stepTween(t);
+  if(curvedNow.length&&!tween&&!settle&&!(sdrag&&sdrag.active))reportCurved();
   placePopup();
   if(!reduce) LINES.forEach(L=>{ if(!L.plen)return;
     L.tpos=(L.tpos+dt/(L.plen*DESIGN.train.speed))%2; const p=L.loop?L.tpos%1:(L.tpos<1?L.tpos:2-L.tpos);
-    const a=L.path.getPointAtLength(p*L.plen), b=L.path.getPointAtLength(Math.min(L.plen,p*L.plen+1));
-    const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-    L.train.setAttribute('transform',`translate(${a.x},${a.y}) rotate(${ang})`);
+    const q=GEO.pointAt(L.model,p*L.plen);   // [x, y, direction]
+    L.train.setAttribute('transform',`translate(${q[0]},${q[1]}) rotate(${q[2]*180/Math.PI})`);
   });
   requestAnimationFrame(frame);
 }
@@ -1097,7 +1220,7 @@ try{if(localStorage.getItem('eee-grid')==='1')setGrid(true)}catch(e){}
 $('#gridbtn').onclick=()=>setGrid(!svg.classList.contains('show-grid'));
 // ↻: a fresh random layout (start/end points, transfer stations, turns), saved so it survives a reload
 $('#replay').onclick=()=>{sdrag=null;settle=null;tween=null;if(current)closePanel();generate(Math.random);savePos();replay()};
-function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}}
+function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel()}
 try{if(localStorage.getItem('eee-theme')==='dark')setTheme(true)}catch(e){}
 $('#theme').onclick=e=>{
   const dark=document.documentElement.dataset.theme!=='dark';
@@ -1111,6 +1234,7 @@ $('#theme').onclick=e=>{
 
 // ---------- boot ----------
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
+if(document.fonts){document.fonts.ready.then(relabel);document.fonts.addEventListener('loadingdone',relabel)}
 function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
 fromHash(); addEventListener('hashchange',fromHash);
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
