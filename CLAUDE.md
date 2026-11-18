@@ -54,7 +54,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 | `data/en.json` | 영어 버전 문구. `series`(노선 키 → 범례 이름), `stations`(역 ID → `s` 지도 이름, `t` 팝업 제목). 빠진 역은 한국어로 나오고 `build.py`가 알려 준다. |
 | `build.py` | 데이터와 NYCTA 토큰(+서체 두 개를 data URI로), `nycta-map.js`를 끼워 넣어 `index.html`을 만든다. |
 | `vendor/nycta/` | NYCTA 디자인 시스템의 **공개 결과물**(`nycta.css`, `nycta-map.js`, Albert Sans NYCTA·NYCTA Hangul 서체, 각 OFL 라이선스). `tools/sync_nycta.sh`로 갱신한다. 직접 고치지 않는다. |
-| `tools/sync_nycta.sh` | nycta-gsm `web/`에서 CSS·서체·`js/nycta-map.js`만 복사한다. 비공개 원장이나 데이터는 가져오지 않는다. |
+| `tools/sync_nycta.sh` | 공개 nycta-gsm(publish 결과, 형제 폴더. 먼저 `git pull`)에서 CSS·서체·`js/nycta-map.js`만 복사하고 `vendor/nycta/SOURCE.txt`에 공개 저장소 커밋을 적는다. 없으면 nycta-gsm-src의 `web/`을 쓴다. 비공개 원장이나 데이터는 가져오지 않는다. |
 | `tools/preview_font.sh` | 로컬 헬베티카 미리보기를 만든다(아래 참고). |
 | `index.html` | 빌드 결과. 이 파일 하나로 동작한다. |
 | `tests/smoke_test.py` | Playwright 헤드리스 테스트 |
@@ -109,7 +109,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
   - **[eee] 범례는 Grid 1 안내 판**(GRID-007): 정보 크기(1rem) 다섯 줄을 줄 간격 1⅞in로 1ft 안에 넣는다. 그래서 줄 사이 ⅛in 선은 없앴다(½in 틈에 들어가지 않는다). 한국어에도 `--lh-ko` 대신 Grid 1 피치를 쓴다(NYCTA Hangul 기준, nycta DEC-033). 첫 줄 위·끝 줄 아래 트림은 버튼마다 `text-box`로 한다(범례 상자에 걸면 모든 줄이 잘린다).
   - **[eee] 로고는 'Easy Exhibition / for Everyone' 두 줄만**(2026-11-18 사용자 요청, `EEE` 글자는 일단 뺐다). 방향 판 Grid 2(GRID-006, cap 4¼in ≈ 35px, 줄 간격 5⅝in)로 짠다. 반전 판 띠(½+⅛in)만큼 GRID-006의 아래 여백 1⅝in을 줄여 아래를 내림선 가이드(1in)에 맞춘다. 그래서 높이가 정확히 12in이다. 640px 이하 화면에서는 .compact처럼 한 단계 내려 정보 크기(Grid 1, 1rem)로 쓴다. 예전 로고 글자(EEE 28px, 문구 12px)는 NYCTA 세 크기(TYPE-008) 중 어느 것도 아니었다.
 - **줄 안 원판(범례·환승 버튼)은 DEC-034**(2026-11-18 sync, nycta 02172e1): 크기는 cap × 1 11/16 ÷ 1 3/8(약 14px)이고 20px 최소 크기(DEC-021)는 없앴다. cap 높이 가운데에 맞추고, 줄 간격을 바꾸지 않는다. `nycta.css`의 이 규칙은 `build.py`가 넣지 않으므로 `src/map.html`의 `.disc--inline`에 직접 옮겨 둔다. 원판 규칙이 바뀌면 여기도 손으로 맞춘다.
-- **원판 글자는 구운 윤곽선(nycta DEC-035, 2026-11-18 sync 9c4aa4a)**: 원은 배경, 글자는 같은 상자의 `::after`를 `currentColor`로 칠해 `--disc-mask`(라벨별 SVG 경로)로 오려 낸다. 텍스트로 그리면 Chrome 확대 125%에서 원 안 글자가 최대 지름의 4.3% 밀렸다(환승 R). 윤곽 블록은 `build.py`가 넣고, `.disc`·`::after` 규칙은 `src/map.html`에 있다. **원판에는 `data-line`(라벨 글자)이 있어야 한다**: `disc()`가 붙인다. 윤곽선이 없는 라벨은 텍스트로 나온다. 헬베티카 미리보기는 `preview/helvetica.css`가 자기 윤곽선으로 덮어쓰므로, nycta가 바뀌면 `tools/preview_font.sh`도 다시 돌린다.
+- **원판 글자는 구운 윤곽선(nycta DEC-035, 2026-11-18 sync 9c4aa4a. DEC-037로 윤곽을 굵은 서체에서 뽑음, 공개 0f5c589 sync)**: 원은 배경, 글자는 같은 상자의 `::after`를 `currentColor`로 칠해 `--disc-mask`(라벨별 SVG 경로)로 오려 낸다. 텍스트로 그리면 Chrome 확대 125%에서 원 안 글자가 최대 지름의 4.3% 밀렸다(환승 R). 윤곽 블록은 `build.py`가 넣고, `.disc`·`::after` 규칙은 `src/map.html`에 있다. **원판에는 `data-line`(라벨 글자)이 있어야 한다**: `disc()`가 붙인다. 윤곽선이 없는 라벨은 텍스트로 나온다. 헬베티카 미리보기는 `preview/helvetica.css`가 자기 윤곽선으로 덮어쓰므로, nycta가 바뀌면 `tools/preview_font.sh`도 다시 돌린다.
 - **[eee] 한글 행간:** (Noto Sans KR 시절 결정. NYCTA Hangul은 윗선이 cap 선에 맞아 nycta는 Grid 1/2 피치를 그대로 쓴다. 이 예외를 없앨지는 미정) 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
 - **노선도 그리기는 nycta DEC-036**(2026-11-18, nycta b204cd3까지): 아티클 = 역, 시리즈 = 노선. 크기는 모두 역 이름 cap(1rem)에서 나온다(`DESIGN.map` 비율 → 로드 때 `line`·`station`·`label`·`train` 값을 채움).
   - **계산은 nycta의 공유 함수 `NYCTAMap.geometry`**(`vendor/nycta/nycta-map.js`, `build.py`가 인라인으로 넣음, 코드에서는 `GEO`. 이 파일에서 `G`는 그리드 칸이라 이름을 달리 했다): `GEO.strand`(꺾임 원호·가닥 오프셋·역 위치·`curved`), `GEO.runOn`, `GEO.offset`/`GEO.bundleRadius`, `GEO.pointAt`/`GEO.subPath`(자라나는 애니메이션·열차), `GEO.samples`/`GEO.blocked`(이름 충돌).
