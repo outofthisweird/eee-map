@@ -98,7 +98,12 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 - **줄 안 원판(범례·환승 버튼)은 DEC-034**(2026-11-18 sync, nycta 02172e1): 크기는 cap × 1 11/16 ÷ 1 3/8(약 14px)이고 20px 최소 크기(DEC-021)는 없앴다. cap 높이 가운데에 맞추고, 줄 간격을 바꾸지 않는다. `nycta.css`의 이 규칙은 `build.py`가 넣지 않으므로 `src/map.html`의 `.disc--inline`에 직접 옮겨 둔다. 원판 규칙이 바뀌면 여기도 손으로 맞춘다.
 - **원판 글자는 구운 윤곽선(nycta DEC-035, 2026-11-18 sync 9c4aa4a)**: 원은 배경, 글자는 같은 상자의 `::after`를 `currentColor`로 칠해 `--disc-mask`(라벨별 SVG 경로)로 오려 낸다. 텍스트로 그리면 Chrome 확대 125%에서 원 안 글자가 최대 지름의 4.3% 밀렸다(환승 R). 윤곽 블록은 `build.py`가 넣고, `.disc`·`::after` 규칙은 `src/map.html`에 있다. **원판에는 `data-line`(라벨 글자)이 있어야 한다**: `disc()`가 붙인다. 윤곽선이 없는 라벨은 텍스트로 나온다. 헬베티카 미리보기는 `preview/helvetica.css`가 자기 윤곽선으로 덮어쓰므로, nycta가 바뀌면 `tools/preview_font.sh`도 다시 돌린다.
 - **[eee] 한글 행간:** (Noto Sans KR 시절 결정. NYCTA Hangul은 윗선이 cap 선에 맞아 nycta는 Grid 1/2 피치를 그대로 쓴다. 이 예외를 없앨지는 미정) 한글은 cap 위·기준선 아래로 튀어나와 Grid 1(줄 높이 0.95)에서는 줄이 겹친다. 그래서 한글 문구는 줄 높이 1.4(`--lh-ko`)와 블록 간격 1⅜in(`--gap-ko`)을 쓴다. nycta 원장에는 아직 올리지 않았다.
-- 노선 굵기, 역 점, 환승역, 그리드 같은 노선도 기하는 매뉴얼에 근거가 없어 그대로 두었다. 열차 모서리만 직각(`DESIGN.train.radius: 0`)으로 바꿨다.
+- **노선도 그리기는 nycta DEC-036**(2026-11-18 1단계, nycta a758bb6): 아티클 = 역, 시리즈 = 노선. 크기는 모두 역 이름 cap(1rem)에서 나온다(`DESIGN.map` 비율 → 로드 때 `line`·`station`·`label`·`train` 값을 채움).
+  - 선 굵기 = pitch − ground(약 21px), pitch = 2 cap, ground = ¼in. 꺾임은 반지름 1 pitch 원호(`pathModel()`/`subD()`).
+  - 역은 글자 없는 검은 원(지름 cap × 1 11/16 ÷ 1 3/8 ≈ 14px). 다크 모드에서는 흰 1px 테두리.
+  - 종점에서 선이 반 굵기만큼 더 나간다(butt 끝). 노선마다 바탕색 테두리(`.line-case`)가 있어 나중 노선이 앞 노선을 끊고 지나간다(LINES 순서 = 그리는 순서).
+  - 역 이름은 1rem, 가닥에서 ½in 떨어진다. 사방이 막힌 환승역은 대각선 모서리에 이름을 둔다. 열차는 역 아래에 그린다.
+  - **아직 안 한 것:** 비슷한 시리즈 묶음(group, 같은 색 가닥이 나란히)은 시리즈를 정하지 않아 각 시리즈가 혼자 있는 그룹이다. 환승역은 DEC-036 정의(같은 아티클이 두 그룹에 속함)와 달리 배치가 만든 것이라 `[eee]` 흰 원을 임시로 유지한다(결정 대기). 그리드 칸은 36px 그대로(DEC-036은 2 pitch ≈ 46px, 화면 보고 결정).
 
 **디자인 방향**
 - 레퍼런스는 **NYCTA Graphics Standards Manual (1970, Vignelli/Noorda)**, 헬베티카 계열 서체다. 반응형 그래픽은 게임 **Mini Metro** 느낌으로, UI는 미니멀하게 간다.
@@ -108,7 +113,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 
 **노선과 배치**
 - 노선은 게시물이 쌓일 때마다 계속 연장한다.
-- 역 모양은 노선 선 안에 찍힌 검은 점이다. 환승역은 흰 원에 검은 테두리다.
+- 역 모양은 검은 원이다(DEC-036). 환승역은 흰 원에 검은 테두리다(임시, 위 DEC-036 참고).
 - 노선 시작과 끝에 표시(불릿 등)를 붙이지 않는다.
 - 꺾임 규칙은 다음과 같다.
   - 꺾이는 각도는 직선, 45°, 90°뿐이다(octilinear).
@@ -150,7 +155,7 @@ python3 tests/drag_stress.py 60  # 환승역 근처 드래그 스트레스(꼬�
 |---|---|
 | `DESIGN` | 그리드, 선, 역, 환승역, 라벨, 열차, 모션, 줌, 노선 색 같은 시각 토큰. CSS 변수와 함께 디자인을 바꾸는 곳이다. |
 | `LINES`, `SRC`, `main` | 노선 정의. 메인 노선은 `'E'`이고, 일요일 데이터는 `b`(X/F)로 둘로 나눈다. |
-| `GEN`, `route()`, `linePolyline()` | 역 사이 경로. Mini Metro처럼 직선 한 번과 45° 한 번으로 잇고, 꺾인 모서리는 둥글게(`cornerRadius`) 처리한다. |
+| `GEN`, `route()`, `linePolyline()`, `pathModel()`, `subD()` | 역 사이 경로. Mini Metro처럼 직선 한 번과 45° 한 번으로 잇는다. `pathModel()`이 꺾임을 원호로, 끝을 run-on으로 만들고 `subD()`가 그 일부를 SVG로 뽑는다. |
 | `RANDOM`, `generate()`, `generateRandom()`, `layoutOnce()` | 배치 생성. 한 번 생성할 때 6개를 만들어 보고 가장 깔끔한 것을 고른다. 역끼리 너무 가깝거나, 자기 교차가 있거나, 종점에 환승역이 생기면 감점한다. |
 | `SNAP`, `gsnap()`, `gridPlans()`, `rightCorner(s)` | 그리드 스냅, 직각 스냅, 겹침 회피, V자 회피 |
 | `geometry()`, `draw()` | 좌표를 바탕으로 환승 그룹, 경로, 라벨 위치, 꺾인 곡선 위의 역 위치(`s.vx/vy`)를 계산하고 SVG를 그린다. |

@@ -51,13 +51,16 @@
   #map.dragging{cursor:grabbing}
   .label{font-size:var(--label-size,13px);font-weight:var(--font-weight);fill:var(--fg);pointer-events:none}
   .hide-labels .label{display:none}
-  .line-path{fill:none;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
+  /* DEC-036: butt ends (the run-on carries the strand past the end station), page-colour casing cuts crossings */
+  .line-path,.line-case{fill:none;stroke-linecap:butt;stroke-linejoin:round;transition:opacity .2s}
+  .line-case{stroke:var(--bg)}
   .station{cursor:grab}
   .station:focus{outline:none}
   .station:focus-visible .dot{outline:1px solid var(--fg);outline-offset:4px}
   .station .hit{fill:transparent}
-  .dot{fill:var(--fg)}
-  .xdot{fill:var(--bg);stroke:var(--fg)}
+  .dot{fill:var(--c-black)}                                      /* DEC-036 station = plain black circle, no letter */
+  [data-theme=dark] .dot:not(.xdot){stroke:var(--c-white);stroke-width:1px}  /* DEC-019 black disc on dark ground gets a white ring */
+  .xdot{fill:var(--bg);stroke:var(--fg)}  /* [eee] layout-made interchange, kept until the transfer decision */
   .train{fill:var(--bg)}
   .dim{opacity:.18}
   .station .dot{transition:transform .15s;transform-box:fill-box;transform-origin:center}
@@ -153,7 +156,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 </head>
 <body>
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
-<svg id="map" role="img" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="stations"></g><g id="bullets"></g><g id="trains"></g></g></svg>
+<svg id="map" role="img" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="trains"></g><g id="stations"></g><g id="bullets"></g></g></svg>
 
 <div id="logo" class="rplate" lang="en"><b>EEE</b><span>Easy Exhibition<br>for Everyone</span></div>
 <div id="legend" class="rplate" aria-label="노선 범례"></div>
@@ -179,13 +182,16 @@ const DATA = __DATA__;
 // ======================================================================
 const DESIGN = {
   grid:      { unit: 36, step: 2 },          // px per grid cell: every station sits on this invisible grid (toggle ▦ to see it)
-  line:      { width: 10, cornerRadius: 30, stationRadius: 10 },   // bend corners / corners that fall on a station
-  station:   { dot: 3.6, hitRadius: 16, hoverScale: 1.7 },
-  interchange:{ size: 22, stroke: 4 },
-  newest:    { ring: 1.15 },                 // ring radius = line width × this (static, no pulse)
-  label:     { offset: 20, offsetAtInterchange: 26, maxChars: 8, size: 13 },
-  bullet:    { radius: 15, fontSize: 15, gapAtEnd: 44, gapAtSeriesChange: 36 },
-  train:     { w: 18, h: 10, stroke: 3, radius: 0, speed: 45 },   // speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
+  // nycta DEC-036 route map: every size below follows the station-name cap (Information tier, 1rem); filled in from these
+  // ratios after the CSS tokens load. pitch = 2 cap; strand = pitch − ground; ground = ¼in; station D = cap × 1 11/16 ÷ 1 3/8;
+  // innermost bend radius = 1 pitch; names ½in clear of the strand; a line ending at a station runs on by half the strand.
+  // Each series is its own one-strand bundle for now (no similar-series groups yet).
+  map:       { nameRem: 1, pitchCaps: 2, groundIn: .25, stopCaps: 1.6875 / 1.375, radiusPitch: 1, labelGapIn: .5 },
+  line:      { width: 0, casing: 0, cornerRadius: 0, stationRadius: 0, runOn: 0 },   // ← map (px)
+  station:   { dot: 0, hitRadius: 16, hoverScale: 1.4 },                           // dot ← map (radius, px)
+  interchange:{ size: 0, stroke: 4 },        // [eee] layout-made interchange (white circle) kept until the transfer decision; size ← strand + 8
+  label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, size: 0 },          // ← map
+  train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
   motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
@@ -200,7 +206,16 @@ const DESIGN = {
 };
 {const cs=getComputedStyle(document.documentElement);
   for(const k in DESIGN.lines){const d=DESIGN.lines[k];d.color=cs.getPropertyValue(d.token).trim()||'#000';
-    d.textOn=cs.getPropertyValue(d.token==='--c-yellow'?'--c-black':'--c-white').trim()||'#fff'}}
+    d.textOn=cs.getPropertyValue(d.token==='--c-yellow'?'--c-black':'--c-white').trim()||'#fff'}
+  // DEC-036 sizes (same formulas as nycta.css .map): cap = name size × cap-em, 1in = cap ÷ 1 3/8 (DEC-002)
+  const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
+    fs=rem*M.nameRem, cap=fs*capEm, inch=cap/1.375, pitch=cap*M.pitchCaps, ground=inch*M.groundIn, Ln=DESIGN.line;
+  Object.assign(M,{fs,cap,inch,pitch,ground,lsb:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs});
+  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=Ln.stationRadius=pitch*M.radiusPitch; Ln.runOn=(pitch-ground)/2;
+  DESIGN.station.dot=cap*M.stopCaps/2;
+  const X=DESIGN.interchange; X.size=Ln.width+8;
+  DESIGN.label.size=fs; DESIGN.label.offset=pitch/2+inch*M.labelGapIn; DESIGN.label.offsetAtInterchange=(X.size+X.stroke)/2+inch*M.labelGapIn;
+  Object.assign(DESIGN.train,{h:Ln.width,w:Ln.width*1.8,stroke:Ln.width*.3})}
 // line disc (nycta DISC-001/004), used in the legend and the popup
 const disc=(L,c,cls='disc disc--inline')=>`<span class="${cls}" data-line="${c}" style="--line:${L.color};--on:${L.textOn}"><span>${c}</span></span>`;   // data-line picks the baked glyph (DEC-035)
 const U = DESIGN.grid.unit, STEP = DESIGN.grid.step, LW = DESIGN.line.width;
@@ -480,54 +495,91 @@ function geometry(){
   {const seen=new Set([main]),q=[main];
    while(q.length){const P=q.shift();P.st.forEach(s=>(s.xfer||[]).forEach(x=>{if(seen.has(x.line))return;seen.add(x.line);
      x.line.parent=P;x.line.pk=s.i;x.line.k=x.i;q.push(x.line)}))}}
-  // where a station sits on a corner, the line curves past it: draw the station on the curve
-  LINES.forEach(L=>{L.st.forEach((s,i)=>{const k=L.idx[i];s.vx=s.x;s.vy=s.y;if(k<=0||k>=L.P.length-1||!L.R[k])return;
-    const a=L.P[k-1],b=L.P[k],c=L.P[k+1],v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
-    if(!l1||!l2||Math.abs(v1[0]*v2[1]-v1[1]*v2[0])<1e-6)return; const rr=Math.min(L.R[k],l1/2,l2/2);
-    const p1=[b[0]-v1[0]/l1*rr,b[1]-v1[1]/l1*rr],p2=[b[0]+v2[0]/l2*rr,b[1]+v2[1]/l2*rr];
-    s.vx=.25*p1[0]+.5*b[0]+.25*p2[0];s.vy=.25*p1[1]+.5*b[1]+.25*p2[1]})});
+  // the drawn path (arc bends + run-on ends, DEC-036); a station on a corner sits on the middle of its arc
+  LINES.forEach(L=>{L.model=pathModel(L.P,L.R,DESIGN.line.runOn);
+    L.st.forEach((s,i)=>{const k=L.idx[i];[s.vx,s.vy]=L.model.vpos[k];s.len=L.model.vlen[k]})});
   all.forEach(s=>{if(s.owner){s.vx=s.owner.vx;s.vy=s.owner.vy}});
   all.forEach(s=>{const a=s.inDir||s.outDir||[1,0],b=s.outDir||s.inDir||[1,0];let tx=a[0]+b[0],ty=a[1]+b[1];const m=Math.hypot(tx,ty);s.tan=m>.01?[tx/m,ty/m]:[-a[1],a[0]]});
-  // labels: pick a free side
-  const boxes=[], W=str=>[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?13:7.6),0);
-  const hitsLines=b=>samples.some(s=>{const x=s.x*U,y=s.y*U;return x>b[0]-6&&x<b[2]+6&&y>b[1]-6&&y<b[3]+6});
+  // labels: pick a free side, ½in clear of every strand (DEC-036). Box = advance width × Hangul ink height (≈1.2 cap).
+  const MP=DESIGN.map, fs=DESIGN.label.size, clear=DESIGN.label.offset-1, boxes=[],
+    W=str=>[...str].reduce((w,c)=>w+(/[ㄱ-힝]/.test(c)?1:.585),0)*fs;
+  const hitsLines=b=>samples.some(s=>{const x=s.x*U,y=s.y*U;return x>b[0]-clear&&x<b[2]+clear&&y>b[1]-clear&&y<b[3]+clear});
   const overlaps=b=>boxes.some(o=>b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]);
   all.forEach(s=>{
     if(s.owner){s.lab=null;return}
-    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=W(str),h=15;
-    const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1]]; let best=null;
+    const mc=DESIGN.label.maxChars,str=s.s.length>mc?s.s.replace('…','').slice(0,mc-1)+'…':s.s; s.label=str; const w=W(str),h=MP.cap*1.2;
+    const cands=[[-s.tan[1],s.tan[0]],[s.tan[1],-s.tan[0]],[1,0],[-1,0],[0,-1],[0,1],[1,1,1],[-1,1,1],[1,-1,1],[-1,-1,1]]; let best=null;   // [x,y,1]: corner boxes, for interchanges with lines on all four sides
     for(const n of cands){const off=s.xfer?DESIGN.label.offsetAtInterchange:DESIGN.label.offset,cx=s.x+n[0]*off,cy=s.y+n[1]*off;
       const anchor=Math.abs(n[0])>.3?(n[0]>0?'start':'end'):'middle';
-      const x0=anchor==='start'?cx:anchor==='end'?cx-w:cx-w/2, y0=cy-h/2+(n[1]>.3?6:n[1]<-.3?-6:0), box=[x0,y0,x0+w,y0+h];
-      const ok=!overlaps(box)&&!hitsLines(box); if(ok||!best)best={anchor,box,cx,cy:y0+h-3,n}; if(ok)break}
+      const x0=anchor==='start'?cx:anchor==='end'?cx-w:cx-w/2, y0=n[1]>.3?cy:n[1]<-.3?cy-h:cy-h/2, box=[x0,y0,x0+w,y0+h];
+      const ok=!overlaps(box)&&!hitsLines(box); if(ok||!best)best={anchor,box,cx,cy:y0+(h+MP.cap)/2,n}; if(ok)break}
     boxes.push(best.box); s.lab=best; s.n=best.n;
   });
 }
 
 // ---------- draw ----------
 const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains');
-function roundedPath(P,R){ // R: corner radius per vertex
-  if(P.length<2)return `M${P[0][0]},${P[0][1]}`;
-  let d=`M${P[0][0]},${P[0][1]}`;
-  for(let i=1;i<P.length-1;i++){const [a,b,c]=[P[i-1],P[i],P[i+1]];
-    const v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
-    const r=R?R[i]:DESIGN.line.cornerRadius;
-    if(l1<1e-6||l2<1e-6||Math.abs(v1[0]*v2[1]-v1[1]*v2[0])<1e-6||!r){d+=` L${b[0]},${b[1]}`;continue}
-    const rr=Math.min(r,l1/2,l2/2),p1=[b[0]-v1[0]/l1*rr,b[1]-v1[1]/l1*rr],p2=[b[0]+v2[0]/l2*rr,b[1]+v2[1]/l2*rr];
-    d+=` L${p1[0]},${p1[1]} Q${b[0]},${b[1]} ${p2[0]},${p2[1]}`}
-  const z=P[P.length-1];return d+` L${z[0]},${z[1]}`;
+// A line as straight pieces and circular arcs (DEC-036: every bend is an arc of radius R, shrunk only when the legs are
+// too short). runOn: a line ending at a station carries on past it by half the strand, so the end circle sits inside.
+// Returns the pieces, their total length, and per vertex of P where it is drawn (vpos) and how far along it is (vlen).
+function fillet(a,b,c,r){
+  const v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
+  if(!r||l1<1e-6||l2<1e-6)return null;
+  const u1=[v1[0]/l1,v1[1]/l1],u2=[v2[0]/l2,v2[1]/l2],cr=u1[0]*u2[1]-u1[1]*u2[0],th=Math.acos(Math.max(-1,Math.min(1,u1[0]*u2[0]+u1[1]*u2[1])));
+  if(Math.abs(cr)<1e-6||th<1e-3)return null;
+  const tn=Math.tan(th/2),t=Math.min(r*tn,l1/2,l2/2),rr=t/tn,sg=cr>0?1:-1;          // sg 1 = clockwise on screen
+  const p1=[b[0]-u1[0]*t,b[1]-u1[1]*t],p2=[b[0]+u2[0]*t,b[1]+u2[1]*t],c0=[p1[0]-sg*u1[1]*rr,p1[1]+sg*u1[0]*rr];
+  return {p1,p2,r:rr,sg,th,c:c0,a0:Math.atan2(p1[1]-c0[1],p1[0]-c0[0]),len:rr*th};
+}
+function pathModel(P,R,runOn){
+  const segs=[],vpos=[],vlen=[];let len=0,cur;
+  const push=s=>{segs.push({...s,s0:len});len+=s.len};
+  const line=(a,b)=>{const l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l>1e-6)push({t:'L',a,b,len:l})};
+  const n=P.length, ext=(p,q)=>{const l=Math.hypot(p[0]-q[0],p[1]-q[1])||1;return[p[0]+(p[0]-q[0])/l*runOn,p[1]+(p[1]-q[1])/l*runOn]};
+  cur=n>1&&runOn?ext(P[0],P[1]):P[0];
+  for(let j=0;j<n;j++){
+    const f=j>0&&j<n-1?fillet(P[j-1],P[j],P[j+1],R[j]):null;
+    if(f){line(cur,f.p1);vlen[j]=len+f.len/2;push({t:'A',...f,b:f.p2});cur=f.p2;
+      const m=f.a0+f.sg*f.th/2;vpos[j]=[f.c[0]+f.r*Math.cos(m),f.c[1]+f.r*Math.sin(m)]}
+    else{line(cur,P[j]);vlen[j]=len;vpos[j]=P[j];cur=P[j]}
+  }
+  if(n>1&&runOn)line(cur,ext(P[n-1],P[n-2]));
+  return {segs,total:len,vpos,vlen};
+}
+function pointOn(s,d){ // point d along piece s
+  if(s.t==='L'){const u=s.len?d/s.len:0;return[s.a[0]+(s.b[0]-s.a[0])*u,s.a[1]+(s.b[1]-s.a[1])*u]}
+  const m=s.a0+s.sg*d/s.r;return[s.c[0]+s.r*Math.cos(m),s.c[1]+s.r*Math.sin(m)];
+}
+// SVG path for the stretch [from,to] of a model, optionally drawn backwards (to → from)
+function subD(M,from,to,back){
+  const parts=[];
+  M.segs.forEach(s=>{const a=Math.max(from,s.s0),b=Math.min(to,s.s0+s.len);if(b-a<1e-6)return;
+    parts.push({s,p:pointOn(s,a-s.s0),q:pointOn(s,b-s.s0)})});
+  if(!parts.length){const p=pointOn(M.segs[0]||{t:'L',a:[0,0],b:[0,0],len:0},0);return `M${p[0]},${p[1]}`}
+  if(back)parts.reverse();
+  const f=v=>Math.round(v*100)/100;
+  let d=`M${f((back?parts[0].q:parts[0].p)[0])},${f((back?parts[0].q:parts[0].p)[1])}`;
+  parts.forEach(({s,p,q})=>{const e=back?p:q;
+    d+=s.t==='L'?` L${f(e[0])},${f(e[1])}`:` A${f(s.r)},${f(s.r)} 0 0 ${(s.sg>0)!==!!back?1:0} ${f(e[0])},${f(e[1])}`});
+  return d;
 }
 function draw(){
   [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren());
+  // DEC-036: each line gets a page-colour casing drawn just before it, so a later line cuts a gap where it crosses an earlier one
   LINES.forEach(L=>{
     L.subs=[];
-    const mk=(P,R,seq,si)=>{if(P.length<2)return;const p=el('path',{d:roundedPath(P,R),class:'line-path',stroke:L.color,'stroke-width':LW,'data-line':L.key},gL);
-      p._len=p.getTotalLength();p._P=P;p._seq=seq;p._si=si;L.subs.push(p)};
-    const ki=L.idx[L.k];
+    const M=L.model, last=L.st.length-1, cases=[], strokes=[];
+    const mk=(from,to,back,seq)=>{if(to-from<.5)return;const d=subD(M,from,to,back);
+      const c=el('path',{d,class:'line-case','stroke-width':DESIGN.line.casing,'data-line':L.key});
+      const p=el('path',{d,class:'line-path',stroke:L.color,'stroke-width':LW,'data-line':L.key});
+      cases.push(c);strokes.push(p);p._case=c;p._seq=seq;p._sd=seq.map(s=>back?to-s.len:s.len-from);L.subs.push(p)};
     // split at the interchange with the main line so the line can grow out of it in both directions
-    mk(L.P.slice(ki),L.R.slice(ki),L.st.slice(L.k),L.idx.slice(L.k).map(x=>x-ki));
-    if(L.k>0){const P=L.P.slice(0,ki+1).reverse(),R=L.R.slice(0,ki+1).reverse();mk(P,R,L.st.slice(0,L.k+1).reverse(),L.idx.slice(0,L.k+1).reverse().map(x=>ki-x))}
-    L.path=el('path',{d:roundedPath(L.P,L.R),fill:'none',stroke:'none'},gL);
+    const sK=L.k===0?0:L.k===last?M.total:L.st[L.k].len;
+    mk(sK,M.total,false,L.st.slice(L.k));
+    if(L.k>0)mk(0,sK,true,L.st.slice(0,L.k+1).reverse());
+    [...cases,...strokes].forEach(n=>gL.appendChild(n));
+    L.subs.forEach(p=>p._len=p.getTotalLength());
+    L.path=el('path',{d:subD(M,0,M.total),fill:'none',stroke:'none'},gL);
   });
   all.forEach(s=>{
     const L=s.line;
@@ -537,7 +589,7 @@ function draw(){
     el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
     if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
     else el('circle',{class:'dot',r:DESIGN.station.dot},g);
-    if(s.lab){const t=el('text',{class:'label',x:s.lab.cx-s.vx,y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor},g);t.textContent=s.label}
+    if(s.lab){const t=el('text',{class:'label',x:s.lab.cx-s.vx-(s.lab.anchor==='start'?DESIGN.map.lsb:0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor},g);t.textContent=s.label}   // flush-left: first-letter side bearing pull (DEC-025/033)
     s.g=g;
     g.addEventListener('mouseenter',e=>hover(s,e)); g.addEventListener('mousemove',moveCard);
     g.addEventListener('mouseleave',unhover);
@@ -947,11 +999,10 @@ function growLine(L,start){
   let end=start;
   L.subs.forEach((p,si)=>{
     const len=p._len,dur=Math.min(1600,Math.max(250,len/SPEED));
-    p.style.strokeDasharray=len;
-    p.animate([{strokeDashoffset:len},{strokeDashoffset:0}],{duration:dur,delay:start,easing:'cubic-bezier(.35,0,.25,1)',fill:'backwards'});
+    [p,p._case].forEach(n=>{n.style.strokeDasharray=len;
+      n.animate([{strokeDashoffset:len},{strokeDashoffset:0}],{duration:dur,delay:start,easing:'cubic-bezier(.35,0,.25,1)',fill:'backwards'})});
     // stations along this sub-path
-    const P=p._P,c=cumDist(P),tot=c[c.length-1]||1;
-    p._seq.forEach((s,i)=>{ if(s.owner)return; popStation(s,start+dur*Math.pow(c[p._si[i]]/tot,.9)) });
+    p._seq.forEach((s,i)=>{ if(s.owner)return; popStation(s,start+dur*Math.pow(Math.max(0,Math.min(1,p._sd[i]/(len||1))),.9)) });
     end=Math.max(end,start+dur);
   });
   [...gB.querySelectorAll(`[data-line="${L.key}"]`),L.train].forEach(n=>n&&n.animate([{opacity:0},{opacity:1}],{duration:300,delay:end,fill:'backwards'}));
