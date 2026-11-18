@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EEE — Map</title>
 <style>
-/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (commit: 9c4aa4a 2026-11-18 Discs: glyphs as baked outlines in a mask layer over the circle (DEC-035)) */
+/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (commit: 77700de 2026-11-18 Route map: articles pinned to grid points, curves only between them (DEC-036)) */
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -225,8 +225,7 @@
   .station:focus{outline:none}
   .station:focus-visible .dot{outline:1px solid var(--fg);outline-offset:4px}
   .station .hit{fill:transparent}
-  .dot{fill:var(--c-black)}                                      /* DEC-036 station = plain black circle, no letter */
-  [data-theme=dark] .dot:not(.xdot){stroke:var(--c-white);stroke-width:1px}  /* DEC-019 black disc on dark ground gets a white ring */
+  .dot{fill:var(--c-black)}                                      /* DEC-036 station = plain black circle, no letter; no dark-mode ring (it always sits on a line) */
   .xdot{fill:var(--bg);stroke:var(--fg)}  /* [eee] layout-made interchange, kept until the transfer decision */
   .train{fill:var(--bg)}
   .dim{opacity:.18}
@@ -378,7 +377,7 @@ const DESIGN = {
   const M=DESIGN.map, rem=parseFloat(cs.fontSize)||16, capEm=parseFloat(cs.getPropertyValue('--cap-em'))||.7,
     fs=rem*M.nameRem, cap=fs*capEm, inch=cap/1.375, pitch=cap*M.pitchCaps, ground=inch*M.groundIn, Ln=DESIGN.line;
   Object.assign(M,{fs,cap,inch,pitch,ground,lsb:(parseFloat(cs.getPropertyValue('--lsb-comp-ko'))||0)*fs});
-  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=Ln.stationRadius=pitch*M.radiusPitch; Ln.runOn=(pitch-ground)/2;
+  Ln.width=pitch-ground; Ln.casing=pitch+ground; Ln.cornerRadius=pitch*M.radiusPitch; Ln.stationRadius=0;   // DEC-036: stations keep their grid points; a station on a corner is turned on directly Ln.runOn=(pitch-ground)/2;
   DESIGN.station.dot=cap*M.stopCaps/2;
   const X=DESIGN.interchange; X.size=Ln.width+8;
   DESIGN.label.size=fs; DESIGN.label.offset=pitch/2+inch*M.labelGapIn; DESIGN.label.offsetAtInterchange=(X.size+X.stroke)/2+inch*M.labelGapIn;
@@ -689,12 +688,12 @@ const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#tr
 // A line as straight pieces and circular arcs (DEC-036: every bend is an arc of radius R, shrunk only when the legs are
 // too short). runOn: a line ending at a station carries on past it by half the strand, so the end circle sits inside.
 // Returns the pieces, their total length, and per vertex of P where it is drawn (vpos) and how far along it is (vlen).
-function fillet(a,b,c,r){
+function fillet(a,b,c,r,k1=.5,k2=.5){   // k1/k2: share of each leg the arc may use (1 when the far end is a station)
   const v1=[b[0]-a[0],b[1]-a[1]],v2=[c[0]-b[0],c[1]-b[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);
   if(!r||l1<1e-6||l2<1e-6)return null;
   const u1=[v1[0]/l1,v1[1]/l1],u2=[v2[0]/l2,v2[1]/l2],cr=u1[0]*u2[1]-u1[1]*u2[0],th=Math.acos(Math.max(-1,Math.min(1,u1[0]*u2[0]+u1[1]*u2[1])));
   if(Math.abs(cr)<1e-6||th<1e-3)return null;
-  const tn=Math.tan(th/2),t=Math.min(r*tn,l1/2,l2/2),rr=t/tn,sg=cr>0?1:-1;          // sg 1 = clockwise on screen
+  const tn=Math.tan(th/2),t=Math.min(r*tn,l1*k1,l2*k2),rr=t/tn,sg=cr>0?1:-1;          // sg 1 = clockwise on screen
   const p1=[b[0]-u1[0]*t,b[1]-u1[1]*t],p2=[b[0]+u2[0]*t,b[1]+u2[1]*t],c0=[p1[0]-sg*u1[1]*rr,p1[1]+sg*u1[0]*rr];
   return {p1,p2,r:rr,sg,th,c:c0,a0:Math.atan2(p1[1]-c0[1],p1[0]-c0[0]),len:rr*th};
 }
@@ -705,7 +704,8 @@ function pathModel(P,R,runOn){
   const n=P.length, ext=(p,q)=>{const l=Math.hypot(p[0]-q[0],p[1]-q[1])||1;return[p[0]+(p[0]-q[0])/l*runOn,p[1]+(p[1]-q[1])/l*runOn]};
   cur=n>1&&runOn?ext(P[0],P[1]):P[0];
   for(let j=0;j<n;j++){
-    const f=j>0&&j<n-1?fillet(P[j-1],P[j],P[j+1],R[j]):null;
+    // stations are fixed points (R 0): the arc may run right up to a station, but shares a leg with another bend
+    const f=j>0&&j<n-1?fillet(P[j-1],P[j],P[j+1],R[j],R[j-1]?.5:1,R[j+1]?.5:1):null;
     if(f){line(cur,f.p1);vlen[j]=len+f.len/2;push({t:'A',...f,b:f.p2});cur=f.p2;
       const m=f.a0+f.sg*f.th/2;vpos[j]=[f.c[0]+f.r*Math.cos(m),f.c[1]+f.r*Math.sin(m)]}
     else{line(cur,P[j]);vlen[j]=len;vpos[j]=P[j];cur=P[j]}

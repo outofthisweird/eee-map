@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 9c4aa4a 2026-11-18 Discs: glyphs as baked outlines in a mask layer over the circle (DEC-035)
+commit: 77700de 2026-11-18 Route map: articles pinned to grid points, curves only between them (DEC-036)
