@@ -73,7 +73,6 @@
   .station.snap .dot{transform:scale(2.2)}
   .station.snap .xdot{transform:scale(1.4)}
   .dragging-station,.dragging-station .station{cursor:var(--cur-hold,grabbing)}
-  .line-path{cursor:var(--cur-line,inherit)}
   #panel a{cursor:var(--cur-ui,pointer)}
   #gridlayer{display:none;pointer-events:none} svg.show-grid #gridlayer{display:inline}
   #gridpat .gl{fill:none;stroke:var(--fg);stroke-opacity:.09;stroke-width:1}
@@ -143,6 +142,13 @@
   #snaptune[hidden]{display:none}
   #snaptune select{font:inherit;color:inherit;background:transparent;border:0;border-bottom:var(--rp-rule) solid currentColor;padding:0 2px}
   #snaptune option{color:#000}
+  /* [test] arrow cursor: one SVG that follows the pointer and turns to face the map centre (CURSOR, arrow mode) */
+  html.cur-dom,html.cur-dom *{cursor:none!important}
+  #curarrow{position:fixed;left:0;top:0;z-index:100;pointer-events:none;transform-origin:0 0;width:var(--cur-len);height:var(--cur-len);overflow:visible;
+    fill:var(--fg);stroke:var(--bg);stroke-width:1.5px;stroke-linejoin:miter;paint-order:stroke;will-change:transform}
+  #curarrow path{vector-effect:non-scaling-stroke}
+  #curarrow.inv{fill:var(--bg);stroke:var(--fg)}
+  #curarrow[hidden]{display:none}
   #tools,#zoom{position:fixed;right:var(--edge);z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
   #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
   #zoom{bottom:var(--edge)}
@@ -818,48 +824,51 @@ const SNAP_PX=16;
   r.addEventListener('dblclick',()=>{r.value=1;r.dispatchEvent(new Event('input'))});   // double-click: back to 1
 })();
 // [test] cursor candidates (2026-11-19 사용자 요청): pick one from #cursel (same local/?tune rule as the snap slider).
-// Each mode feeds CSS variables (--cur-map/pan/station/hold/line/ui); unset = the plain cursors. Colours come from the
-// theme, so they follow ◐. Remembered in localStorage 'eee-cursor'.
-// arrow: the NYCTA arrow always points at the centre of the map (the drawn stations' bounding box, on screen), in the
-// eight ARROW-001 directions; it keeps its last heading within CURSOR.still px of the centre.
+// disc feeds CSS variables (--cur-map/pan/station/hold/ui); unset = the plain cursors. Remembered in localStorage 'eee-cursor'.
+// arrow: one NYCTA arrow SVG (#curarrow) follows the pointer, its tip on the pointer, and turns smoothly to face the
+// centre of the map (the drawn stations' bounding box, on screen). The system cursor is hidden meanwhile. Within
+// CURSOR.still px of the centre it keeps its last angle. Over stations, buttons and links it inverts. Colours are
+// CSS variables, so ◐ needs nothing. Touch input hides it.
 const CURSOR={size:32,arrow:24,still:24,
   modes:{system:'시스템 기본',disc:'역 원판',arrow:'NYCTA 화살표 (노선도 중심을 가리킴)'}};
 (()=>{const sel=document.getElementById('cursel');
   const local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   if(!(local||/[?&]tune\b/.test(location.search)))return;
   [...sel.options].forEach(o=>o.title=CURSOR.modes[o.value]||'');
-  const Z=CURSOR.size,C=Z/2,root=document.documentElement.style;
-  const ARROW=document.querySelector('#nyarrow path').getAttribute('d');
+  const Z=CURSOR.size,C=Z/2,html=document.documentElement,root=html.style;
   const uri=(body,hx,hy,fb)=>`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${Z}' height='${Z}' viewBox='0 0 ${Z} ${Z}'>${body}</svg>`)}") ${Math.round(hx)} ${Math.round(hy)}, ${fb}`;
-  const col=()=>{const cs=getComputedStyle(document.documentElement);return{fg:cs.getPropertyValue('--fg').trim()||'#000',bg:cs.getPropertyValue('--bg').trim()||'#fff'}};
-  // shapes
+  const col=()=>{const cs=getComputedStyle(html);return{fg:cs.getPropertyValue('--fg').trim()||'#000',bg:cs.getPropertyValue('--bg').trim()||'#fff'}};
   const dot=(r,fill,edge)=>uri(`<circle cx='${C}' cy='${C}' r='${r}' fill='${fill}' stroke='${edge}' stroke-width='1.5'/>`,C,C,'crosshair');
   const ring=(r,k)=>uri(`<circle cx='${C}' cy='${C}' r='${r}' fill='${k.bg}' stroke='${k.fg}' stroke-width='2.5'/>`,C,C,'pointer');
   const held=k=>uri(`<circle cx='${C}' cy='${C}' r='12' fill='none' stroke='${k.fg}' stroke-width='1.5'/><circle cx='${C}' cy='${C}' r='7' fill='${k.fg}'/>`,C,C,'grabbing');
-  const arrow=(fill,edge,deg,fb)=>{const a=deg*Math.PI/180,L=CURSOR.arrow;   // hotspot = the tip
-    return uri(`<g transform='translate(${C} ${C}) rotate(${deg}) scale(${L})'><path d='${ARROW}' fill='${fill}' stroke='${edge}' stroke-width='1.5' stroke-linejoin='miter' vector-effect='non-scaling-stroke' paint-order='stroke'/></g>`,C+L/2*Math.cos(a),C+L/2*Math.sin(a),fb)};
-  let mode='system',heading=-135;const cache=new Map();
-  function arrows(){const k=col(),key=`${heading}|${k.fg}`;
-    if(!cache.has(key))cache.set(key,{plain:arrow(k.fg,k.bg,heading,'default'),inv:arrow(k.bg,k.fg,heading,'pointer')});
-    const a=cache.get(key);['--cur-map','--cur-pan','--cur-line'].forEach(v=>root.setProperty(v,a.plain));
-    ['--cur-station','--cur-ui'].forEach(v=>root.setProperty(v,a.inv))}
-  function aim(cx,cy){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  // the arrow: viewBox = the #nyarrow symbol box (tip at +0.5, 0), drawn L px long
+  const L=CURSOR.arrow,NS='http://www.w3.org/2000/svg',arr=document.createElementNS(NS,'svg');
+  arr.id='curarrow';arr.setAttribute('viewBox','-0.5 -0.5 1 1');arr.setAttribute('aria-hidden','true');arr.hidden=true;
+  arr.innerHTML=`<path d="${document.querySelector('#nyarrow path').getAttribute('d')}"/>`;
+  html.style.setProperty('--cur-len',L+'px');document.body.appendChild(arr);
+  let mode='system',deg=-135,at=null;
+  function centre(){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
     stations.forEach(s=>{const x=s.vx??s.x,y=s.vy??s.y;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y});
-    const mx=(x0+x1)/2*view.k+view.x,my=(y0+y1)/2*view.k+view.y,dx=mx-cx,dy=my-cy;
-    if(Math.hypot(dx,dy)<CURSOR.still)return;
-    const h=((Math.round(Math.atan2(dy,dx)/(Math.PI/4))*45)%360+360)%360;
-    if(h!==heading){heading=h;arrows()}}
-  let last=null;
-  addEventListener('pointermove',e=>{last=[e.clientX,e.clientY];if(mode==='arrow')aim(e.clientX,e.clientY)},{passive:true});
-  addEventListener('wheel',e=>{if(mode==='arrow')requestAnimationFrame(()=>aim(e.clientX,e.clientY))},{passive:true});   // zoom moves the centre too
-  const VARS=['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-line','--cur-ui'];
-  function apply(){VARS.forEach(v=>root.removeProperty(v));const k=col(),set=(v,x)=>root.setProperty(v,x);
+    return[(x0+x1)/2*view.k+view.x,(y0+y1)/2*view.k+view.y]}
+  function place(){if(!at)return;const[x,y]=at,[mx,my]=centre();
+    if(Math.hypot(mx-x,my-y)>=CURSOR.still)deg=Math.atan2(my-y,mx-x)*180/Math.PI;
+    arr.style.transform=`translate(${x}px,${y}px) rotate(${deg}deg) translate(${-L}px,${-L/2}px)`}   // tip on the pointer
+  let raf=0;const later=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;place()})};
+  addEventListener('pointermove',e=>{if(mode!=='arrow')return;
+    if(e.pointerType==='touch'){arr.hidden=true;return}
+    at=[e.clientX,e.clientY];arr.hidden=false;
+    arr.classList.toggle('inv',!!(e.target.closest&&e.target.closest('.station,button,a,select,input')));place()},{passive:true});
+  addEventListener('wheel',()=>{if(mode==='arrow')later()},{passive:true});                 // zoom moves the centre
+  document.addEventListener('mouseleave',()=>{arr.hidden=true});
+  (function tick(){if(mode==='arrow'&&at)place();requestAnimationFrame(tick)})();           // camera glides (fit, follow) move it too
+  const VARS=['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-ui'];
+  function apply(){VARS.forEach(v=>root.removeProperty(v));html.classList.remove('cur-dom');arr.hidden=true;const k=col(),set=(v,x)=>root.setProperty(v,x);
     if(mode==='disc'){set('--cur-map',dot(6,k.fg,k.bg));set('--cur-pan',dot(4,k.fg,k.bg));set('--cur-station',ring(9,k));set('--cur-hold',held(k));set('--cur-ui',ring(7,k))}
-    else if(mode==='arrow'){arrows();if(last)aim(...last)}}
+    else if(mode==='arrow'){html.classList.add('cur-dom');if(at){arr.hidden=false;place()}}}
   const pick=m=>{mode=CURSOR.modes[m]?m:'system';sel.value=mode;apply();try{localStorage.setItem('eee-cursor',mode)}catch(e){}};
   try{pick(localStorage.getItem('eee-cursor')||'system')}catch(e){pick('system')}
   sel.addEventListener('change',()=>pick(sel.value));
-  new MutationObserver(apply).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});   // ◐ swaps fg/bg
+  new MutationObserver(apply).observe(html,{attributes:true,attributeFilter:['data-theme']});   // ◐ swaps the disc colours
 })();
 // Rope: when a dragged station gets too far from its neighbour, the neighbour follows (and so on down the line).
 // An interchange follows too, with its whole group, so the rope also runs on along the other lines through it.
