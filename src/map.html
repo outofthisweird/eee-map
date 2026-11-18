@@ -955,7 +955,7 @@ function startTween(plans,done){
   if(reduce){plans.forEach(p=>{p.s.x=p.to[0];p.s.y=p.to[1]});geometry();draw();if(done)done();else savePos();return}
   tween={plans,t0:performance.now(),done};
 }
-function untangleLines(lines,keep){
+function untangleLines(lines,keep,planOnly){
   const P=new Map(all.map(s=>[s,[s.x,s.y]])), locked=new Set();
   lines.forEach(L=>{
     const p=planUntangle(L,keep,P,locked);
@@ -967,6 +967,7 @@ function untangleLines(lines,keep){
   // on the grid, then no station left on a corner (the one the user put down stays; a neighbour moves instead)
   const F=posMap();gridPlans(plans).forEach(p=>F.set(p.s,p.to));
   fixCorners(F,new Set([...keep,...all.filter(s=>s.xfer&&!pulled.has(s))]));
+  if(planOnly)return F;
   const final=[];all.forEach(s=>{const q=F.get(s);if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)final.push({s,from:[s.x,s.y],to:q})});
   if(!final.length){savePos();return false}
   startTween(final); return true;
@@ -1046,12 +1047,22 @@ function realignRun(st,m,run,anchor,dir,M,A,target){
 }
 function afterSettle(moving){
   const lines=[...new Set([...moving,...pulled].map(m=>m.line))];   // every line the rope reached
+  // [eee] one move, not two (2026-11-19 사용자 요청): realign and untangle used to run as two tweens one after the
+  // other, and the second often sent stations back the way the first had brought them (a bounce, sometimes a knot).
+  // Now the realigned spots are tried out in place, the untangle plans from there, everything goes back, and one
+  // tween carries each station straight from where the rope left it to its final spot.
+  const orig=new Map(all.map(s=>[s,[s.x,s.y]]));
   const plan=planRealign(moving);
-  const then=()=>{untangleLines(lines,moving);pulled=new Set()};
-  if(plan)startTween(plan,then); else then();
+  if(plan){gridPlans(plan).forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});geometry()}
+  const F=untangleLines(lines,moving,true);
+  orig.forEach((q,s)=>{s.x=q[0];s.y=q[1]}); if(plan)geometry();
+  pulled=new Set();
+  const final=[];all.forEach(s=>{const q=F.get(s),o=orig.get(s);if(Math.hypot(q[0]-o[0],q[1]-o[1])>.5)final.push({s,from:[...o],to:q})});
+  if(final.length)startTween(final); else savePos();
 }
 function stepTween(now){
-  if(!tween)return; const p=Math.min(1,(now-tween.t0)/UNTANGLE.tween),e=1-Math.pow(1-p,3);
+  if(!tween)return; const p=Math.max(0,Math.min(1,(now-tween.t0)/UNTANGLE.tween)),   // (the frame's rAF time can be before t0: p<0 threw stations backwards)
+   e=1-Math.pow(1-p,3);
   tween.plans.forEach(q=>{q.s.x=q.from[0]+(q.to[0]-q.from[0])*e;q.s.y=q.from[1]+(q.to[1]-q.from[1])*e});
   geometry();draw(); if(p>=1){const done=tween.done;tween=null;if(done)done();else{savePos();if(current)refreshFocus()}}
 }
