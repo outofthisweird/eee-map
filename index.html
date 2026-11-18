@@ -299,6 +299,11 @@
   :lang(en) #legend .day{min-width:2.25em}            /* Mon / Wed / Fri / Sun line up */
 
   /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
+  /* [test] snap strength slider: local (file://, localhost) or ?tune only, never on the public site by default */
+  #snaptune{position:fixed;top:var(--edge);left:50%;transform:translateX(-50%);z-index:6;padding:calc(var(--rp-top) + 6px) 12px 6px;font-size:max(12px,.75rem)}
+  #snaptune label{display:flex;align-items:center;gap:8px}
+  #snaptune input{width:160px;accent-color:currentColor}
+  #snaptune output{min-width:2.5em;font-variant-numeric:tabular-nums}
   #tools,#zoom{position:fixed;right:var(--edge);z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
   #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
   #zoom{bottom:var(--edge)}
@@ -346,6 +351,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 <div id="logo" class="rplate" lang="en"><p>Easy Exhibition<br>for Everyone</p></div>
 <div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
 <div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
+<div id="snaptune" class="rplate" hidden><label lang="en">snap <input id="snapr" type="range" min="0" max="2" step="0.05"> <output id="snapv"></output></label></div>
 <div id="zoom" class="rplate"><button id="zin" data-i18n-label="zin" aria-label="확대">+</button><button id="zout" data-i18n-label="zout" aria-label="축소">−</button><button id="zfit" data-i18n-label="zfit" data-i18n="all" aria-label="전체 보기">전체</button></div>
 <aside id="panel" class="rplate" aria-hidden="true">
   <div class="body">
@@ -1140,7 +1146,10 @@ const SNAP={
   cornerPenalty:1.2,// in grid cells: a spot that leaves its line a station on a corner (cornersOf) loses this much
   straightCos:.85, straightDist:26,  // px: stations this close to the straight line between neighbours go onto it
   minGap:40,        // px: a snap never puts a station closer than this to another station
+  strength:1,       // [test] multiplier on the pulls above (alignBonus, V penalty, cornerPenalty, straightDist). 0 = plain nearest grid point.
+                    // Tuned live with the slider (#snaptune, local or ?tune only); remembered in localStorage 'eee-snap'.
 };
+try{const v=parseFloat(localStorage.getItem('eee-snap'));if(isFinite(v))SNAP.strength=v}catch(e){}
 const U8N=DIRS.map(([x,y])=>{const m=Math.hypot(x,y);return[x/m,y/m]});
 const turnCos=(a,p,c)=>{const v1=[p[0]-a[0],p[1]-a[1]],v2=[c[0]-p[0],c[1]-p[1]],l1=Math.hypot(...v1),l2=Math.hypot(...v2);return l1&&l2?(v1[0]*v2[0]+v1[1]*v2[1])/(l1*l2):1};
 const gridU=()=>DESIGN.grid.unit;
@@ -1166,7 +1175,7 @@ function gridPlans(plans){
         const c=[base[0]+i*G,base[1]+j*G];if(!free(c))continue;at.set(p.s,c);
         const v=[p.s,st[p.s.i-1],st[p.s.i+1]].filter(vAt).length;                  // avoid spiky diagonal V's
         const k=cornersOf(p.s.line,s=>at.get(s));                                    // ...and stations on corners
-        const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5+k*SNAP.cornerPenalty;if(!best||sc<best.sc)best={c,sc}}}
+        const sc=Math.hypot(c[0]-p.to[0],c[1]-p.to[1])/G+v*1.5+k*SNAP.cornerPenalty*SNAP.strength;if(!best||sc<best.sc)best={c,sc}}}
     const q=best?best.c:base;p.to=q;at.set(p.s,q);taken.set(gkey(q),p.s);groupSpot.set(grp(p.s),q);
   });
   return plans.filter(p=>Math.hypot(p.to[0]-p.from[0],p.to[1]-p.from[1])>.5);
@@ -1505,6 +1514,15 @@ function refreshFocus(){const f=follow;if(current){const s=current;current=null;
 // Dragging an interchange moves the whole group; Shift-drag pulls one station out of it.
 let sdrag=null;
 const SNAP_PX=16;
+// [test] snap strength slider (SNAP.strength). Shown on file:// / localhost, or anywhere with ?tune.
+(()=>{const box=document.getElementById('snaptune'),r=document.getElementById('snapr'),o=document.getElementById('snapv');
+  const local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if(!(local||/[?&]tune\b/.test(location.search)))return;
+  box.hidden=false;
+  const show=()=>{o.textContent=SNAP.strength.toFixed(2)};r.value=SNAP.strength;show();
+  r.addEventListener('input',()=>{SNAP.strength=+r.value;show();try{localStorage.setItem('eee-snap',r.value)}catch(e){}});
+  r.addEventListener('dblclick',()=>{r.value=1;r.dispatchEvent(new Event('input'))});   // double-click: back to 1
+})();
 // Rope: when a dragged station gets too far from its neighbour, the neighbour follows (and so on down the line).
 // An interchange follows too, with its whole group, so the rope also runs on along the other lines through it.
 const PULL={maxGap:160, ease:.28, xferEase:.18, personalSpace:48, push:.3,
@@ -1538,7 +1556,7 @@ function straightenPos(pos,fixed,L){
   for(let pass=0;pass<4;pass++)for(let i=1;i<pos.length-1;i++){ if(fixed[i])continue;
     const a=pos[i-1],p=pos[i],c=pos[i+1],cos=turnCos(a,p,c);
     let q=null;
-    if(cos>=SNAP.straightCos&&distToSeg(p,a,c)<=SNAP.straightDist){        // nearly straight: onto the line
+    if(cos>=SNAP.straightCos&&distToSeg(p,a,c)<=SNAP.straightDist*SNAP.strength){        // nearly straight: onto the line
       const vx=c[0]-a[0],vy=c[1]-a[1],l=vx*vx+vy*vy||1,u=((p[0]-a[0])*vx+(p[1]-a[1])*vy)/l;
       q=align([a[0]+u*vx,a[1]+u*vy],a,GEN.alignTol);
     }
@@ -1765,11 +1783,11 @@ function moveStationDrag(e){
       let sc=Math.hypot(q[0]-raw[0],q[1]-raw[1])/G;
       pairs.forEach(([a,c])=>{const kind=n=>{if(!n)return 0;const dx=Math.abs(q[0]-n[0]),dy=Math.abs(q[1]-n[1]);return dx<1||dy<1?2:Math.abs(dx-dy)<1?1:0};
         const ka=kind(a),kc=kind(c);
-        if(a&&c&&isDiagV(a,q,c)){sc+=.6;return}                          // two diagonals at 90°: avoid
-        [ka,kc].forEach(k=>{if(k===2)sc-=SNAP.alignBonus;else if(k===1)sc-=SNAP.alignBonus*.6})});
+        if(a&&c&&isDiagV(a,q,c)){sc+=.6*SNAP.strength;return}                          // two diagonals at 90°: avoid
+        const ab=SNAP.alignBonus*SNAP.strength;[ka,kc].forEach(k=>{if(k===2)sc-=ab;else if(k===1)sc-=ab*.6})});
       // a spot where the line would have to turn right at a station (no room to bend between stations) loses
       const at=new Map(all.map(o=>[o,[o.x,o.y]]));d.moving.forEach(m=>at.set(m,q));
-      d.moving.forEach(m=>{sc+=cornersOf(m.line,o=>at.get(o))*SNAP.cornerPenalty});
+      d.moving.forEach(m=>{sc+=cornersOf(m.line,o=>at.get(o))*SNAP.cornerPenalty*SNAP.strength});
       if(!best||sc<best.sc)best={q,sc}}
     if(best){x=best.q[0];y=best.q[1]}else{x=base[0];y=base[1]}
   }
