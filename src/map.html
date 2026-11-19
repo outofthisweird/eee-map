@@ -82,6 +82,13 @@
   #gridpat .gl{fill:none;stroke:var(--fg);stroke-opacity:.09;stroke-width:1}
   #gridpat .gd{fill:var(--fg);fill-opacity:.28}
   ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+  /* [eee] ◐ (2026-11-19): during the circle the page is a still picture of the old theme. So that it doesn't look frozen,
+     the trains layer is its own live layer above the circle (only its new state, nothing to cross-fade).
+     (Chrome sends every pointer event to <html> while the transition runs; pointer-events:none on ::view-transition
+     doesn't change that, so the 0.7s stays non-interactive.) */
+  #mapfx{view-transition-name:eee-fx}
+  ::view-transition-group(eee-fx),::view-transition-new(eee-fx){animation:none}
+  ::view-transition-old(eee-fx){display:none}
 
   /* ---- disc (line badge): DISC-001/004 — glyph cap = 0.408 D; yellow takes black type, every other colour white (DEC-004) ---- */
   .disc{--d:28px;display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);border-radius:50%;
@@ -272,7 +279,10 @@ const DESIGN = {
   interchange:{ size: 0, stroke: 4 },        // [eee] layout-made interchange (white circle) kept until the transfer decision; size ← strand + 8
   label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, maxCharsEn: 18, size: 0 },   // ← map. maxChars: longer names end in … (Hangul / English)
   train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
-  motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500 },
+  motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500,
+               // ◐ circle wipe: starts at the button's size and moves at once (ease-out); the old ease-in-out left the
+               // screen a still picture for ~0.1s after the click (2026-11-19)
+               themeMs: 700, themeEase: 'cubic-bezier(.2,.6,.3,1)' },
   plate:     { lengths: [1, 2, 4, 6, 8], roomIn: 1 },   // UI plates (logo, legend, popup): GRID-012/SIGN-012 standard lengths (ft), 1 ft high; DEC-030 room across (in)
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
@@ -1462,9 +1472,11 @@ $('#theme').onclick=e=>{
   const r=e.currentTarget.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
   const R=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
   if(reduce||!document.startViewTransition){setTheme(dark);return}
+  const r0=Math.hypot(r.width,r.height)/2;   // the circle starts as big as the button, so it shows on the first frame
+  inMotion(DESIGN.motion.themeMs);   // touch screens: the ink edge off for the wipe (WebKit redraws the whole page every frame of it)
   const vt=document.startViewTransition(()=>setTheme(dark));
-  vt.ready.then(()=>document.documentElement.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${R}px at ${x}px ${y}px)`]},
-    {duration:700,easing:'cubic-bezier(.65,0,.35,1)',pseudoElement:'::view-transition-new(root)'})).catch(()=>{});
+  vt.ready.then(()=>document.documentElement.animate({clipPath:[`circle(${r0}px at ${x}px ${y}px)`,`circle(${R}px at ${x}px ${y}px)`]},
+    {duration:DESIGN.motion.themeMs,easing:DESIGN.motion.themeEase,fill:'forwards',pseudoElement:'::view-transition-new(root)'})).catch(()=>{});
 };
 
 // ---------- boot ----------
