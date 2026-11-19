@@ -332,12 +332,13 @@
   #panel.open{opacity:1;pointer-events:auto}
   #panel .body{display:flex;align-items:flex-start;gap:calc(var(--p-in) * .5)}              /* GRID-009 disc → text ½in */
   #pb .disc{--d:calc(1rem * (var(--cap-em) + var(--lh-ko)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch, Korean pitch) */
-  #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--p-in) * 40)}                 /* fills a module-sized plate: next → on the right margin */
+  #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--p-in) * 40)}                 /* longest line; fitPopup() shrinks to it */
   #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-ko) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull))}   /* DEC-025, DEC-033 */
   #panel .text>*+*{margin-block-start:calc(var(--gap-ko) + var(--p-trim))}                  /* GRID-007 → [eee] Korean gap */
   @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
-  #pxfer .xbtn{margin-inline-end:calc(var(--p-in) * 1.375)}                                 /* [eee] transfers and → close share one row (2026-11-19) */
-  #panel .pclose{white-space:nowrap}
+  /* [eee] one block of text (2026-11-19): 환승 ⓡ at the start, the summary, → 닫기 at the end */
+  #pxfer .xbtn{margin-inline-end:.6em;white-space:nowrap}
+  #panel .pclose{margin-inline-start:.6em;white-space:nowrap}
   #panel .pclose .arrow{margin-inline-end:.3em}                                             /* arrow as the divider before close */
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
   #panel #psum{text-decoration:none}                                                       /* [eee] the summary is the Instagram link, no underline (2026-11-19) */
@@ -367,8 +368,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
   <div class="body">
     <span id="pb"></span>
     <div class="text">
-      <p><a id="psum" target="_blank" rel="noopener"></a></p>
-      <p class="foot"><span id="pxfer"></span><span class="pclose"><svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg><button id="pclose" data-i18n="close">닫기</button></span></p>
+      <p id="ptext"><span id="pxfer"></span><a id="psum" target="_blank" rel="noopener"></a><span class="pclose"><svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg><button id="pclose" data-i18n="close">닫기</button></span></p>
     </div>
   </div>
 </aside>
@@ -1896,7 +1896,14 @@ function fitPlate(el){
   el.style.width=w*ft+'px';
   el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
 }
-function fitPlates(){['#logo','#legend','#panel'].forEach(q=>fitPlate($(q)));placePopup()}
+function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup()}
+// [eee] the popup fits its text (2026-11-19), no module plate: a wrapped paragraph keeps its max width, so shrink it to the longest line
+function fitPopup(){
+  if(!panel.classList.contains('open'))return; const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
+  const rg=document.createRange(); rg.selectNodeContents(p); const L=p.getBoundingClientRect().left;
+  let w=0; for(const r of rg.getClientRects())w=Math.max(w,r.right-L);
+  tx.style.width=Math.ceil(w)+1+'px';
+}
 function setLang(l){
   lang=l; try{localStorage.setItem('eee-lang',l)}catch(e){}
   applyLang(); fitPlates(); labelW.clear(); geometry(); draw(); refreshFocus();   // names re-measured and re-placed; an open popup follows
@@ -1973,7 +1980,7 @@ function openStation(s,fromHash,keepView){
   $('#pb').innerHTML=disc(L,s.b,'disc');
   const ps=$('#psum'); ps.textContent=stSum(s)||stTitle(s); ps.href=s.u;   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers and → close on one row (2026-11-19)
   const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`${T('xfer')} ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`${T('xfer')}: ${seriesName(x.b,x.ser)}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
-  panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPlate(panel); placePopup();
+  panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPopup(); placePopup();
   if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
   follow=s;
   if(!keepView) centerOn(s,DESIGN.motion.centerMs,true);
