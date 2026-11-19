@@ -120,10 +120,9 @@
   /* [eee] the map's ink edge is its own filter, #eee-ink (2026-11-19, phones): the same displacement as nycta's #nycta-ink,
      but (1) its region is the screen in px, not a % of the box: WebKit sized nycta's by the map content, which zoomed in
      outgrew its filter limit and the whole map vanished; (2) its noise is a tile drawn once (inkNoise()), not feTurbulence
-     every time: about 3× cheaper in WebKit. Off wherever nycta's layer is off (dark, high contrast, forced colours, print). */
+     every time: about 3× cheaper in WebKit. On in dark mode too (nycta DEC-038 since 9815439); off where nycta's layer is off
+     (high contrast, forced colours, print). */
   :root[data-print] #map{filter:url(#eee-ink)}
-  :root[data-print][data-theme=dark] #map{filter:none}
-  @media (prefers-color-scheme:dark){:root[data-print]:not([data-theme=light]) #map{filter:none}}
   @media (prefers-contrast:more),(forced-colors:active),print{:root[data-print] #map{filter:none}}
 
   /* [eee] logo, legend and popup are standard module plates (GRID-012, SIGN-012): fitPlates() picks the shortest of
