@@ -161,17 +161,17 @@
   #panel{--p-in:var(--doc-in);position:fixed;top:0;left:0;z-index:10;opacity:0;pointer-events:none;
     width:max-content;max-width:min(calc(var(--p-in) * 48), calc(100vw - 24px));            /* ≤ 4 ft */
     padding:var(--rp-top) var(--rp-side) calc(var(--p-in) * (.5 + .235 * 1.375));           /* bottom ½in below the descender guide */
-    font-size:1rem;line-height:var(--lh-ko)}
+    font-size:1rem;line-height:var(--lh-g1)}                                                /* [eee] Grid 1 pitch in Korean too, like the legend (2026-11-19) */
   #panel.open{opacity:1;pointer-events:auto}
   #panel .body{display:flex;align-items:flex-start;gap:calc(var(--p-in) * .5)}              /* GRID-009 disc → text ½in */
-  #pb .disc{--d:calc(1rem * (var(--cap-em) + var(--lh-ko)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch, Korean pitch) */
+  #pb .disc{--d:calc(1rem * (var(--cap-em) + var(--lh-g1)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch) */
   #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--p-in) * 40)}                 /* longest line; fitPopup() shrinks to it */
-  #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-ko) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull))}   /* DEC-025, DEC-033 */
+  #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-g1) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull))}   /* DEC-025, DEC-033 */
   #panel .text>*+*{margin-block-start:calc(var(--gap-ko) + var(--p-trim))}                  /* GRID-007 → [eee] Korean gap */
   @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
   /* [eee] one block of text (2026-11-19): 환승 ⓡ at the start, the summary, → 닫기 at the end */
-  #pxfer .xbtn{margin-inline-end:.6em;white-space:nowrap}
-  #panel .pclose{margin-inline-start:.6em;white-space:nowrap}
+  #pxfer .xbtn{white-space:nowrap}                                                         /* no extra space: disc → summary → arrow (2026-11-19) */
+  #panel .pclose{white-space:nowrap}
   #panel .pclose .arrow{margin-inline-end:.3em}                                             /* arrow as the divider before close */
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
   #panel #psum{text-decoration:none}                                                       /* [eee] the summary is the Instagram link, no underline (2026-11-19) */
@@ -1185,12 +1185,14 @@ function fitPlate(el){
   el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
 }
 function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup()}
-// [eee] the popup fits its text (2026-11-19), no module plate: a wrapped paragraph keeps its max width, so shrink it to the longest line
+// [eee] the popup width fits its text (2026-11-19): a wrapped paragraph keeps its max width, so shrink it to the longest line. Height stays in whole feet
 function fitPopup(){
   if(!panel.classList.contains('open'))return; const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
   const rg=document.createRange(); rg.selectNodeContents(p); const L=p.getBoundingClientRect().left;
   let w=0; for(const r of rg.getClientRects())w=Math.max(w,r.right-L);
-  tx.style.width=Math.ceil(w)+1+'px';
+  tx.style.width=Math.ceil(w)+1+'px'; panel.style.height='';
+  const pr=document.createElement('div'); pr.style.cssText='position:absolute;visibility:hidden;width:var(--ft)'; document.body.append(pr); const ft=pr.getBoundingClientRect().width; pr.remove();
+  panel.style.height=Math.max(1,Math.ceil(panel.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // height stays in whole feet (room below)
 }
 function setLang(l){
   lang=l; try{localStorage.setItem('eee-lang',l)}catch(e){}
