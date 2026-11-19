@@ -402,7 +402,19 @@
     :root{--edge:12px}
     #logo{--l-cap:1.375;--l-lh:var(--lh-g1)}                        /* small screens: one tier down → Information (Grid 1), like .compact */
     #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
+    /* [eee] phones (2026-11-19 사용자 요청): the module plates (1 ft high, standard lengths) took a third of the screen.
+       Logo, legend and popup hug their copy instead (fitPlate/fitPopup skip the module sizes), ½in below the descender
+       guide like the legend. The popup copy wraps at 28in (desktop 40in). */
+    #logo{padding-bottom:calc(var(--doc-in) * (.5 + .235 * 1.375))}
+    #panel .text{max-width:calc(var(--p-in) * 28)}
+    /* legend folds to its discs (a column as wide as the tool buttons); a tap opens it, a line tap fits that line and folds it */
+    #legend:not(.open){min-width:var(--ui-btn)}
+    #legend:not(.open) .day,#legend:not(.open) .nm{display:none}
+    #legend:not(.open) .bs{margin-inline-end:0}
   }
+  /* [eee] touch screens: the DEC-038 ink-edge filter on the whole map re-ran every frame (the trains never stop), which
+     stalled phones. There the map keeps the paper and grain; the plates keep their ink edge. */
+  @media (hover:none) and (pointer:coarse){:root[data-print] #map{filter:none}}
 </style>
 <script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
    file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
@@ -1531,7 +1543,7 @@ function relabel(){labelW.clear();geometry();
   stations.forEach(s=>{if(s.owner||!s.g||!s.lab)return;const t=s.g.querySelector('text.label');if(!t)return;
     const a=labelAttrs(s);for(const k in a)t.setAttribute(k,a[k])})}
 function draw(){
-  [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren());
+  [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren()); focused=undefined;   // fresh nodes: the next focusLine() re-dims
   // DEC-036: each group gets a page-colour casing drawn just before it, so a later group cuts a gap where it crosses an
   // earlier one (a group's strands share one layer: all their casings, then all their strokes)
   const layers=new Map();
@@ -1607,7 +1619,7 @@ const CURSOR={size:32,arrow:34,still:24,
   const held=k=>uri(`<circle cx='${C}' cy='${C}' r='12' fill='none' stroke='${k.fg}' stroke-width='1.5'/><circle cx='${C}' cy='${C}' r='7' fill='${k.fg}'/>`,C,C,'grabbing');
   // the arrow: viewBox = the #nyarrow symbol box (tip at +0.5, 0), drawn L px long
   const L=CURSOR.arrow,NS='http://www.w3.org/2000/svg',arr=document.createElementNS(NS,'svg');
-  arr.id='curarrow';arr.setAttribute('viewBox','-0.5 -0.5 1 1');arr.setAttribute('aria-hidden','true');arr.hidden=true;
+  arr.id='curarrow';arr.setAttribute('viewBox','-0.5 -0.5 1 1');arr.setAttribute('aria-hidden','true');arr.toggleAttribute('hidden',true);
   arr.innerHTML=`<path d="${document.querySelector('#nyarrow path').getAttribute('d')}"/>`;
   html.style.setProperty('--cur-len',L+'px');document.body.appendChild(arr);
   let mode='system',deg=-135,at=null;
@@ -1619,16 +1631,16 @@ const CURSOR={size:32,arrow:34,still:24,
     arr.style.transform=`translate(${x}px,${y}px) rotate(${deg}deg) translate(${-L}px,${-L/2}px)`}   // tip on the pointer
   let raf=0;const later=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;place()})};
   addEventListener('pointermove',e=>{if(mode!=='arrow')return;
-    if(e.pointerType==='touch'){arr.hidden=true;return}
-    at=[e.clientX,e.clientY];arr.hidden=false;
+    if(e.pointerType==='touch'){arr.toggleAttribute('hidden',true);return}
+    at=[e.clientX,e.clientY];arr.toggleAttribute('hidden',false);
     arr.classList.toggle('inv',!!(e.target.closest&&e.target.closest('.station,button,a,select,input')));place()},{passive:true});
   addEventListener('wheel',()=>{if(mode==='arrow')later()},{passive:true});                 // zoom moves the centre
-  document.addEventListener('mouseleave',()=>{arr.hidden=true});
+  document.addEventListener('mouseleave',()=>{arr.toggleAttribute('hidden',true)});
   (function tick(){if(mode==='arrow'&&at)place();requestAnimationFrame(tick)})();           // camera glides (fit, follow) move it too
   const VARS=['--cur-map','--cur-pan','--cur-station','--cur-hold','--cur-ui'];
-  function apply(){VARS.forEach(v=>root.removeProperty(v));html.classList.remove('cur-dom');arr.hidden=true;const k=col(),set=(v,x)=>root.setProperty(v,x);
+  function apply(){VARS.forEach(v=>root.removeProperty(v));html.classList.remove('cur-dom');arr.toggleAttribute('hidden',true);const k=col(),set=(v,x)=>root.setProperty(v,x);
     if(mode==='disc'){set('--cur-map',dot(6,k.fg,k.bg));set('--cur-pan',dot(4,k.fg,k.bg));set('--cur-station',ring(9,k));set('--cur-hold',held(k));set('--cur-ui',ring(7,k))}
-    else if(mode==='arrow'){html.classList.add('cur-dom');if(at){arr.hidden=false;place()}}}
+    else if(mode==='arrow'){html.classList.add('cur-dom');if(at){arr.toggleAttribute('hidden',false);place()}}}
   const pick=m=>{mode=CURSOR.modes[m]?m:'system';sel.value=mode;apply();try{localStorage.setItem('eee-cursor',mode)}catch(e){}};
   try{pick(localStorage.getItem('eee-cursor')||'system')}catch(e){pick('system')}
   sel.addEventListener('change',()=>pick(sel.value));
@@ -1921,11 +1933,13 @@ function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('draggin
   if(d.active){settle={moving:d.moving,t0:performance.now()};savePos();geometry();draw();if(current)refreshFocus();return true}return false}
 
 // ---------- legend & sr list ----------
-const lg=$('#legend');
+const lg=$('#legend'), PHONE=matchMedia('(max-width:640px)');   // phones: plates hug their copy, the legend folds to its discs (CSS)
+function foldLegend(open){if(lg.classList.contains('open')===!!open)return;lg.classList.toggle('open',!!open);fitPlate(lg)}
 LINES.forEach(L=>{
   const b=document.createElement('button'); b.dataset.line=L.key;
-  b.onmouseenter=()=>focusLine(L); b.onmouseleave=()=>focusLine(null);
-  b.onclick=()=>{release();fitTo(L.px)};
+  b.onpointerenter=e=>{if(e.pointerType==='mouse')focusLine(L)}; b.onpointerleave=e=>{if(e.pointerType==='mouse')focusLine(null)};   // a tap is no hover
+  b.onclick=()=>{if(PHONE.matches&&!lg.classList.contains('open')){foldLegend(true);return}   // phones: the first tap opens the folded legend
+    release();fitTo(L.px);if(PHONE.matches)foldLegend(false)};
   lg.appendChild(b);
 });
 // every text that changes with the language: static UI (data-i18n = text, data-i18n-label = aria-label + title),
@@ -1935,7 +1949,8 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(n=>{n.textContent=T(n.dataset.i18n)});
   document.querySelectorAll('[data-i18n-label]').forEach(n=>{const v=T(n.dataset.i18nLabel);n.setAttribute('aria-label',v);if(n.hasAttribute('title'))n.title=v});
   $('#langbtn').lang=lang==='en'?'ko':'en';   // the button names the other language, in that language
-  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${T('day')[L.day]}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span>${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`});
+  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${T('day')[L.day]}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span class="nm">${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`;
+    lg.querySelector(`[data-line="${L.key}"]`).setAttribute('aria-label',`${T('dayLong')[L.day]} ${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}`)});
   $('#srlist').innerHTML=LINES.map(L=>`<h2>${T('dayLong')[L.day]}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
 }
 applyLang();
@@ -1943,7 +1958,7 @@ applyLang();
 // inch beside the copy (DEC-030's room rule); then the height it wraps to, in whole 1 ft modules.
 function fitPlate(el){
   if(!el)return; el.style.width=el.style.height='';
-  if(getComputedStyle(el).display==='none')return;
+  if(getComputedStyle(el).display==='none'||PHONE.matches)return;   // phones: the plate hugs its copy (CSS)
   const P=DESIGN.plate, probe=document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;width:var(--ft)';
   document.body.append(probe); const ft=probe.getBoundingClientRect().width; probe.remove();
   const w0=el.getBoundingClientRect().width/ft, n=P.lengths.length;
@@ -1957,7 +1972,8 @@ function fitPopup(){
   if(!panel.classList.contains('open'))return; const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
   const rg=document.createRange(); rg.selectNodeContents(p); const L=p.getBoundingClientRect().left;
   let w=0; for(const r of rg.getClientRects())w=Math.max(w,r.right-L);
-  tx.style.width=Math.ceil(w)+1+'px'; panel.style.height='';
+  tx.style.width=Math.ceil(w)+1+'px'; panel.style.height=''; popW=popH=0;
+  if(PHONE.matches)return;   // phones: the height hugs the copy too
   const pr=document.createElement('div'); pr.style.cssText='position:absolute;visibility:hidden;width:var(--ft)'; document.body.append(pr); const ft=pr.getBoundingClientRect().width; pr.remove();
   panel.style.height=Math.max(1,Math.ceil(panel.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // height stays in whole feet (room below)
 }
@@ -1969,7 +1985,9 @@ function setLang(l){
 // ---------- view (pan/zoom) ----------
 const svg=$('#map'), world=$('#world');
 let view={x:0,y:0,k:1}, target=null;
-function apply(){world.setAttribute('transform',`translate(${view.x},${view.y}) scale(${view.k})`);svg.classList.toggle('hide-labels',view.k<DESIGN.zoom.hideLabelsBelow)}
+let hideLab=null;
+function apply(){world.setAttribute('transform',`translate(${view.x},${view.y}) scale(${view.k})`);
+  const h=view.k<DESIGN.zoom.hideLabelsBelow; if(h!==hideLab){hideLab=h;svg.classList.toggle('hide-labels',h)}}
 function bounds(pts){let a=1e9,b=1e9,c=-1e9,d=-1e9;pts.forEach(([x,y])=>{a=Math.min(a,x);b=Math.min(b,y);c=Math.max(c,x);d=Math.max(d,y)});return[a,b,c,d]}
 function fitView(pts,pad=120){
   const [a,b,c,d]=bounds(pts); const W=innerWidth,H=innerHeight;
@@ -1987,19 +2005,32 @@ function zoomAt(f,cx,cy){
   const k=Math.max(DESIGN.zoom.min,Math.min(DESIGN.zoom.max,view.k*f)); f=k/view.k;
   view={k,x:cx-(cx-view.x)*f,y:cy-(cy-view.y)*f};apply();
 }
-// pointer drag + pinch
-const ptrs=new Map(); let moved=false, last=null, vel=[0,0], pinch0=null;
-svg.addEventListener('pointerdown',e=>{const hitSt=ptrs.size===0&&e.button===0?stationAt(e.clientX,e.clientY):null;svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=false;if(hitSt)startStationDrag(hitSt,e);else sdrag=null;target=null;vel=[0,0];last=[e.clientX,e.clientY,performance.now()];if(ptrs.size===2){const [p,q]=[...ptrs.values()];pinch0={d:Math.hypot(p[0]-q[0],p[1]-q[1]),k:view.k}}});
+// pointer drag + pinch. Touch (2026-11-19, phones felt rough): the pinch keeps the map point under the two fingers'
+// midpoint there, so a pinch can pan too; the fling speed is the average of the last ~80ms of moves (one late, short
+// move used to spike it) and decays per ms, not per frame, so it feels the same at 60 and 120 Hz.
+const ptrs=new Map(); let moved=false, trail=[], pinch0=null;
+function pinchStart(){const [p,q]=[...ptrs.values()],mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
+  pinch0={d:Math.hypot(p[0]-q[0],p[1]-q[1])||1,k:view.k,wx:(mx-view.x)/view.k,wy:(my-view.y)/view.k};trail=[]}
+svg.addEventListener('pointerdown',e=>{if(ptrs.size>=2)return;const hitSt=ptrs.size===0&&e.button===0?stationAt(e.clientX,e.clientY):null;svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);foldLegend(false);
+  moved=false;if(hitSt)startStationDrag(hitSt,e);else sdrag=null;target=null;trail=[[e.clientX,e.clientY,performance.now()]];if(ptrs.size===2)pinchStart()});
 svg.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId))return; const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
   if(sdrag&&ptrs.size===1){moveStationDrag(e);if(sdrag.active)moved=true;return}
-  if(ptrs.size===2&&pinch0){sdrag=null;release();const [p,q]=[...ptrs.values()];const d=Math.hypot(p[0]-q[0],p[1]-q[1]);zoomAt((pinch0.k*d/pinch0.d)/view.k,(p[0]+q[0])/2,(p[1]+q[1])/2);moved=true;return}
+  if(ptrs.size===2&&pinch0){sdrag=null;release();const [p,q]=[...ptrs.values()],mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
+    const k=Math.max(DESIGN.zoom.min,Math.min(DESIGN.zoom.max,pinch0.k*Math.hypot(p[0]-q[0],p[1]-q[1])/pinch0.d));
+    view={k,x:mx-pinch0.wx*k,y:my-pinch0.wy*k};apply();moved=true;return}
+  if(pinch0)return;   // a third finger: ignore
   const dx=e.clientX-prev[0],dy=e.clientY-prev[1]; if(Math.abs(dx)+Math.abs(dy)>2){if(!moved)release();moved=true;svg.classList.add('dragging');unhover()}
-  view.x+=dx;view.y+=dy;apply(); const now=performance.now(); vel=[dx/Math.max(1,now-last[2])*16,dy/Math.max(1,now-last[2])*16]; last=[e.clientX,e.clientY,now];
+  view.x+=dx;view.y+=dy;apply(); const now=performance.now(); trail.push([e.clientX,e.clientY,now]); while(trail.length>2&&now-trail[0][2]>80)trail.shift();
 });
-const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;svg.classList.remove('dragging');
+const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);svg.classList.remove('dragging');
+  if(pinch0&&ptrs.size<2){pinch0=null;const r=[...ptrs.values()][0];trail=r?[[r[0],r[1],performance.now()]]:[];if(ptrs.size){return}}   // one finger left: it pans on from here
   if(sdrag){const wasDrag=endStationDrag();if(wasDrag){moved=true;setTimeout(()=>moved=false,0);return}}
-  if(moved&&!reduce&&ptrs.size===0){let v=[...vel];target=()=>{v[0]*=.92;v[1]*=.92;view.x+=v[0];view.y+=v[1];apply();if(Math.hypot(...v)<.3)target=null}}
+  if(moved&&!reduce&&ptrs.size===0&&trail.length>1){
+    const a=trail[0],b=trail[trail.length-1],now=performance.now(),span=Math.max(16,b[2]-a[2]);
+    let v=now-b[2]>60?[0,0]:[(b[0]-a[0])/span,(b[1]-a[1])/span], lt=null;   // px per ms; a finger that stopped before lifting does not fling
+    if(Math.hypot(...v)>.05)target=t=>{const dt=lt==null?16:Math.min(50,t-lt);lt=t;const f=Math.pow(.92,dt/16.67);
+      view.x+=v[0]*dt;view.y+=v[1]*dt;v[0]*=f;v[1]*=f;apply();if(Math.hypot(...v)<.02)target=null}}
   setTimeout(()=>moved=false,0)};
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 svg.addEventListener('wheel',e=>{e.preventDefault();release();
@@ -2011,14 +2042,17 @@ svg.addEventListener('wheel',e=>{e.preventDefault();release();
 },{passive:false});
 // Safari pinch
 let gs=1;svg.addEventListener('gesturestart',e=>{e.preventDefault();gs=1});
-svg.addEventListener('gesturechange',e=>{e.preventDefault();release();zoomAt(e.scale/gs,e.clientX||innerWidth/2,e.clientY||innerHeight/2);gs=e.scale});
+svg.addEventListener('gesturechange',e=>{e.preventDefault();if(ptrs.size>=2){gs=e.scale;return}   // iOS touch pinch: the pointer pinch already zooms
+  release();zoomAt(e.scale/gs,e.clientX||innerWidth/2,e.clientY||innerHeight/2);gs=e.scale});
 svg.addEventListener('gestureend',e=>e.preventDefault());
 $('#zin').onclick=()=>{release();zoomAt(1.4,innerWidth/2,innerHeight/2)};
 $('#zout').onclick=()=>{release();zoomAt(1/1.4,innerWidth/2,innerHeight/2)};
 $('#zfit').onclick=()=>{release();fitTo(all.map(s=>[s.x,s.y]))};
 
 // ---------- hover / focus ----------
-function focusLine(L){
+var focused=null;   // var: draw() (earlier in the file, run at boot) clears it
+function focusLine(L,force){
+  if(!force&&(L||null)===focused)return; focused=L||null;
   document.querySelectorAll('[data-line]').forEach(n=>{ if(n.closest('#legend'))return; n.classList.toggle('dim',!!L&&n.dataset.line!==L.key)});
   gS.querySelectorAll('.station').forEach(g=>{const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
   
@@ -2030,6 +2064,7 @@ function unhover(){if(!current)focusLine(null)}
 
 // ---------- panel ----------
 let current=null; const panel=$('#panel');
+let popW=0,popH=0,popT='';   // popup size, measured once per fitPopup (no forced layout every frame), and its last transform
 function openStation(s,fromHash,keepView){
   current&&current.g.classList.remove('active'); current=s; s.g.classList.add('active');
   focusLine(s.line);
@@ -2048,12 +2083,13 @@ function visibleCentre(){return innerWidth>640?[innerWidth/2,innerHeight/2]:[inn
 // popup sits beside its station and moves with the map
 function placePopup(){
   if(!current||!panel.classList.contains('open'))return;
-  const s=current, sx=view.x+s.x*view.k, sy=view.y+s.y*view.k, w=panel.offsetWidth, h=panel.offsetHeight, m=12, gap=28;
+  if(!popW){popW=panel.offsetWidth;popH=panel.offsetHeight}
+  const s=current, sx=view.x+s.x*view.k, sy=view.y+s.y*view.k, w=popW, h=popH, m=12, gap=28;
   let x,y;
   if(innerWidth<=640){x=(innerWidth-w)/2;y=sy+gap}
   else{x=sx+gap; if(x+w>innerWidth-m)x=sx-gap-w; y=sy-h*.3}
   x=Math.max(m,Math.min(innerWidth-w-m,x)); y=Math.max(m,Math.min(innerHeight-h-m,y));
-  panel.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
+  const tr=`translate(${Math.round(x)}px,${Math.round(y)}px)`; if(tr!==popT){popT=tr;panel.style.transform=tr}
 }
 function centerOn(s,ms,zoomIn){
   const [cx,cy]=visibleCentre(), [z0,z1]=DESIGN.zoom.focus;
