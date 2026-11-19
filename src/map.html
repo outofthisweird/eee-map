@@ -171,11 +171,8 @@
   @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
   #pxfer{display:grid;gap:calc(var(--gap-ko) / 2)} #pxfer:empty{display:none}
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
-  #panel button:disabled{text-decoration:none;cursor:default}
-  #panel .nav{display:flex;justify-content:space-between;gap:calc(var(--p-in) * 1.375)}      /* [eee] prev ← … → next on one row */
-  #panel .nav button:disabled{visibility:hidden}                                            /* line end: keep the other button in place */
-  #panel .nav button{display:flex;align-items:baseline;gap:.3em}   /* flex gaps: the underline stops between words */
-  #panel small{font-size:inherit}
+  #panel #ptitle{text-decoration:none}                                                     /* [eee] title link without underline for now (2026-11-19) */
+  #psum:empty{display:none}                                                                 /* [eee] 1–2 line summary of the post */
 
   @media (max-width:640px){
     :root{--edge:12px}
@@ -204,7 +201,8 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
     <div class="text">
       <p><a id="ptitle" target="_blank" rel="noopener"></a></p>
       <div id="pxfer"></div>
-      <div class="nav"><button id="pprev"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg> <small data-i18n="prev">이전 역</small></button><button id="pnext"><small data-i18n="next">다음 역</small> <svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg></button></div>
+      <p id="psum"></p>
+      <p class="close"><button id="pclose" data-i18n="close">닫기</button></p>
     </div>
   </div>
 </aside>
@@ -219,17 +217,17 @@ const DATA_EN = __DATA_EN__;   // data/en.json: English series names, station na
 // ---------- language: Korean (default) or English. The 한/En button, ?lang=en|ko, remembered in this browser ----------
 const I18N={
   ko:{map:'EEE 노선도',legend:'노선 범례',grid:'그리드 보기',replay:'랜덤 배치 (노선 모양·환승역을 새로 섞기)',theme:'흑백 반전',
-      lang:'English',langBtn:'En',zin:'확대',zout:'축소',zfit:'전체 보기',all:'전체',prev:'이전 역',next:'다음 역',list:'역 목록',xfer:'환승',
+      lang:'English',langBtn:'En',zin:'확대',zout:'축소',zfit:'전체 보기',all:'전체',close:'닫기',list:'역 목록',xfer:'환승',
       day:{월:'월',수:'수',금:'금',일:'일'},dayLong:{월:'월요일',수:'수요일',금:'금요일',일:'일요일'}},
   en:{map:'EEE route map',legend:'Lines',grid:'Show grid',replay:'Random layout (reshuffle the lines and transfers)',theme:'Invert',
-      lang:'한국어',langBtn:'한',zin:'Zoom in',zout:'Zoom out',zfit:'Show all',all:'All',prev:'Previous',next:'Next',list:'Stations',xfer:'Transfer',
+      lang:'한국어',langBtn:'한',zin:'Zoom in',zout:'Zoom out',zfit:'Show all',all:'All',close:'Close',list:'Stations',xfer:'Transfer',
       day:{월:'Mon',수:'Wed',금:'Fri',일:'Sun'},dayLong:{월:'Monday',수:'Wednesday',금:'Friday',일:'Sunday'}},
 };
 let lang=(()=>{const q=location.search.match(/[?&]lang=(ko|en)\b/);if(q)return q[1];try{return localStorage.getItem('eee-lang')==='en'?'en':'ko'}catch(e){return'ko'}})();
 document.documentElement.lang=lang;
 const T=k=>I18N[lang][k];
 const EN=id=>lang==='en'&&DATA_EN.stations[id]||null;
-const stName=s=>(EN(s.id)||s).s, stTitle=s=>(EN(s.id)||s).t;
+const stName=s=>(EN(s.id)||s).s, stTitle=s=>(EN(s.id)||s).t, stSum=s=>lang==='en'?(EN(s.id)||{}).m||'':s.m||'';   // m: 1–2 line summary (English shows none until translated)
 const seriesName=(c,ko)=>lang==='en'&&DATA_EN.series[c]||ko;
 // ======================================================================
 // DESIGN — every visual value of the map lives here. Change these, not the code below.
@@ -1262,12 +1260,9 @@ function openStation(s,fromHash,keepView){
   focusLine(s.line);
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
-  const pt=$('#ptitle'); pt.textContent=stTitle(s); pt.href=s.u;   // [eee] popup = title (links to Instagram), transfers, prev/next in one row (2026-11-18)
+  const pt=$('#ptitle'); pt.textContent=stTitle(s); pt.href=s.u;   // [eee] popup = title (links to Instagram), transfers, summary, close (2026-11-19)
   const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`${T('xfer')} ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`${T('xfer')}: ${seriesName(x.b,x.ser)}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
-  const prev=L.st[s.i-1], next=L.st[s.i+1];
-  const pb=$('#pprev'),nb=$('#pnext');
-  pb.disabled=!prev; pb.onclick=()=>prev&&openStation(prev);
-  nb.disabled=!next; nb.onclick=()=>next&&openStation(next);
+  $('#psum').textContent=stSum(s);
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPlate(panel); placePopup();
   if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
   follow=s;
@@ -1293,7 +1288,8 @@ function centerOn(s,ms,zoomIn){
 }
 function release(){follow=null;target=null}
 function closePanel(){release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
-// no close button: Esc or a click on the empty map closes the popup
+// close: the 닫기 text button at the bottom, Esc, or a click on the empty map
+$('#pclose').onclick=closePanel;
 addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 svg.addEventListener('click',e=>{
   if(moved)return;
