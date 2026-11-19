@@ -331,7 +331,15 @@
   .rplate{--font-weight:var(--font-weight-dark);color:var(--bg);font-weight:var(--font-weight);
     background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
   :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
-  :root[data-print] :is(.rplate, #map){filter:var(--print-filter)}         /* nycta DEC-038 ink edge on eee's plates and map (nycta names them .plate/.popup/.map__svg) */
+  :root[data-print] .rplate{filter:var(--print-filter)}                   /* nycta DEC-038 ink edge on eee's plates (nycta names them .plate/.popup) */
+  /* [eee] the map's ink edge is its own filter, #eee-ink (2026-11-19, phones): the same displacement as nycta's #nycta-ink,
+     but (1) its region is the screen in px, not a % of the box: WebKit sized nycta's by the map content, which zoomed in
+     outgrew its filter limit and the whole map vanished; (2) its noise is a tile drawn once (inkNoise()), not feTurbulence
+     every time: about 3× cheaper in WebKit. Off wherever nycta's layer is off (dark, high contrast, forced colours, print). */
+  :root[data-print] #map{filter:url(#eee-ink)}
+  :root[data-print][data-theme=dark] #map{filter:none}
+  @media (prefers-color-scheme:dark){:root[data-print]:not([data-theme=light]) #map{filter:none}}
+  @media (prefers-contrast:more),(forced-colors:active),print{:root[data-print] #map{filter:none}}
 
   /* [eee] logo, legend and popup are standard module plates (GRID-012, SIGN-012): fitPlates() picks the shortest of
      1/2/4/6/8 ft that leaves ≥ 1in beside the copy (DEC-030 room), 1 ft high (whole feet if the copy needs more).
@@ -418,7 +426,8 @@
   }
   /* [eee] touch screens: re-running the DEC-038 ink-edge filter over the whole map every frame stalls phones. With the
      trains on their own layer (#mapfx) the map is still at rest, so it keeps the ink edge then; while it moves (pan, zoom,
-     drag, tidy-up, intro) inMotion() sets html.map-moving and the edge comes back 200ms after it stops. */
+     drag, tidy-up, intro) inMotion() sets html.map-moving and the edge comes back 400ms after it stops, never while a
+     finger is still down. */
   @media (hover:none) and (pointer:coarse){:root[data-print].map-moving #map{filter:none}}
 </style>
 <script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
@@ -428,6 +437,7 @@
 if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.write('<link rel="stylesheet" href="preview/helvetica.css?'+Date.now()+'">');/* 캐시 무시: preview_font.sh로 다시 만들면 바로 보이게 */}})();</script>
 </head>
 <body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><filter id="eee-ink" filterUnits="userSpaceOnUse" x="-4" y="-4" width="2000" height="2000" color-interpolation-filters="sRGB"><feImage id="eee-ink-noise" x="0" y="0" width="128" height="128" preserveAspectRatio="none" result="n"/><feTile in="n" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="1.5" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <svg id="map" role="img" data-i18n-label="map" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="stations"></g><g id="bullets"></g></g></svg>
 <svg id="mapfx" aria-hidden="true"><defs><clipPath id="trainclip"></clipPath></defs><g id="world2"><g id="trains"></g><use id="trainover" href="#stations" clip-path="url(#trainclip)"/></g></svg>
@@ -1078,10 +1088,26 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS='http://www.w3.org/2000/svg';
 // [eee] touch screens with the print texture: the map drops its ink-edge filter while it moves (CSS html.map-moving),
 // back 200ms after the last change. ms = how much longer the current change lasts (an animation). Elsewhere a no-op.
+// Turning the edge back on costs one full-screen filter pass (a short stall), so it waits 400ms and for every finger to lift.
 const TOUCH=matchMedia('(hover:none) and (pointer:coarse)'); var motionT=0;
 function inMotion(ms=0){const r=document.documentElement; if(!TOUCH.matches||!r.hasAttribute('data-print'))return;
   if(!r.classList.contains('map-moving'))r.classList.add('map-moving');
-  clearTimeout(motionT); motionT=setTimeout(()=>r.classList.remove('map-moving'),ms+200)}
+  clearTimeout(motionT); motionT=setTimeout(function off(){if(ptrs.size){motionT=setTimeout(off,400);return}r.classList.remove('map-moving')},ms+400)}
+// [eee] #eee-ink (the map's ink edge, see the CSS): a 128px noise tile drawn once, R/G = x/y displacement around .5.
+// Coarse noise per CSS px (bilinear, like feTurbulence's 1.1/px) plus fine noise per device px for the ragged edge.
+// Its region follows the screen; its strength follows nycta's --print-edge.
+(function inkNoise(){const T=128,S=T*3,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),im=x.createImageData(S,S),d=im.data;
+  const R=rng(20261119),co=new Float32Array(T*T*2);for(let i=0;i<co.length;i++)co[i]=R();
+  const at=(ch,u,v)=>{const u0=Math.floor(u)%T,v0=Math.floor(v)%T,fu=u-Math.floor(u),fv=v-Math.floor(v),u1=(u0+1)%T,v1=(v0+1)%T,g=(a,b)=>co[(b*T+a)*2+ch];
+    return g(u0,v0)*(1-fu)*(1-fv)+g(u1,v0)*fu*(1-fv)+g(u0,v1)*(1-fu)*fv+g(u1,v1)*fu*fv};
+  for(let j=0;j<S;j++)for(let i=0;i<S;i++){const k=(j*S+i)*4;
+    for(let ch=0;ch<2;ch++)d[k+ch]=Math.round(255*(.5+((at(ch,i/3,j/3)-.5)*.55+(R()-.5)*.45)*.8));d[k+2]=128;d[k+3]=255}
+  x.putImageData(im,0,0);document.getElementById('eee-ink-noise').setAttribute('href',c.toDataURL());
+  const f=document.getElementById('eee-ink'),dm=f.querySelector('feDisplacementMap'),root=document.documentElement;
+  const fit=()=>{f.setAttribute('width',innerWidth+8);f.setAttribute('height',innerHeight+8)};
+  const edge=()=>{const v=parseFloat(getComputedStyle(root).getPropertyValue('--print-edge'));if(isFinite(v))dm.setAttribute('scale',v)};
+  fit();edge();addEventListener('resize',fit);new MutationObserver(edge).observe(root,{attributes:true,attributeFilter:['data-print']});
+})();
 const $=s=>document.querySelector(s);
 const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
 const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
