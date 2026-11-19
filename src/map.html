@@ -194,9 +194,9 @@
     #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
     /* [eee] phones (2026-11-19 사용자 요청): the module plates (1 ft high, standard lengths) took a third of the screen.
        Logo, legend and popup hug their copy instead (fitPlate/fitPopup skip the module sizes), ½in below the descender
-       guide like the legend. The popup copy wraps at 24in (desktop 40in; 28/24/20 compared, 2026-11-19). */
+       guide like the legend. The popup copy wraps at 20in (desktop 40in; 28/24/20 compared, 2026-11-19). */
     #logo{padding-bottom:calc(var(--doc-in) * (.5 + .235 * 1.375))}
-    #panel .text{max-width:calc(var(--p-in) * 24)}
+    #panel .text{max-width:calc(var(--p-in) * 20)}
     /* legend folds to its discs (a column as wide as the tool buttons); a tap opens it, a line tap fits that line and folds it */
     #legend:not(.open){min-width:var(--ui-btn)}
     #legend:not(.open) .day,#legend:not(.open) .nm{display:none}
