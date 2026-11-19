@@ -405,13 +405,14 @@
   #panel{--p-scale:1.5;--p-in:calc(var(--doc-in) * var(--p-scale));--p-fs:calc(1rem * var(--p-scale));
     --rp-gap:calc(var(--p-in) * .5);--rp-rule:max(1px, calc(var(--p-in) * .125));--rp-top:calc(var(--rp-gap) * 2 + var(--rp-rule));
     --rp-side:calc(var(--p-in) * .5);--ft:calc(var(--p-in) * 12);position:fixed;top:0;left:0;z-index:10;opacity:0;pointer-events:none;
-    width:max-content;max-width:min(calc(var(--p-in) * 48), calc(100vw - 24px));            /* ≤ 4 ft */
+    width:max-content;max-width:min(calc(var(--doc-in) * 48), calc(100vw - 24px));          /* ≤ 4 ft at page scale */
     padding:var(--rp-top) var(--rp-side) calc(var(--p-in) * (.5 + .235 * 1.375));           /* bottom ½in below the descender guide */
     font-size:var(--p-fs);line-height:var(--lh-g1)}                                                /* [eee] Grid 1 pitch in Korean too, like the legend (2026-11-19) */
   #panel.open{opacity:1;pointer-events:auto}
   #panel .body{display:flex;align-items:flex-start;gap:calc(var(--p-in) * .5)}              /* GRID-009 disc → text ½in */
   #pb .disc{--d:calc(var(--p-fs) * (var(--cap-em) + var(--lh-g1)))}                               /* DEC-031 lead disc spans lines 1–2 (cap + one pitch) */
-  #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--p-in) * 40)}                 /* longest line; fitPopup() shrinks to it */
+  #panel .text{flex:1 1 auto;min-width:0;max-width:calc(var(--doc-in) * 40)}               /* longest line; fitPopup() shrinks to it.
+     [eee] the wrap width stays 40in at page scale while the plate grows (2026-11-19 사용자 요청: 커진 만큼 폭만 좁게) */
   #panel .text>*{--p-trim:calc((var(--trim-k) - var(--lh-g1) / 2) * 1em);margin:var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull))}   /* DEC-025, DEC-033 */
   #panel .text>*+*{margin-block-start:calc(var(--gap-ko) + var(--p-trim))}                  /* GRID-007 → [eee] Korean gap */
   @supports (text-box: trim-both cap alphabetic){#panel .text>*{--p-trim:0px;text-box:trim-both cap alphabetic}}
