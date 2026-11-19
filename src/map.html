@@ -54,6 +54,10 @@
   /* ---- map ---- */
   #map{position:fixed;inset:0;width:100%;height:100%;cursor:var(--cur-map,grab);touch-action:none;user-select:none}
   #map.dragging{cursor:var(--cur-pan,grabbing)}
+  /* [eee] trains live on their own layer above the map (2026-11-19): they never stop, and inside #map they made the
+     DEC-038 ink-edge filter run every frame. What #map draws above the trains (stations, names) is repeated here,
+     clipped to the trains (#trainclip), so the order on screen stays lines → trains → stations. */
+  #mapfx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
   .label{font-size:var(--label-size,13px);font-weight:var(--font-weight);fill:var(--fg);pointer-events:none}
   .hide-labels .label:not(.lm){display:none}
   .lm{visibility:hidden}                         /* the name-width ruler (labelWidth) */
@@ -190,9 +194,10 @@
     #legend:not(.open) .day,#legend:not(.open) .nm{display:none}
     #legend:not(.open) .bs{margin-inline-end:0}
   }
-  /* [eee] touch screens: the DEC-038 ink-edge filter on the whole map re-ran every frame (the trains never stop), which
-     stalled phones. There the map keeps the paper and grain; the plates keep their ink edge. */
-  @media (hover:none) and (pointer:coarse){:root[data-print] #map{filter:none}}
+  /* [eee] touch screens: re-running the DEC-038 ink-edge filter over the whole map every frame stalls phones. With the
+     trains on their own layer (#mapfx) the map is still at rest, so it keeps the ink edge then; while it moves (pan, zoom,
+     drag, tidy-up, intro) inMotion() sets html.map-moving and the edge comes back 200ms after it stops. */
+  @media (hover:none) and (pointer:coarse){:root[data-print].map-moving #map{filter:none}}
 </style>
 <script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
    file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
@@ -202,7 +207,8 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 </head>
 <body>
 <svg hidden aria-hidden="true"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
-<svg id="map" role="img" data-i18n-label="map" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="trains"></g><g id="stations"></g><g id="bullets"></g></g></svg>
+<svg id="map" role="img" data-i18n-label="map" aria-label="EEE 노선도"><defs><pattern id="gridpat" patternUnits="userSpaceOnUse" x="0" y="0" width="36" height="36"><path class="gl" d="M36 0H0V36"/><circle class="gd" cx="0" cy="0" r="1.6"/></pattern></defs><g id="world"><rect id="gridlayer" x="-60000" y="-60000" width="120000" height="120000" fill="url(#gridpat)"/><g id="lines"></g><g id="xfers"></g><g id="stations"></g><g id="bullets"></g></g></svg>
+<svg id="mapfx" aria-hidden="true"><defs><clipPath id="trainclip"></clipPath></defs><g id="world2"><g id="trains"></g><use id="trainover" href="#stations" clip-path="url(#trainclip)"/></g></svg>
 
 <div id="logo" class="rplate" lang="en"><p>Easy Exhibition<br>for Everyone</p></div>
 <div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
@@ -303,6 +309,12 @@ const LINES = [
 const TURN_FROM = 3, MAX_DRIFT = 2;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS='http://www.w3.org/2000/svg';
+// [eee] touch screens with the print texture: the map drops its ink-edge filter while it moves (CSS html.map-moving),
+// back 200ms after the last change. ms = how much longer the current change lasts (an animation). Elsewhere a no-op.
+const TOUCH=matchMedia('(hover:none) and (pointer:coarse)'); var motionT=0;
+function inMotion(ms=0){const r=document.documentElement; if(!TOUCH.matches||!r.hasAttribute('data-print'))return;
+  if(!r.classList.contains('map-moving'))r.classList.add('map-moving');
+  clearTimeout(motionT); motionT=setTimeout(()=>r.classList.remove('map-moving'),ms+200)}
 const $=s=>document.querySelector(s);
 const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e};
 const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
@@ -768,7 +780,7 @@ function geometry(){
 }
 
 // ---------- draw ----------
-const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains');
+const gL=$('#lines'),gS=$('#stations'),gX=$('#xfers'),gB=$('#bullets'),gT=$('#trains'),gTC=$('#trainclip'),world2=$('#world2'),fx=$('#mapfx');
 const labelAttrs=s=>({x:s.lab.cx-s.vx-(s.lab.anchor==='start'?(lang==='en'?DESIGN.map.lsbEn:DESIGN.map.lsbKo):0),y:s.lab.cy-s.vy,'text-anchor':s.lab.anchor});   // flush-left: first-letter side bearing pull (DEC-025/033)
 // Names again once the faces are in, or when the theme changes the weight: widths re-measured, nothing else redrawn
 // (the lines keep growing if the intro is still running).
@@ -776,7 +788,7 @@ function relabel(){labelW.clear();geometry();
   stations.forEach(s=>{if(s.owner||!s.g||!s.lab)return;const t=s.g.querySelector('text.label');if(!t)return;
     const a=labelAttrs(s);for(const k in a)t.setAttribute(k,a[k])})}
 function draw(){
-  [gL,gS,gX,gB,gT].forEach(g=>g.replaceChildren()); focused=undefined;   // fresh nodes: the next focusLine() re-dims
+  [gL,gS,gX,gB,gT,gTC].forEach(g=>g.replaceChildren()); focused=undefined; inMotion();   // fresh nodes: the next focusLine() re-dims
   // DEC-036: each group gets a page-colour casing drawn just before it, so a later group cuts a gap where it crosses an
   // earlier one (a group's strands share one layer: all their casings, then all their strokes)
   const layers=new Map();
@@ -812,7 +824,9 @@ function draw(){
   });
   stations.forEach(s=>{if(s.owner)s.g=s.owner.g});
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
-  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);L.plen=L.model.total;L.tpos=L.tpos??Math.random()});
+  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);
+    L.tclip=el('rect',{width:T.w+T.stroke,height:T.h+T.stroke,x:-(T.w+T.stroke)/2,y:-(T.h+T.stroke)/2},gTC);   // the stations repeated over this train
+    L.plen=L.model.total;L.tpos=L.tpos??Math.random()});
 }
 function build(fresh){ if(fresh){generate();} geometry(); draw(); }
 generate(); loadPos(); geometry(); draw();
@@ -1166,7 +1180,7 @@ function endStationDrag(){const d=sdrag;sdrag=null;svg.classList.remove('draggin
   if(d.active){settle={moving:d.moving,t0:performance.now()};savePos();geometry();draw();if(current)refreshFocus();return true}return false}
 
 // ---------- legend & sr list ----------
-const lg=$('#legend'), PHONE=matchMedia('(max-width:640px)');   // phones: plates hug their copy, the legend folds to its discs (CSS)
+const lg=$('#legend'), logoEl=$('#logo'), PHONE=matchMedia('(max-width:640px)');   // phones: plates hug their copy, the legend folds to its discs (CSS)
 function foldLegend(open){if(lg.classList.contains('open')===!!open)return;lg.classList.toggle('open',!!open);fitPlate(lg)}
 LINES.forEach(L=>{
   const b=document.createElement('button'); b.dataset.line=L.key;
@@ -1191,12 +1205,13 @@ applyLang();
 // inch beside the copy (DEC-030's room rule); then the height it wraps to, in whole 1 ft modules.
 function fitPlate(el){
   if(!el)return; el.style.width=el.style.height='';
-  if(getComputedStyle(el).display==='none'||PHONE.matches)return;   // phones: the plate hugs its copy (CSS)
+  const phone=PHONE.matches;
+  if(getComputedStyle(el).display==='none'||phone&&el!==logoEl)return;   // phones: legend (and popup) hug their copy (CSS)
   const P=DESIGN.plate, probe=document.createElement('div'); probe.style.cssText='position:absolute;visibility:hidden;width:var(--ft)';
   document.body.append(probe); const ft=probe.getBoundingClientRect().width; probe.remove();
   const w0=el.getBoundingClientRect().width/ft, n=P.lengths.length;
   const w=P.lengths.find(l=>(l-w0)*12>=P.roomIn)||P.lengths[n-1];   // shortest standard plate with ≥ 1in to spare
-  el.style.width=w*ft+'px';
+  el.style.width=w*ft+'px'; if(phone)return;   // phones: the logo keeps its standard length (the room on the right), its height hugs (2026-11-19)
   el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
 }
 function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup()}
@@ -1219,8 +1234,8 @@ function setLang(l){
 const svg=$('#map'), world=$('#world');
 let view={x:0,y:0,k:1}, target=null;
 let hideLab=null;
-function apply(){world.setAttribute('transform',`translate(${view.x},${view.y}) scale(${view.k})`);
-  const h=view.k<DESIGN.zoom.hideLabelsBelow; if(h!==hideLab){hideLab=h;svg.classList.toggle('hide-labels',h)}}
+function apply(){const t=`translate(${view.x},${view.y}) scale(${view.k})`;world.setAttribute('transform',t);world2.setAttribute('transform',t);inMotion();
+  const h=view.k<DESIGN.zoom.hideLabelsBelow; if(h!==hideLab){hideLab=h;svg.classList.toggle('hide-labels',h);fx.classList.toggle('hide-labels',h)}}
 function bounds(pts){let a=1e9,b=1e9,c=-1e9,d=-1e9;pts.forEach(([x,y])=>{a=Math.min(a,x);b=Math.min(b,y);c=Math.max(c,x);d=Math.max(d,y)});return[a,b,c,d]}
 function fitView(pts,pad=120){
   const [a,b,c,d]=bounds(pts); const W=innerWidth,H=innerHeight;
@@ -1285,7 +1300,7 @@ $('#zfit').onclick=()=>{release();fitTo(all.map(s=>[s.x,s.y]))};
 // ---------- hover / focus ----------
 var focused=null;   // var: draw() (earlier in the file, run at boot) clears it
 function focusLine(L,force){
-  if(!force&&(L||null)===focused)return; focused=L||null;
+  if(!force&&(L||null)===focused)return; focused=L||null; inMotion(250);   // the .2s dim fade
   document.querySelectorAll('[data-line]').forEach(n=>{ if(n.closest('#legend'))return; n.classList.toggle('dim',!!L&&n.dataset.line!==L.key)});
   gS.querySelectorAll('.station').forEach(g=>{const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
   
@@ -1365,12 +1380,15 @@ function intro(){
   const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
   const order=[],add=L=>{if(order.includes(L))return;order.push(L);LINES.forEach(C=>{if(C.parent===L)add(C)})};
   add(main);LINES.forEach(L=>{if(!L.lead)add(L)});LINES.forEach(add);   // a parent always starts before its children
+  let end=0;
   order.forEach(L=>{
     let t0=0;const P=L.parent;
     if(P&&start.has(P)){const from=P.st[P.k].len,at=P.st[L.pk].len,fwd=at>=from,sub=P.subs[fwd||P.subs.length<2?0:1],
       d=dur(P)[fwd||P.subs.length<2?0:1]||0,len=sub?sub._len:1;t0=start.get(P)+d*Math.pow(Math.min(1,Math.abs(at-from)/(len||1)),.9)+120}
-    start.set(L,t0);growLine(L,t0);
+    start.set(L,t0);end=Math.max(end,growLine(L,t0));
   });
+  // the stations repeated over the trains (#trainover) show once every line has grown; the map is moving until then
+  $('#trainover').animate([{opacity:0},{opacity:1}],{duration:300,delay:end,fill:'backwards'}); inMotion(end+300);
 }
 // ---------- loop ----------
 let lt=performance.now();
@@ -1386,7 +1404,7 @@ function frame(t){
   if(!reduce) LINES.forEach(L=>{ if(!L.plen)return;
     L.tpos=(L.tpos+dt/(L.plen*DESIGN.train.speed))%2; const p=L.loop?L.tpos%1:(L.tpos<1?L.tpos:2-L.tpos);
     const q=GEO.pointAt(L.model,p*L.plen);   // [x, y, direction]
-    L.train.setAttribute('transform',`translate(${q[0]},${q[1]}) rotate(${q[2]*180/Math.PI})`);
+    const tr=`translate(${q[0]},${q[1]}) rotate(${q[2]*180/Math.PI})`; L.train.setAttribute('transform',tr); L.tclip.setAttribute('transform',tr);
   });
   requestAnimationFrame(frame);
 }
