@@ -1581,7 +1581,7 @@ function relabel(){labelW.clear();geometry();
   stations.forEach(s=>{if(s.owner||!s.g||!s.lab)return;const t=s.g.querySelector('text.label');if(!t)return;
     const a=labelAttrs(s);for(const k in a)t.setAttribute(k,a[k])})}
 function draw(){
-  [gL,gS,gX,gB,gT,gTC].forEach(g=>g.replaceChildren()); focused=undefined; inMotion();   // fresh nodes: the next focusLine() re-dims
+  [gL,gS,gX,gB,gT,gTC].forEach(g=>g.replaceChildren()); const keepFocus=focused; inMotion();
   // DEC-036: each group gets a page-colour casing drawn just before it, so a later group cuts a gap where it crosses an
   // earlier one (a group's strands share one layer: all their casings, then all their strokes)
   const layers=new Map();
@@ -1617,9 +1617,11 @@ function draw(){
   });
   stations.forEach(s=>{if(s.owner)s.g=s.owner.g});
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
+  // fresh nodes keep the current highlight: dimmed from the start, no flash of full colour mid-drag (2026-11-19)
   LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);
     L.tclip=el('rect',{width:T.w+T.stroke,height:T.h+T.stroke,x:-(T.w+T.stroke)/2,y:-(T.h+T.stroke)/2},gTC);   // the stations repeated over this train
     L.plen=L.model.total;L.tpos=L.tpos??Math.random()});
+  if(keepFocus)focusLine(keepFocus,true);
 }
 function build(fresh){ if(fresh){generate();} geometry(); draw(); }
 generate(); loadPos(); geometry(); draw();
@@ -2095,8 +2097,7 @@ var focused=null;   // var: draw() (earlier in the file, run at boot) clears it
 function focusLine(L,force){
   if(!force&&(L||null)===focused)return; focused=L||null; inMotion(250);   // the .2s dim fade
   document.querySelectorAll('[data-line]').forEach(n=>{ if(n.closest('#legend'))return; n.classList.toggle('dim',!!L&&n.dataset.line!==L.key)});
-  gS.querySelectorAll('.station').forEach(g=>{const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g);const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];g.classList.toggle('dim',!!L&&!lines.includes(L))});
-  
+  stations.forEach(s=>{if(s.owner||!s.g)return;const lines=[s.line,...(s.xfer||[]).map(x=>x.line)];s.g.classList.toggle('dim',!!L&&!lines.includes(L))});
 }
 // hover only highlights the station's line; the details live in the click popup (no hover summary card)
 function hover(s,e){ if(ptrs.size)return; if(!current)focusLine(s.line)}
