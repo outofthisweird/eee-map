@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EEE — Map</title>
 <style>
-/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (commit: 0f5c589 2026-11-18 Discs: bake glyph outlines from the bold face (DEC-037)) */
+/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (commit: 9239529 2026-11-19 Print simulation layer, opt-in (DEC-038)) */
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -173,6 +173,61 @@
 .disc[data-line="Y"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M603 296H692L539 561V704H461V561L308 296H396L500 485Z'/%3E%3C/svg%3E"); }
 .disc[data-line="Z"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M649 356 443 638H649V704H351V644L556 362H351V296H649Z'/%3E%3C/svg%3E"); }
 /* end of disc glyph masks */
+
+/* -------------------------------------------------------------------------
+   14. Print simulation layer (DEC-038) — opt-in: <html data-print>
+   Off by default; a button with data-print-toggle switches it per viewer (js/nycta.js). Dark mode, high contrast, forced colours and real printing turn it off.
+   Ink-edge filter (#nycta-ink) is injected by js/nycta.js; without the script only paper + grain apply.
+   ------------------------------------------------------------------------- */
+:root[data-print] {
+  --c-paper: #FFFCFA;                                   /* DEC-038, COLOR-005 | pdf p.49–57 | [설계결정] scan paper #EAE5E2 normalised to R = 255 (#FFFAF6), halfway to white */
+  --c-white: var(--c-paper);                            /* DEC-038 | - | [설계결정] white type = bare paper */
+  --print-grain: 0.15;                                  /* DEC-038 | - | [설계결정] fine fibre */
+  --print-mottle: 0;                                    /* DEC-038 | - | [설계결정] coarse cloudiness */
+  --print-edge: 1.5;                                    /* DEC-038 | - | [설계결정] edge displacement in px (max ±0.75px), read by js/nycta.js */
+  --print-screen: 0;                                    /* DEC-038 | - | [설계결정] halftone screen, experiment */
+  --print-on: 1;
+  --print-filter: url(#nycta-ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-print]:not([data-theme="light"]) { --c-white: #FFFFFF; --print-on: 0; --print-filter: none; } /* DEC-038 | - | [설계결정] dark mode: off */
+}
+:root[data-print][data-theme="dark"] { --c-white: #FFFFFF; --print-on: 0; --print-filter: none; }
+@media (prefers-contrast: more), (forced-colors: active), print {
+  :root[data-print] { --c-white: #FFFFFF; --print-on: 0; --print-filter: none; } /* DEC-038 | - | [설계결정] */
+}
+:root[data-print]::after,
+:root[data-print] body::before,
+:root[data-print] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483646;
+}
+:root[data-print] body::after {                         /* DEC-038 | - | [설계결정] paper: fine fibre, multiplied over ink too */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .27 0 0 0 0 .2 1.8 0 0 0 -.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E") 0 0 / 240px 240px;
+  mix-blend-mode: multiply;
+  opacity: calc(var(--print-grain) * var(--print-on));
+}
+:root[data-print]::after {                             /* DEC-038 | - | [설계결정] paper: coarse mottle */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 1.4 0 0 0 -.62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E") 0 0 / 600px 600px;
+  mix-blend-mode: multiply;
+  opacity: calc(var(--print-mottle) * var(--print-on));
+}
+:root[data-print] body::before {                        /* DEC-038 | - | [설계결정] halftone screen (experiment) */
+  background:
+    radial-gradient(circle, #fff 0 30%, transparent 34%) 0 0 / 3px 3px,
+    radial-gradient(circle, #fff 0 30%, transparent 34%) 1.5px 1.5px / 3px 3px;
+  mix-blend-mode: screen;
+  opacity: calc(var(--print-screen) * var(--print-on));
+}
+:root[data-print] :is(.plate, .popup, .map__svg),
+:root[data-print] .disc:not(.plate .disc, .popup .disc) {
+  filter: var(--print-filter);                          /* DEC-038, DEC-009 | - | [설계결정] ragged ink edge, sub-pixel so corners stay square */
+}
 </style>
 <style>
 /* ==========================================================================
@@ -272,6 +327,7 @@
   .rplate{--font-weight:var(--font-weight-dark);color:var(--bg);font-weight:var(--font-weight);
     background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
   :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
+  :root[data-print] :is(.rplate, #map){filter:var(--print-filter)}         /* nycta DEC-038 ink edge on eee's plates and map (nycta names them .plate/.popup/.map__svg) */
 
   /* [eee] logo, legend and popup are standard module plates (GRID-012, SIGN-012): fitPlates() picks the shortest of
      1/2/4/6/8 ft that leaves ≥ 1in beside the copy (DEC-030 room), 1 ft high (whole feet if the copy needs more).
@@ -339,7 +395,6 @@
   /* [eee] one block of text (2026-11-19): 환승 ⓡ at the start, the summary, → 닫기 at the end */
   #pxfer .xbtn{white-space:nowrap}                                                         /* no extra space: disc → summary → arrow (2026-11-19) */
   #panel .pclose{white-space:nowrap}
-  #panel .pclose .arrow{margin-inline-end:.3em}                                             /* arrow as the divider before close */
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
   #panel #psum{text-decoration:none}                                                       /* [eee] the summary is the Instagram link, no underline (2026-11-19) */
 
@@ -361,7 +416,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
 
 <div id="logo" class="rplate" lang="en"><p>Easy Exhibition<br>for Everyone</p></div>
 <div id="legend" class="rplate" data-i18n-label="legend" aria-label="노선 범례"></div>
-<div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
+<div id="tools" class="rplate"><button id="gridbtn" data-i18n-label="grid" aria-label="그리드 보기" aria-pressed="false" title="그리드 보기"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="16" height="16"/><path d="M6.5 1v16M11.5 1v16M1 6.5h16M1 11.5h16"/></svg></button><button id="replay" data-i18n-label="replay" aria-label="랜덤 배치" title="랜덤 배치 (노선 모양·환승역을 새로 섞기)">↻</button><button id="theme" data-i18n-label="theme" aria-label="흑백 반전" title="흑백 반전"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button><button id="printbtn" data-print-toggle data-i18n-label="print" aria-label="인쇄 질감" title="인쇄 질감" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="currentColor"><circle cx="3" cy="3" r="1.6"/><circle cx="9" cy="3" r="1.6"/><circle cx="15" cy="3" r="1.6"/><circle cx="6" cy="9" r="1.6"/><circle cx="12" cy="9" r="1.6"/><circle cx="3" cy="15" r="1.6"/><circle cx="9" cy="15" r="1.6"/><circle cx="15" cy="15" r="1.6"/></svg></button><button id="langbtn" data-i18n-label="lang" data-i18n="langBtn" aria-label="English" title="English" lang="en">En</button></div>
 <div id="snaptune" class="rplate" hidden><label lang="en">snap <input id="snapr" type="range" min="0" max="2" step="0.05"> <output id="snapv"></output></label><label lang="en">cursor <select id="cursel"><option value="system">system</option><option value="disc">disc</option><option value="arrow">arrow</option></select></label></div>
 <div id="zoom" class="rplate"><button id="zin" data-i18n-label="zin" aria-label="확대">+</button><button id="zout" data-i18n-label="zout" aria-label="축소">−</button><button id="zfit" data-i18n-label="zfit" data-i18n="all" aria-label="전체 보기">전체</button></div>
 <aside id="panel" class="rplate" aria-hidden="true">
@@ -927,10 +982,10 @@ const DATA_EN = {
 ;   // data/en.json: English series names, station names and titles (missing ones show the Korean)
 // ---------- language: Korean (default) or English. The 한/En button, ?lang=en|ko, remembered in this browser ----------
 const I18N={
-  ko:{map:'EEE 노선도',legend:'노선 범례',grid:'그리드 보기',replay:'랜덤 배치 (노선 모양·환승역을 새로 섞기)',theme:'흑백 반전',
+  ko:{map:'EEE 노선도',legend:'노선 범례',grid:'그리드 보기',replay:'랜덤 배치 (노선 모양·환승역을 새로 섞기)',theme:'흑백 반전',print:'인쇄 질감',
       lang:'English',langBtn:'En',zin:'확대',zout:'축소',zfit:'전체 보기',all:'전체',close:'닫기',list:'역 목록',xfer:'환승',
       day:{월:'월',수:'수',금:'금',일:'일'},dayLong:{월:'월요일',수:'수요일',금:'금요일',일:'일요일'}},
-  en:{map:'EEE route map',legend:'Lines',grid:'Show grid',replay:'Random layout (reshuffle the lines and transfers)',theme:'Invert',
+  en:{map:'EEE route map',legend:'Lines',grid:'Show grid',replay:'Random layout (reshuffle the lines and transfers)',theme:'Invert',print:'Print texture',
       lang:'한국어',langBtn:'한',zin:'Zoom in',zout:'Zoom out',zfit:'Show all',all:'All',close:'Close',list:'Stations',xfer:'Transfer',
       day:{월:'Mon',수:'Wed',금:'Fri',일:'Sun'},dayLong:{월:'Monday',수:'Wednesday',금:'Friday',일:'Sunday'}},
 };
@@ -1981,7 +2036,7 @@ function openStation(s,fromHash,keepView){
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
   const ps=$('#psum'); ps.textContent=stSum(s)||stTitle(s); ps.href=s.u;   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers and → close on one row (2026-11-19)
-  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`${T('xfer')} ${disc(x.line,x.b)}`;b.setAttribute('aria-label',`${T('xfer')}: ${seriesName(x.b,x.ser)}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
+  const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.innerHTML=`${T('xfer')}${disc(x.line,x.b)}`;b.setAttribute('aria-label',`${T('xfer')}: ${seriesName(x.b,x.ser)}`);b.onclick=()=>openStation(x);xr.appendChild(b)});
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPopup(); placePopup();
   if(!fromHash) try{history.replaceState(null,'','#'+s.id)}catch(e){}
   follow=s;
@@ -2085,7 +2140,8 @@ $('#gridbtn').onclick=()=>setGrid(!svg.classList.contains('show-grid'));
 $('#langbtn').onclick=()=>setLang(lang==='en'?'ko':'en');
 // ↻: a fresh random layout (start/end points, transfer stations, turns), saved so it survives a reload
 $('#replay').onclick=()=>{sdrag=null;settle=null;tween=null;if(current)closePanel();generate(Math.random);savePos();replay()};
-function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'';try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel();fitPlates()}
+function setTheme(dark){document.documentElement.dataset.theme=dark?'dark':'light';   // 'light', not empty: nycta's print layer (DEC-038) turns off under an OS dark mode unless the page says light
+  try{localStorage.setItem('eee-theme',dark?'dark':'')}catch(e){}relabel();fitPlates()}
 try{if(localStorage.getItem('eee-theme')==='dark')setTheme(true)}catch(e){}
 $('#theme').onclick=e=>{
   const dark=document.documentElement.dataset.theme!=='dark';
@@ -2106,6 +2162,55 @@ fromHash(); addEventListener('hashchange',fromHash);
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
 addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});
 addEventListener('resize',()=>{fitPlates();if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});
+</script>
+<script>/* nycta-gsm web/js/nycta.js print block (vendor/nycta, inlined by build.py): DEC-038 print simulation layer.
+   The <button data-print-toggle> in #tools switches it; remembered in localStorage (nycta-print). */
+/* Print simulation layer (DEC-038): only with <html data-print>. Injects the ink-edge filter the CSS
+   points at (filter: url(#nycta-ink)); its strength is --print-edge in px. NYCTAPrint.update() re-reads it. */
+(function () {
+  var NS = 'http://www.w3.org/2000/svg', disp;
+  function update() {
+    if (!disp) return;
+    var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--print-edge'));
+    disp.setAttribute('scale', isFinite(v) ? v : 1);
+  }
+  function init() {
+    if (!document.documentElement.hasAttribute('data-print') || document.getElementById('nycta-ink')) return update();
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+    svg.innerHTML = '<filter id="nycta-ink" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">' +
+      '<feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="t"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="t" scale="1" xChannelSelector="R" yChannelSelector="G"/></filter>';
+    document.body.insertBefore(svg, document.body.firstChild);
+    disp = svg.querySelector('feDisplacementMap');
+    update();
+  }
+  // Viewer switch: any <button data-print-toggle> turns the layer on/off; the choice is remembered per browser.
+  var KEY = 'nycta-print';
+  function set(on) {
+    var root = document.documentElement;
+    if (on) root.setAttribute('data-print', ''); else root.removeAttribute('data-print');
+    var btns = document.querySelectorAll('[data-print-toggle]');
+    for (var i = 0; i < btns.length; i++) btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    init();
+  }
+  function wire() {
+    var btns = document.querySelectorAll('[data-print-toggle]');
+    if (btns.length) {
+      var saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      set(saved === null ? document.documentElement.hasAttribute('data-print') : saved === '1');
+    } else init();
+    for (var i = 0; i < btns.length; i++) btns[i].addEventListener('click', function () {
+      var on = !document.documentElement.hasAttribute('data-print');
+      set(on);
+      try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {}
+    });
+  }
+  window.NYCTAPrint = { init: init, update: update, set: set };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
 </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ cp "$W/css/nycta.css" vendor/nycta/nycta.css
 cp "$W/fonts/albert-sans-nycta-wght.woff2" "$W/fonts/OFL-AlbertSans.txt" vendor/nycta/
 cp "$W/fonts/nycta-hangul.woff2" "$W/fonts/OFL-SUIT.txt" vendor/nycta/   # DEC-032 한글(SUIT 파생, OFL)
 cp "$W/js/nycta-map.js" vendor/nycta/nycta-map.js   # DEC-036 노선도: NYCTAMap.geometry(꺾임·선 길이·이름 자리 계산)
+cp "$W/js/nycta.js" vendor/nycta/nycta.js           # DEC-038 인쇄 질감 레이어 스위치(build.py가 그 블록만 넣음)
 { echo "source: github.com/outofthisweird/nycta-gsm (public web/ output)"
   echo "commit: $(git -C "$NYCTA_DIR" log -1 --format='%h %cs %s' 2>/dev/null || echo unknown)"; } > vendor/nycta/SOURCE.txt
 echo "vendor/nycta 갱신됨 ($NYCTA_DIR) — python3 build.py 로 index.html 다시 만들기"

@@ -9,7 +9,9 @@
                         followed by its generated disc glyph-mask block (DEC-035; rules live in src/map.html),
                         with every woff2 it references (Albert Sans NYCTA, NYCTA Hangul) embedded as a data URI;
                         and nycta-map.js (route map geometry, NYCTAMap.geometry) inlined at /*__NYCTA_MAP__*/,
-                        ahead of the map script that calls it.
+                        ahead of the map script that calls it;
+                        and the print simulation layer (DEC-038): nycta.css §14 after the tokens, and the NYCTAPrint
+                        block of nycta.js (ink-edge filter + <button data-print-toggle> switch) at /*__NYCTA_PRINT__*/.
 
 Usage: python3 build.py   (writes ./index.html)"""
 import base64, json, re
@@ -40,7 +42,11 @@ for name in set(fonts):
 MB, ME = "/* disc glyph masks — generated", "/* end of disc glyph masks */"
 assert nycta.count(MB) == 1 and nycta.count(ME) == 1, "nycta.css disc glyph-mask block not found: check build.py"
 tokens += "\n\n" + nycta[nycta.index(MB):nycta.index(ME) + len(ME)]
-tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks (" + \
+# Print simulation layer (nycta DEC-038): §14, opt-in with <html data-print>, switched by a <button data-print-toggle>.
+assert 14 in heads, "nycta.css §14 (print layer) not found: check build.py"
+nxt = min([s for s in heads.values() if s > heads[14]] + [len(nycta)])
+tokens += "\n\n" + nycta[heads[14]:nxt].rstrip()
+tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (" + \
     (root / "vendor/nycta/SOURCE.txt").read_text(encoding="utf-8").splitlines()[-1].strip() + ") */\n" + tokens
 
 # Route map geometry (nycta DEC-036): the same NYCTAMap.geometry the nycta map draws with. Never edited here; rules
@@ -49,8 +55,15 @@ mapjs = (root / "vendor/nycta/nycta-map.js").read_text(encoding="utf-8")
 assert "geometry:" in mapjs and "window.NYCTAMap" in mapjs, "nycta-map.js no longer exports NYCTAMap.geometry: check build.py"
 mapjs = re.sub(r"</(script)", r"<\\/\1", mapjs, flags=re.I)   # inline: a '</script' (even in a comment) would end the tag
 
-for key in ("__DATA__", "__DATA_EN__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/"):
+njs = (root / "vendor/nycta/nycta.js").read_text(encoding="utf-8")
+PB = "/* Print simulation layer (DEC-038)"
+assert njs.count(PB) == 1 and "data-print-toggle" in njs, "nycta.js print block not found: check build.py"
+printjs = njs[njs.index(PB):].rstrip()
+assert printjs.endswith("})();"), "nycta.js print block is no longer the last block: check build.py"
+printjs = re.sub(r"</(script)", r"<\\/\1", printjs, flags=re.I)
+
+for key in ("__DATA__", "__DATA_EN__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/", "/*__NYCTA_PRINT__*/"):
     assert src.count(key) == 1, f"src/map.html must contain {key} exactly once"
-out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA_EN__", data_en).replace("__DATA__", data).replace("/*__NYCTA_MAP__*/", mapjs)
+out = src.replace("/*__NYCTA__*/", tokens).replace("__DATA_EN__", data_en).replace("__DATA__", data).replace("/*__NYCTA_MAP__*/", mapjs).replace("/*__NYCTA_PRINT__*/", printjs)
 (root / "index.html").write_text(out, encoding="utf-8")
 print(f"index.html built ({len(out) // 1024} KB)")

@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 0f5c589 2026-11-18 Discs: bake glyph outlines from the bold face (DEC-037)
+commit: 9239529 2026-11-19 Print simulation layer, opt-in (DEC-038)
