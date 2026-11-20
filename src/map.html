@@ -1463,7 +1463,7 @@ const trainAt=L=>{const p=L.tpos<1?L.tpos:2-L.tpos;return p*L.plen};   // distan
 function stopRide(){if(!ride)return;const r=ride;ride=null;if(r.d!=null)r.L.tpos=r.fwd?r.d/r.L.plen:2-r.d/r.L.plen}
 function randomStop(){
   stopRide(); if(current)closePanel();
-  if(!rbag.length)rbag=stations.slice().sort(()=>Math.random()-.5);
+  if(!rbag.length){rbag=stations.slice();for(let i=rbag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[rbag[i],rbag[j]]=[rbag[j],rbag[i]]}}   // Fisher–Yates: sort(()=>random) is lopsided (WebKit picked the Sunday lines ~60% of the time)
   const s=rbag.pop(), L=s.line;
   if(reduce||!L.plen){openStation(s);return}
   focusLine(L);
