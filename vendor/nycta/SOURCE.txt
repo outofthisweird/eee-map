@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: 9815439 2026-11-19 Print layer: grain and ink edge in dark mode; drop mottle and halftone (DEC-038)
+commit: ea4af9c 2026-11-20 Print layer: hold texture at screen-pixel size at any zoom (DEC-039)

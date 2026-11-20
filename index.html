@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>EEE — Map</title>
 <style>
-/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (commit: 9815439 2026-11-19 Print layer: grain and ink edge in dark mode; drop mottle and halftone (DEC-038)) */
+/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (commit: ea4af9c 2026-11-20 Print layer: hold texture at screen-pixel size at any zoom (DEC-039)) */
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -185,7 +185,7 @@
   --c-white: var(--c-paper);                            /* DEC-038 | - | [설계결정] white type = bare paper */
   --print-grain: 0.15;                                  /* DEC-038 | - | [설계결정] fine fibre */
   --print-grain-dark: 0.25;                             /* DEC-038 | - | [설계결정] fine fibre in dark mode: white specks, screen blend */
-  --print-edge: 1.5;                                    /* DEC-038 | - | [설계결정] edge displacement in px (max ±0.75px), read by js/nycta.js */
+  --print-edge: 1.5;                                    /* DEC-038, DEC-039 | - | [설계결정] edge displacement in px at 100 % zoom (max ±0.75px), read by js/nycta.js */
   --print-filter: url(#nycta-ink);
   --print-grain-now: var(--print-grain);
   --print-grain-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .27 0 0 0 0 .2 1.8 0 0 0 -.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
@@ -211,7 +211,7 @@
   inset: 0;
   pointer-events: none;
   z-index: 2147483646;
-  background: var(--print-grain-tex) 0 0 / 240px 240px;
+  background: var(--print-grain-tex) 0 0 / var(--print-grain-size, 240px) var(--print-grain-size, 240px); /* DEC-039 | - | [설계결정] tile held at screen-pixel size by js/nycta.js */
   mix-blend-mode: var(--print-grain-blend);
   opacity: var(--print-grain-now);
 }
@@ -2260,13 +2260,26 @@ addEventListener('resize',()=>{fitPlates();if(follow)centerOn(follow,0,false);el
 <script>/* nycta-gsm web/js/nycta.js print block (vendor/nycta, inlined by build.py): DEC-038 print simulation layer.
    The <button data-print-toggle> in #tools switches it; remembered in localStorage (nycta-print). */
 /* Print simulation layer (DEC-038): only with <html data-print>. Injects the ink-edge filter the CSS
-   points at (filter: url(#nycta-ink)); its strength is --print-edge in px. NYCTAPrint.update() re-reads it. */
+   points at (filter: url(#nycta-ink)); its strength is --print-edge in px. NYCTAPrint.update() re-reads it.
+   Zoom (DEC-039): the texture is held at screen-pixel size, so it reads the same at any zoom. z = device px per
+   CSS px / 2 (1 = 100 % on a retina screen, where the values were tuned). Noise frequency follows z (bumps stay
+   ~1.8 device px, never finer than the screen can show, never blown up into waves); the edge displacement follows
+   1/z when zoomed in (stays ±1.5 device px) but stays in CSS px when zoomed out, so small type is not shredded.
+   The grain tile is sized the same way (--print-grain-size). */
 (function () {
-  var NS = 'http://www.w3.org/2000/svg', disp;
+  var NS = 'http://www.w3.org/2000/svg', disp, turb, EDGE_F = 1.1, GRAIN = 240;
+  function zoom() {
+    var vv = window.visualViewport, z = (window.devicePixelRatio || 1) * (vv && vv.scale ? vv.scale : 1) / 2;
+    return z > 0 ? z : 1;
+  }
   function update() {
+    var root = document.documentElement, z = zoom();
+    root.style.setProperty('--print-grain-size', (GRAIN / z).toFixed(2) + 'px');
     if (!disp) return;
-    var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--print-edge'));
-    disp.setAttribute('scale', isFinite(v) ? v : 1);
+    var v = parseFloat(getComputedStyle(root).getPropertyValue('--print-edge'));
+    if (!isFinite(v)) v = 1;
+    disp.setAttribute('scale', (v * Math.min(1, 1 / z)).toFixed(3));
+    turb.setAttribute('baseFrequency', (EDGE_F * z).toFixed(3));
   }
   function init() {
     if (!document.documentElement.hasAttribute('data-print') || document.getElementById('nycta-ink')) return update();
@@ -2278,8 +2291,18 @@ addEventListener('resize',()=>{fitPlates();if(follow)centerOn(follow,0,false);el
       '<feDisplacementMap in="SourceGraphic" in2="t" scale="1" xChannelSelector="R" yChannelSelector="G"/></filter>';
     document.body.insertBefore(svg, document.body.firstChild);
     disp = svg.querySelector('feDisplacementMap');
+    turb = svg.querySelector('feTurbulence');
     update();
   }
+  // Browser zoom changes devicePixelRatio and fires resize; pinch zoom changes visualViewport.scale.
+  var queued = false;
+  function onZoom() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () { queued = false; if (document.documentElement.hasAttribute('data-print')) update(); });
+  }
+  window.addEventListener('resize', onZoom);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onZoom);
   // Viewer switch: any <button data-print-toggle> turns the layer on/off; the choice is remembered per browser.
   var KEY = 'nycta-print';
   function set(on) {
