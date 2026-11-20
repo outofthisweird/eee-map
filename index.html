@@ -1059,8 +1059,9 @@ const DESIGN = {
   // [eee] next stop (2026-11-20): every running series ends in a dashed stretch to an open station, the date of its
   // next post (the series' weekday, after its newest post, today or later). Clicking it links to the account.
   next:      { cells: 2, dash: [.55, .45], clear: 40, account: 'https://www.instagram.com/eee_exhibition/' },
-  // [eee] random stop (2026-11-20): a few stations on screen light up in turn, slowing down, then one opens
-  roulette:  { steps: 8, firstMs: 55, slow: 1.28 },
+  // [eee] random stop (2026-11-20, by train 2026-11-21): the camera boards the picked station's line train (boardMs),
+  // rides it there (speeding up, then braking; pxPerMs, between minMs and maxMs) and the station's popup opens
+  ride:      { boardMs: 700, pxPerMs: .6, minMs: 1200, maxMs: 3600 },
   zoom:      { min: .12, max: 3, hideLabelsBelow: .6, focus: [1.1, 1.8] },
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
   // white on every other colour (DEC-004). Change a line's colour by naming another token here.
@@ -2127,7 +2128,7 @@ function zoomAt(f,cx,cy){
 const ptrs=new Map(); let moved=false, trail=[], pinch0=null;
 function pinchStart(){const [p,q]=[...ptrs.values()],mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
   pinch0={d:Math.hypot(p[0]-q[0],p[1]-q[1])||1,k:view.k,wx:(mx-view.x)/view.k,wy:(my-view.y)/view.k};trail=[]}
-svg.addEventListener('pointerdown',e=>{if(ptrs.size>=2)return;stopRoulette();const hitSt=ptrs.size===0&&e.button===0?stationAt(e.clientX,e.clientY):null;svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);foldLegend(false);
+svg.addEventListener('pointerdown',e=>{if(ptrs.size>=2)return;const hitSt=ptrs.size===0&&e.button===0?stationAt(e.clientX,e.clientY):null;svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);foldLegend(false);
   moved=false;if(hitSt)startStationDrag(hitSt,e);else sdrag=null;target=null;trail=[[e.clientX,e.clientY,performance.now()]];if(ptrs.size===2)pinchStart()});
 svg.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId))return; const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
@@ -2211,28 +2212,38 @@ function centerOn(s,ms,zoomIn){
   const k=zoomIn?Math.min(z1,Math.max(view.k,z0)):view.k;
   const v={k,x:cx-s.x*k,y:cy-s.y*k}; if(ms)animateTo(v,ms); else {view=v;apply()}
 }
-function release(){follow=null;target=null}
+function release(){follow=null;target=null;if(ride){stopRide();if(!current)focusLine(null)}}
 function closePanel(){release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
 // close: the 닫기 text button at the bottom, Esc, or a click on the empty map
 $('#pclose').onclick=closePanel;
-// [eee] random stop (DESIGN.roulette, 2026-11-20): stations on screen light up in turn, slowing down, then the picked
-// one opens (the camera glides there). Picks come from a shuffled bag, so every post comes up once before any repeats.
-// Touching the map stops it.
-let roul=null, rbag=[];
-function stopRoulette(){if(!roul)return;roul.t.forEach(clearTimeout);roul.lit&&roul.lit.classList.remove('active');roul=null}
+// [eee] random stop by train (DESIGN.ride, 2026-11-21 사용자 요청: 룰렛보다 열차와 이어지게). The picked station's
+// line train stops, the camera glides onto it (board), then rides it to the station: the train speeds up and brakes,
+// the camera stays on it, and the popup opens when it stops. Afterwards the train runs on from there, the same way.
+// Picks come from a shuffled bag, so every post comes up once before any repeats. Touching the map gets off (release()).
+let ride=null, rbag=[];
+const trainAt=L=>{const p=L.tpos<1?L.tpos:2-L.tpos;return p*L.plen};   // distance along the line (trains run back and forth)
+function stopRide(){if(!ride)return;const r=ride;ride=null;if(r.d!=null)r.L.tpos=r.fwd?r.d/r.L.plen:2-r.d/r.L.plen}
 function randomStop(){
-  stopRoulette(); if(current)closePanel();
+  stopRide(); if(current)closePanel();
   if(!rbag.length)rbag=stations.slice().sort(()=>Math.random()-.5);
-  const pick=rbag.pop();
-  if(reduce){openStation(pick);return}
-  const drawn=stations.filter(s=>!s.owner&&s.g), on=drawn.filter(s=>{const x=view.x+s.vx*view.k,y=view.y+s.vy*view.k;return x>0&&y>0&&x<innerWidth&&y<innerHeight});
-  const R=DESIGN.roulette, src=on.length>=3?on:drawn; let t=0,ms=R.firstMs,prev=null; roul={t:[],lit:null};
-  for(let i=0;i<R.steps;i++){let s;do s=src[Math.floor(Math.random()*src.length)];while(src.length>1&&s===prev);prev=s;
-    roul.t.push(setTimeout(()=>{if(roul.lit)roul.lit.classList.remove('active');s.g.classList.add('active');roul.lit=s.g;focusLine(s.line)},t));t+=ms;ms*=R.slow}
-  roul.t.push(setTimeout(()=>{const r=roul;roul=null;r.lit&&r.lit.classList.remove('active');openStation(pick)},t));
+  const s=rbag.pop(), L=s.line;
+  if(reduce||!L.plen){openStation(s);return}
+  focusLine(L);
+  const d0=trainAt(L), d1=Math.min(L.plen,Math.max(0,s.len)), R=DESIGN.ride, t0=performance.now()+R.boardMs;
+  const dur=Math.max(R.minMs,Math.min(R.maxMs,Math.abs(d1-d0)/R.pxPerMs));
+  const q=GEO.pointAt(L.model,d0), [cx,cy]=visibleCentre(), [z0,z1]=DESIGN.zoom.focus, k=Math.min(z1,Math.max(view.k,z0));
+  animateTo({k,x:cx-q[0]*k,y:cy-q[1]*k},R.boardMs);
+  ride={L,s,d0,d1,d:d0,fwd:d1>=d0,t0,dur,k};
 }
+// called every frame for the riding train: where it is now (and the camera on it); null once it has arrived
+function rideStep(t){const r=ride; if(t<r.t0)return r.d0;
+  const p=Math.min(1,(t-r.t0)/r.dur), e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;   // ease in-out: a train pulls away and brakes
+  r.d=r.d0+(r.d1-r.d0)*e; target=null;
+  const q=GEO.pointAt(r.L.model,r.d),[cx,cy]=visibleCentre(); view={k:r.k,x:cx-q[0]*r.k,y:cy-q[1]*r.k}; apply();
+  if(p>=1){stopRide(); openStation(r.s,false,true); follow=r.s}
+  return r.d}
 $('#randbtn').onclick=randomStop;
-addEventListener('keydown',e=>{if(e.key==='Escape'){stopRoulette();closePanel()}});
+addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 svg.addEventListener('click',e=>{
   if(moved)return;
   const hit=document.elementFromPoint(e.clientX,e.clientY), g=hit&&hit.closest&&hit.closest('.station');
@@ -2286,8 +2297,9 @@ function frame(t){
   if(curvedNow.length&&!tween&&!settle&&!(sdrag&&sdrag.active))reportCurved();
   placePopup();
   if(!reduce) LINES.forEach(L=>{ if(!L.plen)return;
-    L.tpos=(L.tpos+dt/(L.plen*DESIGN.train.speed))%2; const p=L.loop?L.tpos%1:(L.tpos<1?L.tpos:2-L.tpos);
-    const q=GEO.pointAt(L.model,p*L.plen);   // [x, y, direction]
+    let d; if(ride&&ride.L===L)d=rideStep(t);   // the random-stop ride drives this train
+    else{L.tpos=(L.tpos+dt/(L.plen*DESIGN.train.speed))%2; const p=L.loop?L.tpos%1:(L.tpos<1?L.tpos:2-L.tpos); d=p*L.plen}
+    const q=GEO.pointAt(L.model,d);   // [x, y, direction]
     const tr=`translate(${q[0]},${q[1]}) rotate(${q[2]*180/Math.PI})`; L.train.setAttribute('transform',tr); L.tclip.setAttribute('transform',tr);
   });
   requestAnimationFrame(frame);
