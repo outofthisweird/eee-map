@@ -1303,7 +1303,10 @@ function gridPlans(plans){
   const groupSpot=new Map();   // an interchange's stations all go to the same grid point
   plans.forEach(p=>{
     if(groupSpot.has(grp(p.s))){p.to=groupSpot.get(grp(p.s));at.set(p.s,p.to);return}
-    const free=q=>{const o=taken.get(gkey(q));return!o||grp(o)===grp(p.s)};
+    // free = no other station on it, nor within SNAP.minGap: one cell (36px) is closer than that, and a station put
+    // one cell from an interchange that stays leaves no room for the line to bend between them (2026-11-21)
+    const free=q=>{const o=taken.get(gkey(q));if(o&&grp(o)!==grp(p.s))return false;
+      for(const t of taken.values())if(grp(t)!==grp(p.s)&&Math.hypot(at.get(t)[0]-q[0],at.get(t)[1]-q[1])<SNAP.minGap)return false;return true};
     const base=gsnap(p.to),st=p.s.line.st;let best=null;
     for(let r=0;r<=2;r++){if(r===2&&best)break;
       for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){if(Math.max(Math.abs(i),Math.abs(j))!==r)continue;
@@ -1319,7 +1322,7 @@ function gridPlans(plans){
 // point that lets it bend between them instead: the station itself if it may move, else a neighbour, an interchange
 // with its whole group. P: Map station → [x,y] (changed in place); fixed: stations that stay (the one the user put
 // down, interchanges the rope did not pull). Interchanges are read off P (same spot), not off the last geometry().
-function fixCorners(P,fixed=new Set()){
+function fixCorners(P,fixed=new Set(),reach=2){   // reach: how many grid cells a single station may move
   const G=gridU(),pos=s=>P.get(s);let moved=0;
   // self-crossings and folds (turn ≥ 120° at a station), counted here: this runs at boot, before UNTANGLE exists
   const crossings=q=>{let n=0;for(let i=0;i<q.length-1;i++)for(let j=i+2;j<q.length-1;j++)if(segX(q[i],q[i+1],q[j],q[j+1]))n++;
@@ -1333,7 +1336,7 @@ function fixCorners(P,fixed=new Set()){
         let best=null;
         [i,i-1,i+1,i-2,i+2].forEach(j=>{const c=st[j];if(!c)return;const unit=unitOf(c);if(unit.some(t=>fixed.has(t)))return;
           const lines=[...new Set([L,...unit.map(t=>t.line)])],[k0,x0]=score(lines),o=P.get(c);
-          for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){if(!dx&&!dy)continue;const q=[o[0]+dx*G,o[1]+dy*G];
+          for(let dx=-reach;dx<=reach;dx++)for(let dy=-reach;dy<=reach;dy++){if(!dx&&!dy)continue;const q=[o[0]+dx*G,o[1]+dy*G];
             let near=false;P.forEach((v,t)=>{if(!unit.includes(t)&&Math.hypot(v[0]-q[0],v[1]-q[1])<SNAP.minGap)near=true});if(near)continue;
             unit.forEach(t=>P.set(t,q));const [k,x]=score(lines);unit.forEach(t=>P.set(t,o));
             if(k>=k0||x>x0)continue;
@@ -1858,7 +1861,12 @@ function untangleLines(lines,keep,planOnly){
   const plans=[];all.forEach(s=>{const q=P.get(s);if(offGrid(s)||Math.hypot(q[0]-s.x,q[1]-s.y)>.5)plans.push({s,from:[s.x,s.y],to:q})});
   // on the grid, then no station left on a corner (the one the user put down stays; a neighbour moves instead)
   const F=posMap();gridPlans(plans).forEach(p=>F.set(p.s,p.to));
-  fixCorners(F,new Set([...keep,...all.filter(s=>s.xfer&&!pulled.has(s))]));
+  // The station put down stays put, unless that is the only way off a corner: dropped right beside an interchange that
+  // stays (or folded back between two of them), no route bends between them, and nothing else may move (2026-11-21:
+  // ~1 in 4 smoke runs left a station on a bend this way). Then it moves too, as little as it takes.
+  const put=new Set(keep.flatMap(groupOf)), stay=all.filter(s=>s.xfer&&!pulled.has(s)&&!put.has(s));   // (an interchange the drop just made goes with the station put down)
+  fixCorners(F,new Set([...keep,...stay]));
+  if(TRACK.some(L=>cornersOf(L,s=>F.get(s))))fixCorners(F,new Set(stay),3);   // (a hairpin round an interchange can need 3 cells)
   if(planOnly)return F;
   const final=[];all.forEach(s=>{const q=F.get(s);if(Math.hypot(q[0]-s.x,q[1]-s.y)>.5)final.push({s,from:[s.x,s.y],to:q})});
   if(!final.length){savePos();return false}
