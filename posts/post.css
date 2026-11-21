@@ -1,0 +1,241 @@
+/* posts/post.css — build.py가 만든다. src/post.css를 고친다. */
+/* -------------------------------------------------------------------------
+   0. Typeface
+   ------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Albert Sans NYCTA";
+  src: url("../vendor/nycta/albert-sans-nycta-wght.woff2") format("woff2");
+  font-weight: 100 900;                       /* DEC-017 | - | [설계결정] variable wght axis */
+  /* DEC-024 | pdf p.13, 94–157 | [변환] Albert Sans (OFL) with the manual's pair chart (TYPE-016/017) compiled into
+     its kern feature: gap between glyph outlines = chart units + master reference insets, 1 unit = cap/36.
+     Pairs not in the chart = 4 units (TYPE-024: 2 + 2). Renamed per OFL. */
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "NYCTA Hangul";
+  src: url("../vendor/nycta/nycta-hangul.woff2") format("woff2");
+  font-weight: 100 900;                       /* DEC-032 | - | [설계결정] one static weight (SUIT wght 700); range stops faux bold */
+  /* DEC-032 | - | [변환] SUIT (OFL, renamed) Hangul only: frame = 1.1 cap, top on the cap line, native fixed width − 1 unit.
+     Only syllables SUIT draws (2,668 incl. all KS X 1001); others fall back. */
+  unicode-range: U+3131-318E, U+AC00-D7A3;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -------------------------------------------------------------------------
+   1. Tokens
+   ------------------------------------------------------------------------- */
+:root {
+  /* --- typeface --- */
+  --font-sign: "Albert Sans NYCTA", "NYCTA Hangul", system-ui, sans-serif; /* DEC-017, DEC-024, DEC-032 | - | [설계결정] substitute for TYPE-001 Standard Medium; Hangul companion */
+  --font-weight-light: 600;                             /* DEC-017 | - | [설계결정] Medium equivalent (TYPE-002), dark type on white */
+  --font-weight: var(--font-weight-light);              /* DEC-017, DEC-019 | - | [설계결정] current page weight (dark mode swaps it) */
+  --font-weight-dark: 560;                              /* DEC-019 | - | [설계결정] irradiation compensation */
+  --cap-em: 0.700;                                      /* DEC-017 | - | [변환] Albert Sans capHeight 700 / UPM 1000 */
+  --ls: 0em;                                            /* DEC-024 | pdf p.13 | [변환] spacing now comes from the chart kerning in the font */
+  --ws: -0.1485em;                                      /* DEC-018, TYPE-021 | pdf p.62,65 | [변환] word gap = 0.34 cap ink-to-ink (manual samples '& Brooklyn', 'Broadway Nassau') */
+  --lsb-comp: 0.064em;                                  /* DEC-025 | pdf p.62,66 | [변환] straight-stem capitals (B D E F H I K L M N P R U): font side bearing − master inset; round letters end up ≈0.02em left (optical overshoot) */
+  --ws-ko: -0.0737em;                                   /* DEC-033, DEC-018 | - | [변환] Hangul word gap ink-to-ink = 0.34 × 1.1 cap */
+  --lsb-comp-ko: 0.0199em;                              /* DEC-033, DEC-025 | - | [변환] median Hangul left side bearing (after −1 unit tracking) */
+  --trim-k: 0.35;                                       /* GRID-003 | - | [변환] (ascent+descent)/2 − (ascent − cap) of the web font */
+
+  /* --- module (sign scale) --- */
+  --module: clamp(40px, 10vw, 97.75px);                 /* DEC-001, DEC-002 | - | [변환] 1rem × 0.700 × 12 / 1.375 = 97.75px max */
+  --in: calc(var(--module) / 12);                       /* GRID-002 | pdf p.9–11 | [변환] module = 12in */
+
+  /* cap heights (TYPE-004: size = UPPER CASE X height) */
+  --cap-l: calc(var(--in) * 9);                         /* TYPE-005 | pdf p.7–9 | [이미지판독] identification / Exit / Transfer */
+  --cap-m: calc(var(--in) * 4.25);                      /* TYPE-006 | pdf p.7,8,10 | [이미지판독] directional */
+  --cap-s: calc(var(--in) * 1.375);                     /* TYPE-007 | pdf p.7,8,11 | [이미지판독] informational */
+  --fs-l: calc(var(--cap-l) / var(--cap-em));           /* TYPE-005 | - | [변환] cap / capEm */
+  --fs-m: calc(var(--cap-m) / var(--cap-em));           /* TYPE-006 | - | [변환] cap / capEm */
+  --fs-s: max(12px, calc(var(--cap-s) / var(--cap-em))); /* TYPE-007, DEC-016 | - | [변환] cap / capEm, 12px floor [설계결정] */
+
+  /* space units (TYPE-026: 1 unit = cap / 36) — reference only; the pair matrix is applied inside the font (DEC-024) */
+  --unit-l: calc(var(--cap-l) / 36);                    /* TYPE-026 | pdf p.104,116 | [이미지판독] */
+  --unit-m: calc(var(--cap-m) / 36);                    /* TYPE-026 | pdf p.158 | [이미지판독] */
+  --unit-s: calc(var(--cap-s) / 36);                    /* TYPE-026 | pdf p.174 | [이미지판독] */
+
+  /* line heights (font-size units) = pitch / cap × capEm */
+  --lh-g2: calc(5.625 / 4.25 * var(--cap-em));          /* GRID-006 | pdf p.10 | [변환] pitch 5 5/8in → 0.9265 */
+  --lh-g1: calc(1.875 / 1.375 * var(--cap-em));         /* GRID-007 | pdf p.11 | [변환] pitch 1 7/8in → 0.9545 */
+  --lh-body: 1.5;                                       /* DEC-020 | - | [설계결정] long-form text only */
+
+  /* spacing */
+  --space-margin: calc(var(--in) * 0.5);                /* GRID-003, GRID-004 | pdf p.9–11 | [이미지판독] ½in top/left */
+  --space-gap-g1: calc(var(--in) * 0.5);                /* GRID-007 | pdf p.11 | [이미지판독] baseline → next cap line */
+  --space-gap-g2: calc(var(--in) * 1.375);              /* GRID-006 | pdf p.10 | [이미지판독] */
+  --space-disc-text: calc(var(--in) * 0.5);             /* GRID-009 | pdf p.11 | [이미지판독] */
+
+  /* strokes */
+  --stroke-band: calc(var(--in) * 1.625);               /* GRID-013 | pdf p.64 | [이미지판독] black band 1 5/8in */
+  --stroke-divider: max(1px, calc(var(--in) * 0.125));  /* SIGN-023 | pdf p.88 | [확정] 1/8in divider line */
+
+  /* discs */
+  --disc-l: calc(var(--in) * 11);                       /* DISC-001, GRID-016 | pdf p.14,65 | [이미지판독] 11in in 12in module */
+  --disc-m: calc(var(--in) * 5.5);                      /* DISC-001 | pdf p.14 | [이미지판독] */
+  --disc-s: calc(var(--in) * 1.6875);                   /* DISC-001, GRID-008 | pdf p.11,14 | [이미지판독] 1 11/16in */
+  --disc-glyph: 0.408;                                  /* DISC-004, DISC-007 | pdf p.15–40 | [이미지판독] glyph cap / D, median of 26 masters */
+
+  /* --- document scale (DEC-002): body = Information tier at 1rem --- */
+  --doc-in: calc(1rem * var(--cap-em) / 1.375);         /* DEC-002 | - | [변환] 1rem ↔ 1 3/8in cap → 1in ≈ 8.15px */
+  --doc-fs-s: 1rem;                                     /* DEC-005 | - | [설계결정] */
+  --doc-fs-m: clamp(1.75rem, 1rem + 3vw, calc(1rem * 4.25 / 1.375));  /* DEC-002, DEC-005 | - | [설계결정] max = TYPE-006 ratio 3.091rem */
+  --doc-fs-l: clamp(2.5rem, 1rem + 7vw, calc(1rem * 9 / 1.375));      /* DEC-002, DEC-005 | - | [설계결정] max = TYPE-005 ratio 6.545rem */
+  --doc-space-1: calc(var(--doc-in) * 0.5);             /* GRID-003 | - | [변환] ½in */
+  --doc-space-2: calc(var(--doc-in) * 1.375);           /* GRID-006 | - | [변환] 1 3/8in */
+  --doc-space-3: calc(var(--doc-in) * 1.875);           /* GRID-007 | - | [변환] 1 7/8in */
+  --doc-space-4: calc(var(--doc-in) * 5.625);           /* GRID-006 | - | [변환] 5 5/8in */
+  --doc-space-5: calc(var(--doc-in) * 12);              /* GRID-002 | - | [변환] 1 module */
+  --doc-band: calc(var(--doc-in) * 1.625);              /* GRID-013 | - | [변환] band at document scale */
+  --doc-rule: max(1px, calc(var(--doc-in) * 0.125));    /* SIGN-023 | - | [변환] 1/8in */
+
+  /* --- colors (DEC-003: scan, paper-corrected) --- */
+  --c-white:      #FFFFFF;                              /* COLOR-009 | pdf p.65 | [확정] */
+  --c-black:      #000000;                              /* COLOR-009, DEC-003 | pdf p.65 | [설계결정] pure black, swatch photo distorted */
+  --c-yellow:     #FFCE0E;                              /* COLOR-005 | pdf p.49 | [이미지판독] PMS 130 lines + PMS 109 Transfer */
+  --c-orange:     #FF6E10;                              /* COLOR-005 | pdf p.50 | [이미지판독] PMS 165 */
+  --c-red:        #FF4C2B;                              /* COLOR-005 | pdf p.51 | [이미지판독] PMS 185 lines + Warm Red Exit + mandatory */
+  --c-magenta:    #FB3998;                              /* COLOR-005 | pdf p.52 | [이미지판독] PMS 239 */
+  --c-green:      #01C16C;                              /* COLOR-005 | pdf p.53 | [이미지판독] PMS 354 */
+  --c-lightblue:  #02C6F4;                              /* COLOR-005 | pdf p.54 | [이미지판독] PMS 312 */
+  --c-blue:       #0262D3;                              /* COLOR-005 | pdf p.55 | [이미지판독] PMS 300 */
+  --c-grey:       #9A9392;                              /* COLOR-005, COLOR-007, DEC-027 | pdf p.57,88 | [설계결정] scan #9E9897 darkened to 3:1 with white */
+  --c-red-text:   #E72400;                              /* DEC-026 | - | [설계결정] scan red darkened (same hue) to 4.5:1 on white, small red text only */
+
+  /* semantic (swapped in dark mode, DEC-019) */
+  --fg: var(--c-black);                                 /* COLOR-009 | pdf p.65 | [확정] black on white */
+  --bg: var(--c-white);                                 /* COLOR-009 | pdf p.65 | [확정] */
+  --c-exit-bg: var(--c-red);    --c-exit-fg: var(--c-white);       /* COLOR-010 | pdf p.67 | [확정] white on Warm Red */
+  --c-transfer-bg: var(--c-yellow); --c-transfer-fg: var(--c-black); /* COLOR-011, DEC-004 | pdf p.67 | [확정] black on PMS 109 */
+  --c-mandatory: var(--c-red-text);                     /* SIGN-018, COLOR-012, DEC-026 | pdf p.86 | [설계결정] */
+  --c-error: var(--c-red-text);                         /* DEC-010, DEC-026 | - | [설계결정] */
+  --c-disabled: var(--c-grey);                          /* DEC-012 | - | [설계결정] */
+  --c-reverse-bg: var(--c-grey);                        /* COLOR-007 | pdf p.88,92 | [확정] 'Subway' / 'Exit only' reverse */
+
+  color-scheme: light dark;
+}
+
+/* disc glyph masks — generated by tools/build_fonts.py from the shipped font (DEC-035). Do not edit by hand. */
+.disc[data-line="1"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M459 361H404V295H538V703H459Z'/%3E%3C/svg%3E"); }
+.disc[data-line="2"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M368 648 481 541Q513 512 531 491Q549 471 557 454Q566 436 566 417Q566 392 552 376Q538 360 506 360Q487 360 473 369Q459 378 451 395Q444 412 443 435H367Q368 386 387 355Q406 323 438 308Q470 293 508 293Q553 293 584 309Q615 325 630 352Q646 380 646 416Q646 442 637 466Q628 490 606 516Q584 543 546 578L479 639H655V705H368Z'/%3E%3C/svg%3E"); }
+.disc[data-line="3"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M361 413Q364 375 382 348Q400 321 431 308Q462 294 503 294Q546 294 576 310Q605 325 621 352Q636 378 636 409Q636 433 627 451Q617 469 602 480Q587 492 572 497V499Q593 506 610 518Q626 531 635 549Q644 568 644 595Q644 629 628 655Q612 681 581 696Q550 710 506 710Q462 710 429 697Q396 684 377 656Q358 628 356 581H433Q434 613 451 628Q468 643 504 643Q525 643 539 637Q552 630 559 618Q565 606 565 588Q565 555 543 543Q521 532 475 532H458V469H475Q500 469 518 464Q537 460 547 449Q557 438 557 419Q557 394 543 378Q529 361 501 361Q480 361 467 369Q454 376 447 388Q440 400 439 413Z'/%3E%3C/svg%3E"); }
+.disc[data-line="4"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M513 619H308V560L500 297H592V553H644V619H592V705H513ZM517 553V381L395 553Z'/%3E%3C/svg%3E"); }
+.disc[data-line="5"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M608 293V359H424V457Q436 442 455 434Q475 425 502 425Q538 425 564 438Q589 450 605 470Q621 491 629 514Q636 538 636 560Q636 603 618 635Q601 668 567 687Q534 705 488 705Q443 705 411 690Q379 674 360 647Q342 620 338 586H415Q420 609 439 623Q457 638 488 638Q511 638 526 629Q541 619 549 602Q556 585 556 561Q556 527 538 509Q520 490 487 490Q462 490 445 503Q428 516 421 536H345V293Z'/%3E%3C/svg%3E"); }
+.disc[data-line="6"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M498 709Q454 709 419 690Q384 672 364 639Q344 606 344 565Q344 532 357 499Q371 465 398 430L501 297H587L466 451L390 532Q401 486 433 459Q466 432 512 432Q551 432 582 448Q613 465 632 495Q650 525 650 566Q650 608 629 640Q609 673 574 691Q540 709 498 709ZM424 566Q424 589 433 606Q441 624 458 633Q474 642 498 642Q521 642 537 633Q553 624 561 606Q570 589 570 566Q570 543 561 526Q553 510 537 500Q521 491 498 491Q474 491 458 500Q441 510 433 526Q424 543 424 566Z'/%3E%3C/svg%3E"); }
+.disc[data-line="7"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M643 295V354L486 703H406L564 361H361V295Z'/%3E%3C/svg%3E"); }
+.disc[data-line="8"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M414 488Q388 475 371 453Q355 432 355 399Q355 369 371 345Q386 321 418 307Q449 292 498 292Q546 292 578 307Q609 321 625 345Q640 370 640 399Q640 430 624 453Q607 476 582 488Q614 500 633 526Q651 552 651 587Q651 625 631 652Q611 679 576 694Q542 708 498 708Q454 708 419 694Q385 679 365 652Q345 625 345 587Q345 552 363 526Q382 500 414 488ZM561 409Q561 381 544 369Q528 356 498 356Q468 356 452 369Q435 381 435 409Q435 435 452 450Q469 465 498 465Q526 465 544 450Q561 434 561 409ZM498 521Q476 521 459 528Q443 535 434 549Q425 563 425 584Q425 612 443 628Q461 644 498 644Q534 644 552 628Q571 611 571 584Q571 564 562 550Q553 536 537 528Q520 521 498 521Z'/%3E%3C/svg%3E"); }
+.disc[data-line="A"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M504 363H484L364 705H283L429 297H559L705 705H624ZM371 545H609V611H371Z'/%3E%3C/svg%3E"); }
+.disc[data-line="AA"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M289 362H268L148 704H67L213 296H343L489 704H408ZM155 544H393V610H155ZM734 362H713L594 704H513L659 296H789L935 704H854ZM601 544H838V610H601Z'/%3E%3C/svg%3E"); }
+.disc[data-line="B"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M579 416Q579 390 562 377Q546 364 516 364H417V467H516Q546 467 562 454Q579 441 579 416ZM338 706V298H527Q570 298 599 312Q628 326 643 351Q658 375 658 405Q658 432 648 451Q638 469 621 480Q604 491 582 495V500Q608 503 628 515Q647 526 657 546Q668 567 668 596Q668 628 652 653Q636 678 606 692Q577 706 534 706ZM417 640H524Q555 640 572 627Q589 613 589 586Q589 559 571 545Q552 531 522 531H417Z'/%3E%3C/svg%3E"); }
+.disc[data-line="CC"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M93 501Q93 455 108 417Q124 379 152 351Q180 323 217 308Q255 293 299 293Q362 293 411 323Q459 353 483 409L418 428Q405 403 386 388Q367 373 345 366Q323 359 300 359Q263 359 234 377Q205 395 188 427Q172 459 172 501Q172 543 188 575Q205 607 234 625Q263 643 300 643Q323 643 346 635Q369 628 389 611Q409 593 423 564L488 582Q463 646 413 677Q363 709 299 709Q255 709 217 694Q180 679 152 651Q124 623 108 585Q93 547 93 501ZM510 501Q510 455 526 417Q542 379 569 351Q597 323 635 308Q673 293 717 293Q779 293 828 323Q877 353 901 409L835 428Q822 403 803 388Q785 373 763 366Q740 359 718 359Q680 359 651 377Q622 395 606 427Q590 459 590 501Q590 543 606 575Q622 607 651 625Q680 643 718 643Q741 643 764 635Q787 628 807 611Q827 593 840 564L905 582Q880 646 831 677Q781 709 717 709Q673 709 635 694Q597 679 569 651Q542 623 526 585Q510 547 510 501Z'/%3E%3C/svg%3E"); }
+.disc[data-line="D"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M485 295Q551 295 599 320Q647 346 674 392Q700 438 700 500Q700 562 674 608Q647 653 599 678Q551 703 485 703H334V295ZM483 637Q549 637 585 601Q620 564 620 500Q620 435 585 398Q549 361 483 361H412V637Z'/%3E%3C/svg%3E"); }
+.disc[data-line="E"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M632 361H424V464H580V528H424V637H632V703H346V295H632Z'/%3E%3C/svg%3E"); }
+.disc[data-line="EE"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M492 361H284V464H439V528H284V637H492V703H205V295H492ZM799 361H591V464H747V528H591V637H799V703H512V295H799Z'/%3E%3C/svg%3E"); }
+.disc[data-line="F"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M370 306H656V372H448V475H604V539H448V714H370Z'/%3E%3C/svg%3E"); }
+.disc[data-line="GG"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M399 427Q379 392 350 376Q321 361 287 361Q251 361 222 379Q192 397 175 429Q158 461 158 502Q158 544 175 576Q191 608 221 625Q250 643 288 643Q313 643 335 634Q357 626 373 610Q390 595 401 575V541H289V478H477V585Q463 619 436 647Q408 676 370 693Q332 710 285 710Q241 710 203 695Q165 680 137 652Q109 624 93 586Q78 548 78 502Q78 457 93 418Q109 380 137 352Q165 324 203 309Q241 294 285 294Q326 294 362 307Q399 320 427 345Q456 370 470 405ZM836 427Q816 392 787 376Q758 361 724 361Q688 361 659 379Q629 397 612 429Q595 461 595 502Q595 544 612 576Q628 608 658 625Q687 643 725 643Q750 643 772 634Q794 626 810 610Q827 595 838 575V541H726V478H914V585Q900 619 873 647Q845 676 807 693Q769 710 722 710Q678 710 640 695Q602 680 574 652Q546 624 530 586Q515 548 515 502Q515 457 530 418Q546 380 574 352Q602 324 640 309Q678 294 722 294Q763 294 799 307Q836 320 864 345Q893 370 907 405Z'/%3E%3C/svg%3E"); }
+.disc[data-line="HH"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M143 293H222V461H403V293H482V701H403V527H222V701H143ZM516 293H595V461H776V293H855V701H776V527H595V701H516Z'/%3E%3C/svg%3E"); }
+.disc[data-line="KK"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M163 295H242V463H266L409 295H505L336 496L509 703H409L265 529H242V703H163ZM525 295H603V463H627L771 295H867L697 496L871 703H771L627 529H603V703H525Z'/%3E%3C/svg%3E"); }
+.disc[data-line="LL"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M344 295V637H525V703H265V295ZM629 295V637H811V703H551V295Z'/%3E%3C/svg%3E"); }
+.disc[data-line="M"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M357 703H278V295H368L498 600L628 295H718V703H639V440L529 703H467L357 440Z'/%3E%3C/svg%3E"); }
+.disc[data-line="N"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M670 298V706H590L411 422V706H332V298H412L591 581V298Z'/%3E%3C/svg%3E"); }
+.disc[data-line="QB"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M288 585H359V764H288ZM322 713Q279 713 241 698Q204 683 175 655Q147 627 131 589Q114 551 114 505Q114 459 131 421Q147 383 175 355Q204 327 241 312Q279 297 322 297Q366 297 404 312Q441 327 470 355Q498 383 514 421Q530 459 530 505Q530 551 514 589Q498 627 470 655Q441 683 403 698Q366 713 322 713ZM323 646Q360 646 389 628Q417 611 434 579Q450 547 450 505Q450 462 434 431Q417 399 389 382Q360 364 323 364Q285 364 256 382Q227 399 211 431Q195 462 195 505Q195 547 211 579Q227 611 256 628Q285 646 323 646ZM790 419Q790 393 774 380Q758 367 728 367H628V470H728Q757 470 774 457Q790 444 790 419ZM550 709V301H739Q782 301 811 315Q840 329 855 354Q870 378 870 408Q870 435 860 454Q850 472 833 483Q815 494 793 498V503Q820 506 839 518Q859 529 869 549Q880 570 880 599Q880 631 864 656Q848 681 818 695Q788 709 746 709ZM628 643H736Q766 643 783 630Q801 616 801 589Q801 562 782 548Q764 534 734 534H628Z'/%3E%3C/svg%3E"); }
+.disc[data-line="QJ"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M324 586H395V765H324ZM358 714Q315 714 277 699Q240 684 211 656Q183 628 167 590Q150 552 150 506Q150 460 167 422Q183 384 211 356Q240 328 277 313Q315 298 358 298Q402 298 440 313Q477 328 506 356Q534 384 550 422Q566 460 566 506Q566 552 550 590Q534 628 506 656Q477 684 439 699Q402 714 358 714ZM359 647Q396 647 425 629Q453 612 470 580Q486 548 486 506Q486 463 470 432Q453 400 425 383Q396 365 359 365Q321 365 292 383Q263 400 247 432Q230 463 230 506Q230 548 247 580Q263 612 292 629Q321 647 359 647ZM747 302H826V588Q826 627 809 656Q793 684 764 699Q735 714 698 714Q652 714 620 692Q589 669 577 627L646 608Q650 621 657 630Q664 639 674 644Q684 648 697 648Q712 648 724 641Q735 634 741 621Q747 608 747 592Z'/%3E%3C/svg%3E"); }
+.disc[data-line="RR"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M412 421Q412 393 395 377Q379 361 344 361H257V482H344Q367 482 382 474Q397 467 404 453Q412 440 412 421ZM346 295Q395 295 427 312Q460 329 476 358Q492 387 492 421Q492 444 484 466Q476 488 458 507Q441 525 413 536Q385 547 346 547H257V703H178V295ZM390 521 500 703H412L307 521ZM754 421Q754 393 737 377Q720 361 685 361H598V482H685Q709 482 724 474Q739 467 746 453Q754 440 754 421ZM688 295Q737 295 769 312Q802 329 818 358Q834 387 834 421Q834 444 826 466Q818 488 800 507Q783 525 755 536Q727 547 688 547H598V703H520V295ZM732 521 842 703H754L648 521Z'/%3E%3C/svg%3E"); }
+.disc[data-line="SS"] { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M243 590Q247 606 256 618Q266 630 282 637Q298 644 320 644Q354 644 371 628Q388 613 388 591Q388 573 377 561Q367 550 348 542Q328 534 304 526Q280 519 257 511Q234 503 216 491Q197 478 187 459Q176 439 176 410Q176 372 194 346Q212 320 245 306Q277 293 318 293Q354 293 383 303Q412 313 431 333Q451 352 460 381L387 401Q384 388 374 379Q364 369 350 364Q336 358 320 358Q302 358 288 363Q273 369 264 380Q256 391 256 406Q256 422 266 432Q275 442 292 448Q308 455 329 461Q353 469 377 478Q402 486 422 500Q443 514 455 535Q468 556 468 588Q468 622 452 649Q436 676 404 693Q372 709 324 709Q284 709 251 697Q219 686 198 663Q177 641 171 610ZM583 590Q586 606 596 618Q606 630 622 637Q638 644 659 644Q694 644 710 628Q727 613 727 591Q727 573 717 561Q706 550 687 542Q668 534 643 526Q620 519 597 511Q574 503 556 491Q537 478 526 459Q515 439 516 410Q516 372 534 346Q552 320 584 306Q616 293 658 293Q694 293 723 303Q751 313 771 333Q790 352 799 381L727 401Q724 388 714 379Q704 369 690 364Q676 358 660 358Q642 358 627 363Q613 369 604 380Q596 391 596 406Q596 422 605 432Q615 442 632 448Q648 455 668 461Q693 469 717 478Q742 486 762 500Q782 514 795 535Q807 556 807 588Q807 622 792 649Q776 676 743 693Q711 709 663 709Q623 709 591 697Q559 686 538 663Q517 641 510 610Z'/%3E%3C/svg%3E"); }
+.disc[data-line="0"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M344 502Q344 456 351 418Q359 380 377 352Q395 324 425 309Q455 294 500 294Q545 294 575 309Q605 324 623 352Q641 380 649 418Q656 456 656 502Q656 548 649 587Q641 625 623 653Q605 680 575 695Q545 710 500 710Q455 710 425 695Q395 680 377 653Q359 625 351 587Q344 548 344 502ZM576 502Q576 474 574 449Q572 424 564 404Q557 384 542 373Q526 361 500 361Q474 361 458 373Q443 384 436 404Q428 424 426 449Q424 474 424 502Q424 531 426 557Q428 582 436 601Q443 621 458 632Q474 643 500 643Q526 643 542 632Q557 621 564 601Q572 582 574 557Q576 531 576 502Z'/%3E%3C/svg%3E"); }
+.disc[data-line="9"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M499 294Q543 294 578 313Q613 331 633 364Q653 397 653 439Q653 471 640 504Q626 538 599 573L496 706H410L531 552L607 471Q596 517 564 544Q531 571 485 571Q446 571 415 555Q384 538 365 508Q347 478 347 437Q347 395 368 363Q388 330 422 312Q457 294 499 294ZM573 437Q573 413 564 396Q555 379 539 370Q522 361 499 361Q476 361 460 370Q444 379 436 396Q427 413 427 437Q427 460 436 477Q444 494 460 503Q476 512 499 512Q522 512 539 503Q555 494 564 477Q573 460 573 437Z'/%3E%3C/svg%3E"); }
+.disc[data-line="C"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M302 502Q302 456 318 418Q334 380 362 352Q389 324 427 309Q465 294 509 294Q572 294 620 324Q669 354 693 410L627 429Q615 404 596 389Q577 374 555 367Q533 360 510 360Q472 360 443 378Q414 396 398 428Q382 460 382 502Q382 544 398 576Q414 608 443 626Q472 644 510 644Q533 644 556 636Q579 629 599 612Q619 594 633 565L698 583Q672 647 623 678Q573 710 509 710Q465 710 427 695Q389 680 362 652Q334 624 318 586Q302 548 302 502Z'/%3E%3C/svg%3E"); }
+.disc[data-line="G"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M621 427Q602 392 573 376Q544 361 510 361Q473 361 444 379Q415 397 398 429Q380 461 380 502Q380 544 397 576Q414 608 443 625Q473 643 511 643Q535 643 557 634Q579 626 596 610Q613 595 623 575V541H511V478H700V585Q686 619 658 647Q631 676 593 693Q555 710 508 710Q464 710 426 695Q388 680 360 652Q332 624 316 586Q300 548 300 502Q300 457 316 418Q332 380 360 352Q388 324 425 309Q463 294 507 294Q548 294 585 307Q622 320 650 345Q678 370 693 405Z'/%3E%3C/svg%3E"); }
+.disc[data-line="H"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M331 296H410V464H590V296H669V704H590V530H410V704H331Z'/%3E%3C/svg%3E"); }
+.disc[data-line="I"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M461 296H539V704H461Z'/%3E%3C/svg%3E"); }
+.disc[data-line="J"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M546 296H624V582Q624 621 608 650Q591 678 563 693Q534 708 497 708Q450 708 419 686Q387 663 376 621L445 602Q448 615 455 624Q462 633 472 637Q483 642 496 642Q511 642 522 635Q533 628 539 615Q546 602 546 586Z'/%3E%3C/svg%3E"); }
+.disc[data-line="K"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M327 296H405V464H429L573 296H669L500 497L673 704H573L429 530H405V704H327Z'/%3E%3C/svg%3E"); }
+.disc[data-line="L"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M449 296V638H630V704H370V296Z'/%3E%3C/svg%3E"); }
+.disc[data-line="O"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M500 710Q457 710 419 695Q381 680 353 652Q324 624 308 586Q292 548 292 502Q292 456 308 418Q324 380 353 352Q381 324 419 309Q457 294 500 294Q543 294 581 309Q619 324 647 352Q676 380 692 418Q708 456 708 502Q708 548 692 586Q676 624 647 652Q619 680 581 695Q543 710 500 710ZM500 643Q537 643 566 625Q595 608 611 576Q628 544 628 502Q628 459 611 428Q595 396 566 379Q537 361 500 361Q462 361 434 379Q405 396 388 428Q372 459 372 502Q372 544 389 576Q405 608 434 625Q462 643 500 643Z'/%3E%3C/svg%3E"); }
+.disc[data-line="P"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M509 483Q532 483 547 475Q562 468 570 454Q577 441 577 422Q577 393 560 378Q544 362 509 362H422V483ZM657 422Q657 445 649 467Q641 489 623 508Q606 526 578 537Q550 548 511 548H422V704H343V296H511Q560 296 593 313Q625 330 641 359Q657 388 657 422Z'/%3E%3C/svg%3E"); }
+.disc[data-line="Q"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M465 582H536V761H465ZM500 710Q457 710 419 695Q381 680 353 652Q324 624 308 586Q292 548 292 502Q292 456 308 418Q324 380 353 352Q381 324 419 309Q457 294 500 294Q543 294 581 309Q619 324 647 352Q676 380 692 418Q708 456 708 502Q708 548 692 586Q676 624 647 652Q619 680 581 695Q543 710 500 710ZM500 643Q537 643 566 625Q595 608 611 576Q628 544 628 502Q628 459 611 428Q595 396 566 379Q537 361 500 361Q462 361 434 379Q405 396 388 428Q372 459 372 502Q372 544 389 576Q405 608 434 625Q462 643 500 643Z'/%3E%3C/svg%3E"); }
+.disc[data-line="R"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M573 422Q573 394 556 378Q540 362 505 362H418V483H505Q528 483 543 475Q558 468 565 454Q573 441 573 422ZM507 296Q556 296 588 313Q621 330 637 359Q653 388 653 422Q653 445 645 467Q637 489 619 508Q602 526 574 537Q546 548 507 548H418V704H339V296ZM551 522 661 704H573L468 522Z'/%3E%3C/svg%3E"); }
+.disc[data-line="S"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M424 591Q428 607 437 619Q447 631 463 638Q479 645 500 645Q535 645 552 629Q569 614 569 592Q569 574 558 562Q547 551 528 543Q509 535 485 527Q461 520 438 512Q415 504 397 492Q378 479 367 460Q357 440 357 411Q357 373 375 347Q393 321 425 307Q458 294 499 294Q535 294 564 304Q592 314 612 334Q631 353 640 382L568 402Q565 389 555 380Q545 370 531 365Q517 359 501 359Q483 359 468 364Q454 370 445 381Q437 392 437 407Q437 423 447 433Q456 443 473 449Q489 456 509 462Q534 470 558 479Q583 487 603 501Q624 515 636 536Q649 557 649 589Q649 623 633 650Q617 677 585 694Q552 710 504 710Q464 710 432 698Q400 687 379 664Q358 642 351 611Z'/%3E%3C/svg%3E"); }
+.disc[data-line="T"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M335 296H665V362H539V704H461V362H335Z'/%3E%3C/svg%3E"); }
+.disc[data-line="U"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M331 296H410V553Q410 582 421 602Q433 621 453 631Q473 641 499 641Q526 641 547 631Q567 621 579 602Q590 582 590 553V296H669V549Q669 590 655 619Q641 649 617 669Q593 689 562 698Q532 708 498 708Q454 708 416 691Q378 673 354 638Q331 603 331 549Z'/%3E%3C/svg%3E"); }
+.disc[data-line="V"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M613 296H697L547 704H452L303 296H387L500 624Z'/%3E%3C/svg%3E"); }
+.disc[data-line="W"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M420 704H328L215 296H300L375 613L456 296H545L625 612L700 296H785L672 704H580L500 411Z'/%3E%3C/svg%3E"); }
+.disc[data-line="X"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M307 296H396L501 439L604 296H693L547 500L693 704H604L501 561L396 704H307L455 500Z'/%3E%3C/svg%3E"); }
+.disc[data-line="Y"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M603 296H692L539 561V704H461V561L308 296H396L500 485Z'/%3E%3C/svg%3E"); }
+.disc[data-line="Z"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M649 356 443 638H649V704H351V644L556 362H351V296H649Z'/%3E%3C/svg%3E"); }
+/* end of disc glyph masks */
+
+/* ==========================================================================
+   [eee] 웹 연재(G) 글 페이지. build.py가 nycta 토큰(§0–1 + 원판 글자 윤곽) 뒤에 이 파일을 붙여 posts/post.css를 만든다.
+   노선도(src/map.html)와 같은 규칙: 한 굵기(TYPE-002), 문장 대소문자(DONT-005), 왼쪽 정렬, 직각(DEC-009),
+   한국어는 DEC-033(keep-all·단어 간격·첫 글자 보정). 글 읽기용 크기와 행간은 [eee] 결정이다(nycta 원장에는 아직 없음).
+   ========================================================================== */
+:root{
+  --font:var(--font-sign);
+  --side:max(16px, calc(var(--doc-in) * 3));      /* [eee] 화면 가장자리 여백 */
+  --measure:36rem;                                 /* [eee] 본문 한 줄 폭(한글 약 32자) */
+  --body-fs:1.25rem;                               /* [eee] 본문 크기(데스크톱 20px, 폰 18px) */
+  --body-lh:1.75;                                  /* [eee] 긴 글 행간. 한글이 cap 위·기준선 아래로 튀어나와 넉넉히 둔다 */
+  --title-fs:2.5rem;                               /* [eee] 제목 */
+  color-scheme:light;
+}
+:root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}
+@media (max-width:640px){:root{--body-fs:1.125rem;--title-fs:1.75rem}}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{background:var(--bg);color:var(--fg);font-family:var(--font);font-weight:var(--font-weight);font-size:100%;
+  font-kerning:normal;font-synthesis:none;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+body{min-height:100vh;padding:0 var(--side) calc(var(--doc-in) * 12)}
+*{--lsb-pull:var(--lsb-comp)}
+:lang(ko){word-break:keep-all;line-break:strict;word-spacing:var(--ws-ko);--lsb-pull:var(--lsb-comp-ko)}
+:lang(en){word-spacing:var(--ws)}
+a{color:inherit;text-decoration:none}
+:focus:not(:focus-visible){outline:none}
+:focus-visible{outline:1px solid currentColor;outline-offset:2px}
+
+/* 노선도로 돌아가는 링크: 화살표(ARROW-005) + 글자, 반전 판 대신 맨 위 ⅛in 선 아래 */
+.top{max-width:var(--measure);margin:0 auto;padding-top:calc(var(--doc-in) * 3)}
+.back{display:inline-flex;align-items:baseline;gap:calc(var(--doc-in) * .5);line-height:var(--lh-g1)}
+.arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:0 0 auto;fill:currentColor;overflow:visible;
+  align-self:center}
+.arrow[data-dir=left]{transform:rotate(180deg)}
+
+main{max-width:var(--measure);margin:0 auto}
+article{padding-top:calc(var(--doc-in) * 4)}
+.meta{display:flex;align-items:center;gap:calc(var(--doc-in) * 1);line-height:var(--lh-g1)}
+.meta time{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+h1{font-size:var(--title-fs);font-weight:inherit;line-height:1.3;margin-top:calc(var(--doc-in) * 3);
+  padding-bottom:calc(var(--doc-in) * 3);border-bottom:max(1px, calc(var(--doc-in) * .125)) solid currentColor;text-wrap:balance}
+
+.body{font-size:var(--body-fs);line-height:var(--body-lh);padding-top:calc(var(--doc-in) * 4)}
+.body>*+*{margin-top:1em}
+.body h2,.body h3{font-size:inherit;font-weight:inherit;margin-top:2.5em}
+.body h2{border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;padding-top:.75em}
+.body a{text-decoration:underline;text-decoration-thickness:max(1px, .06em);text-underline-offset:.2em}
+.body ul,.body ol{padding-inline-start:1.25em}
+.body li+li{margin-top:.35em}
+.body blockquote{padding-inline-start:1em;border-inline-start:max(2px, calc(var(--doc-in) * .25)) solid currentColor}
+.body img{display:block;max-width:100%;height:auto}
+.body figure figcaption{font-size:1rem;line-height:1.5;margin-top:.5em}
+.body hr{border:0;border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;margin:2.5em 0}
+.body strong,.body em{font-weight:inherit;font-style:normal}   /* 한 굵기(TYPE-002), 기울임 없음: 강조는 글로 */
+
+/* 이전 글 · 다음 글 */
+.seq{display:flex;justify-content:space-between;gap:calc(var(--doc-in) * 3);margin-top:calc(var(--doc-in) * 9);
+  padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;line-height:1.5}
+.seq a{display:flex;flex-direction:column;gap:.25em;max-width:48%}
+.seq .next{margin-inline-start:auto;text-align:right}
+.seq:empty{display:none}
+.end{margin-top:calc(var(--doc-in) * 9);padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor}
+.seq:not(:empty)+.end{margin-top:calc(var(--doc-in) * 4);border-top:0;padding-top:0}
+.seq small{font-size:inherit;opacity:.55}
+
+/* 노선 원판(DISC-001/004, 윤곽 DEC-035): src/map.html의 .disc·.disc--inline과 같은 규칙. 그쪽이 바뀌면 여기도 맞춘다 */
+.disc{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375 * 1.4);display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);
+  border-radius:50%;background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
+  line-height:1;position:relative}
+.disc>span{display:block;color:var(--disc-text,inherit)}
+.disc::after{content:"";position:absolute;inset:0;background:currentColor;pointer-events:none;
+  -webkit-mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat;mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat}

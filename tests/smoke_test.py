@@ -18,7 +18,7 @@ async def main():
             nonlocal ok; ok &= bool(cond); print(("PASS " if cond else "FAIL ") + name, info)
 
         # 1. clicking a station opens the popup with the Instagram link
-        pt = await pg.evaluate("(()=>{const s=byLine.E.st[5];const r=s.g.querySelector('.dot').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
+        pt = await pg.evaluate("(()=>{const s=byLine.K.st[5];const r=s.g.querySelector('.dot').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
         await pg.mouse.click(*pt); await pg.wait_for_timeout(900)
         check("popup opens on click", await pg.evaluate("!!current && document.querySelector('#panel').classList.contains('open')"))
         await pg.keyboard.press("Escape")
@@ -61,10 +61,10 @@ async def main():
 
         # 5. new posts (missing from the saved arrangement) carry on from the end of their saved line
         await pg.evaluate("""(()=>{savePos=()=>{};   // (the reload's pagehide would save them right back)
-          const m=JSON.parse(localStorage.getItem(POS_KEY));const E=byLine.E.st;
+          const m=JSON.parse(localStorage.getItem(POS_KEY));const E=byLine.K.st;
           delete m[E[E.length-1].id];delete m[E[E.length-2].id];localStorage.setItem(POS_KEY,JSON.stringify(m))})()""")
         await pg.reload(); await pg.wait_for_timeout(1500)
-        r = await pg.evaluate("""(()=>{const E=byLine.E.st,n=E.length,G=gridU();
+        r = await pg.evaluate("""(()=>{const E=byLine.K.st,n=E.length,G=gridU();
           const gap=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y))/G;
           const clash=all.filter(o=>o!==E[n-1]&&o!==E[n-2]&&[E[n-1],E[n-2]].some(s=>o.x===s.x&&o.y===s.y)).length;
           return {g1:gap(E[n-3],E[n-2]),g2:gap(E[n-2],E[n-1]),clash,off:all.filter(offGrid).length}})()""")
@@ -73,10 +73,10 @@ async def main():
         ko_clash = await pg.evaluate("nameClashes")   # this layout is crowded by the drags above: compare, don't demand 0
         await pg.evaluate("setLang('en')"); await pg.wait_for_timeout(300)
         r = await pg.evaluate("""(()=>({lang:document.documentElement.lang,btn:langbtn.textContent,all:zfit.textContent,
-          name:byLine.E.st[0].label,legend:legend.innerText.includes('Wed'),clash:nameClashes,curved:curvedNow.length}))()""")
+          name:byLine.K.st[0].label,legend:legend.innerText.includes('Wed'),clash:nameClashes,curved:curvedNow.length}))()""")
         await pg.reload(); await pg.wait_for_timeout(800)
         r["kept"] = await pg.evaluate("document.documentElement.lang")
-        await pg.click("#langbtn"); r["back"] = await pg.evaluate("document.documentElement.lang+' '+byLine.E.st[0].label")
+        await pg.click("#langbtn"); r["back"] = await pg.evaluate("document.documentElement.lang+' '+byLine.K.st[0].label")
         check("English version switches and is remembered", r["lang"] == "en" and r["btn"] == "한" and r["all"] == "All"
               and r["name"] == "Diaspora" and r["legend"] and r["clash"] <= ko_clash + 3 and not r["curved"] and r["kept"] == "en"
               and r["back"].startswith("ko "), {**r, "koClash": ko_clash})

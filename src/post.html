@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__ — EEE</title>
+<meta name="description" content="__SUMMARY__">
+<link rel="stylesheet" href="post.css">
+<script>/* ◐ 노선도에서 고른 흑백 반전을 그대로 따른다(localStorage eee-theme). 로컬에서는 헬베티카 미리보기(src/map.html과 같은 규칙) */
+(function(){try{if(localStorage.getItem('eee-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a>
+</header>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
+<main>
+  <article>
+    <p class="meta">__DISC__<span>__SERIES__</span><time datetime="__DATE__">__DATE_TEXT__</time></p>
+    <h1>__TITLE__</h1>
+    <div class="body">
+__BODY__
+    </div>
+  </article>
+  <nav class="seq" aria-label="이전 글과 다음 글">__SEQ__</nav>
+  <p class="end"><a class="back" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도로 돌아가기</a></p>
+</main>
+</body>
+</html>

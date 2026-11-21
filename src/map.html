@@ -273,6 +273,7 @@ const T=k=>I18N[lang][k];
 const EN=id=>lang==='en'&&DATA_EN.stations[id]||null;
 const stName=s=>(EN(s.id)||s).s, stTitle=s=>(EN(s.id)||s).t, stSum=s=>lang==='en'?(EN(s.id)||{}).m||'':s.m||'';   // m: 1–2 line summary (English shows none until translated)
 const seriesName=(c,ko)=>lang==='en'&&DATA_EN.series[c]||ko;
+const dayName=L=>L.day?T('dayLong')[L.day]+' ':'';   // 'Monday ' (G, irregular, has none)
 // ======================================================================
 // DESIGN — every visual value of the map lives here. Change these, not the code below.
 // (UI colours and type live in the CSS :root block; map geometry and marks live here.)
@@ -304,11 +305,12 @@ const DESIGN = {
   // Line colours = NYCTA palette tokens (nycta.css --c-*, COLOR-005 / DEC-003). The disc letter is black on yellow,
   // white on every other colour (DEC-004). Change a line's colour by naming another token here.
   lines: {
-    E: { token:'--c-yellow' },     // 수 · 지식채널 eee (main)
-    R: { token:'--c-red' },        // 월 · Off the Reeecord
+    K: { token:'--c-yellow' },     // 수 · 지식채널 eee (main)
+    O: { token:'--c-red' },        // 월 · Off the Reeecord
     M: { token:'--c-blue' },       // 금 · THE MEEETRO
     X: { group:'S' },              // 일 · 전시 소개 (ended 07-26)
     F: { group:'S' },              // 일 · EFC
+    G: { token:'--c-orange' },     // 수시 · 웹 연재 (posts/*.md → 글 페이지)
   },
   // Similar series = one group (DEC-036): one colour, one strand per series side by side, a page-colour ground between.
   // `lines` order = strand order, the first on the left of travel. The series with the most posts lays the route;
@@ -334,14 +336,22 @@ const disc=(L,c,cls='disc disc--inline')=>`<span class="${cls}" data-line="${c}"
 const U = DESIGN.grid.unit, STEP = DESIGN.grid.step, LW = DESIGN.line.width;
 document.documentElement.style.setProperty('--label-size', DESIGN.label.size+'px');
 document.documentElement.style.setProperty('--dot-hover', DESIGN.station.hoverScale);
-const MAIN = 'E';
+const LOCAL=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);   // the designer's copy (drafts, tuning UI)
+const MAIN = 'K';
+// Line keys (2026-11-21): O Off the Reeecord, K 지식채널, M 메트로, F EFC, X 전시 소개, G 웹 연재. Until then K was E and O was R
+// (saved layouts and #E-14 links are renamed on load: OLD_KEY).
+// day: the series' weekday; G has none (irregular: no next stop, no day in the legend). A line with no stations is left out.
+const SRC={K:DATA['수'],O:DATA['월'],M:DATA['금'],X:DATA['일'].filter(s=>s.b==='X'),F:DATA['일'].filter(s=>s.b==='F'),
+  G:(DATA['글']||[]).filter(s=>!s.draft||LOCAL)};   // G = posts/*.md (build.py); a draft shows only on file:// / localhost
 const LINES = [
-  {key:'E', day:'수', series:[['E','지식채널 eee']], seed:11},
-  {key:'R', day:'월', series:[['R','Off the Reeecord']], seed:23},
+  {key:'K', day:'수', series:[['K','지식채널 eee']], seed:11},
+  {key:'O', day:'월', series:[['O','Off the Reeecord']], seed:23},
   {key:'M', day:'금', series:[['M','THE MEEETRO']], seed:37},
   {key:'X', day:'일', series:[['X','전시 소개']], seed:51, ended:true},   // ended 07-26: no next stop
   {key:'F', day:'일', series:[['F','EFC']], seed:67},
-];
+  {key:'G', day:null, series:[['G','웹 연재']], seed:79, irregular:true},
+].filter(L=>SRC[L.key].length);
+const OLD_KEY={E:'K',R:'O'}, newId=id=>id.replace(/^([ER])-/,(_,c)=>OLD_KEY[c]+'-');
 const TURN_FROM = 3, MAX_DRIFT = 2;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS='http://www.w3.org/2000/svg';
@@ -380,7 +390,6 @@ const all=[], stations=[];
 // Never copy or patch those rules here: change them in nycta, then tools/sync_nycta.sh. A new version = check every GEO.* call.
 const GEO=NYCTAMap.geometry;   // (G is the grid unit in this file)
 if(GEO.version!==1)console.warn(`NYCTAMap.geometry version ${GEO.version} (eee-map was written for 1): check the GEO.* calls in src/map.html`);
-const SRC={E:DATA['수'],R:DATA['월'],M:DATA['금'],X:DATA['일'].filter(s=>s.b==='X'),F:DATA['일'].filter(s=>s.b==='F')};
 LINES.forEach(L=>{L.color=DESIGN.lines[L.key].color;L.textOn=DESIGN.lines[L.key].textOn;L.st=SRC[L.key];L.offset=0;L.R0=DESIGN.line.cornerRadius;L.st.forEach((s,i)=>{s.line=L;s.i=i;stations.push(s)})});
 const byLine=Object.fromEntries(LINES.map(L=>[L.key,L])), main=byLine[MAIN];
 for(const gk in DESIGN.groups){
@@ -688,10 +697,17 @@ function layoutOnce(rand){
     }
   };
   const toH=th=>mod8(Math.round(th/(Math.PI/4)));   // nearest of the 8 directions
+  // [eee] a line of 1–2 stations (a new series, e.g. G) can't run through a transfer (never its first or last station):
+  // it starts 2+ cells off the main-line station published before it, at right angles, unconnected. Its own rng, so the
+  // other lines' random draws (and the fixed-seed first layout) stay as they were. From 3 stations it is a branch.
+  const short=L=>L.st.length<3;
+  function loose(L,R){const A=R?main.st[1+Math.floor(R()*(main.st.length-2))]:autoAnchor(L),i=A.i,M=main.st,a=[A.x,A.y];
+    const p=M[Math.max(0,i-1)],n=M[Math.min(M.length-1,i+1)],th=Math.atan2(n.y-p.y,n.x-p.x),r=rng(L.seed);
+    walk(L,L.st,a,toH(th+(r()<.5?1:-1)*Math.PI/2),r)}
   if(R){ // ---- random layout ----
     const m0=main.st[0]; m0.x=0; m0.y=0; placed.push([0,0]);
     walk(main,main.st.slice(1),[0,0],Math.floor(R()*8),R);
-    const done=[main], br=[...BRANCHES].sort(()=>R()-.5);
+    const done=[main], br=BRANCHES.filter(L=>!short(L)).sort(()=>R()-.5);
     br.forEach(L=>{
       const par=R()<RANDOM.parentMainP?main:done[Math.floor(R()*done.length)];
       const free=par.st.filter(s=>!s._anchor&&s.i>0&&s.i<par.st.length-1), A=free[Math.floor(R()*free.length)]||par.st[1], a=[A.x,A.y], i=A.i;
@@ -704,13 +720,15 @@ function layoutOnce(rand){
       walk(L,L.st.slice(0,t).reverse(),a,mod8(h1+4),R);   // straight on through the transfer (never a corner)
       done.push(L);
     });
+    BRANCHES.filter(short).forEach(L=>loose(L,R));
     return;
   }
   // main line from the origin, heading east
   const m0=main.st[0]; m0.x=0; m0.y=0; placed.push([0,0]);
   walk(main,main.st.slice(1),[0,0],0,rng(main.seed));   // heading index 0 = east
   // branches leave their transfer station roughly at right angles to the main line
-  BRANCHES.forEach(L=>{
+  BRANCHES.filter(short).forEach(L=>loose(L));
+  BRANCHES.filter(L=>!short(L)).forEach(L=>{
     const A=autoAnchor(L), a=[A.x,A.y], i=A.i, M=main.st;
     const p=M[Math.max(0,i-1)], n=M[Math.min(M.length-1,i+1)], mth=Math.atan2(n.y-p.y,n.x-p.x);
     const r=rng(L.seed);
@@ -723,22 +741,25 @@ function layoutOnce(rand){
 }
 
 // ---------- saved arrangement (this browser) ----------
-const POS_KEY='eee-pos-v5';   // every station's spot (random layouts survive a reload); v5 = no station on a corner (DEC-036)
-const POS_OLD='eee-pos-v4';   // read once and moved off corners (fixCorners), then saved as v5; left in place as a backup
-function loadPos(){let m=null,old=false;
-  try{m=JSON.parse(localStorage.getItem(POS_KEY)||'null');if(!m){m=JSON.parse(localStorage.getItem(POS_OLD)||'null');old=!!m}}catch(e){}
-  m=m||{};const saved=new Set(Object.keys(m));if(!saved.size)return;
+const POS_KEY='eee-pos-v6';   // every station's spot (random layouts survive a reload); v6 = line keys K/O (were E/R)
+const POS_V5='eee-pos-v5';    // v5 = no station on a corner (DEC-036): read once with its ids renamed (newId), saved as v6
+const POS_OLD='eee-pos-v4';   // read once and moved off corners (fixCorners), then saved as v6; v4/v5 stay as backups
+function loadPos(){let m=null,old=false,moved=false;
+  try{m=JSON.parse(localStorage.getItem(POS_KEY)||'null');
+    if(!m){m=JSON.parse(localStorage.getItem(POS_V5)||'null');moved=!!m}
+    if(!m){m=JSON.parse(localStorage.getItem(POS_OLD)||'null');old=moved=!!m}}catch(e){}
+  m=m||{};if(moved)m=Object.fromEntries(Object.entries(m).map(([k,v])=>[newId(k),v]));const saved=new Set(Object.keys(m));if(!saved.size)return;
   all.forEach(s=>{if(m[s.id]){s.x=m[s.id][0];s.y=m[s.id][1]}});
   const added=extendNew(saved);
   // a v4 arrangement may have stations on corners: move them off once. New posts: only they may move.
   if(old||added){const P=posMap();fixCorners(P,old?new Set():new Set(all.filter(s=>saved.has(s.id))));applyPos(P)}
-  if(old)savePos();
+  if(moved)savePos();
 }
 // New posts (stations missing from the saved arrangement) continue on from their saved neighbours —
 // in the direction the line is already heading, 2 grid cells per station — instead of landing on the default layout.
 function extendNew(saved){   // → how many stations it placed
   const G=gridU(),used=new Set(all.filter(s=>saved.has(s.id)).map(s=>gkey([s.x,s.y])));let added=0;
-  TRACK.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id)))return;   // a whole new line keeps its default spot
+  TRACK.forEach(L=>{const st=L.st;if(!st.some(s=>saved.has(s.id))){added+=newLine(L,saved);return}   // a whole new line: beside its anchor
     const place=(i,step)=>{const s=st[i],a=st[i-step],b=st[i-2*step];
       const v=b?[a.x-b.x,a.y-b.y]:[1,0],h=mod8(Math.round(Math.atan2(v[1],v[0])/(Math.PI/4)));
       // straight on, or one cell on and then turned (the bend between the stations, not at the saved one)
@@ -753,6 +774,20 @@ function extendNew(saved){   // → how many stations it placed
     st.forEach(s=>{if(s._ext)added++;delete s._ext});
   });
   return added;
+}
+// [eee] a whole new line (no station saved, e.g. the first post of a new series) in a saved arrangement: its default spot
+// came from the default layout, not this one, so it may land on top of it. Lay it out straight, 2 cells apart, starting
+// 2–5 cells off the main-line station published before it (at right angles first), where it clears every saved station
+// and stretch. Unconnected; dragging it onto a station makes the transfer.
+function newLine(L,saved){
+  const G=gridU(),A=autoAnchor(L),M=main.st,i=A.i,p=M[Math.max(0,i-1)],n=M[Math.min(M.length-1,i+1)];
+  const h0=mod8(Math.round(Math.atan2(n.y-p.y,n.x-p.x)/(Math.PI/4))+2);
+  const pts=all.filter(s=>saved.has(s.id)), segs=TRACK.flatMap(T=>T.st.slice(1).map((s,j)=>[T.st[j],s])).filter(([a,b])=>saved.has(a.id)&&saved.has(b.id)).map(([a,b])=>[[a.x,a.y],[b.x,b.y]]);
+  for(const h of[h0,mod8(h0+4),mod8(h0+1),mod8(h0-1),mod8(h0+3),mod8(h0-3),mod8(h0+2)])for(const k of[2,3,4,5]){
+    const at=j=>[A.x+DIRS[h][0]*(k+2*j)*G,A.y+DIRS[h][1]*(k+2*j)*G];
+    const ok=L.st.every((s,j)=>{const q=at(j);return pts.every(o=>Math.hypot(o.x-q[0],o.y-q[1])>=1.5*G)&&segs.every(([a,b])=>distToSeg(q,a,b)>=G)});
+    if(ok){L.st.forEach((s,j)=>{[s.x,s.y]=at(j)});return L.st.length}}
+  return 0;   // nowhere free: keeps the default spot
 }
 function savePos(){syncTwins();try{const m={};stations.forEach(s=>{m[s.id]=[Math.round(s.x*10)/10,Math.round(s.y*10)/10]});localStorage.setItem(POS_KEY,JSON.stringify(m))}catch(e){}}
 function clearPos(){try{localStorage.removeItem(POS_KEY)}catch(e){}}
@@ -794,7 +829,10 @@ function geometry(){
   curvedNow=[];
   const unit=(a,b)=>{const v=[b[0]-a[0],b[1]-a[1]],m=Math.hypot(...v)||1;return[v[0]/m,v[1]/m]};
   LINES.forEach(L=>{
-    const r=(L.lead||L).route,n=L.st.length,ro=GEO.runOn(r.pts.slice(0,r.idx[n-1]+1),DESIGN.line.runOn,true,true);
+    const r=(L.lead||L).route,n=L.st.length;
+    // [eee] one station (a new series): a stub of the strand across it, as long as both run-ons (horizontal)
+    const ro=r.pts.length>1?GEO.runOn(r.pts.slice(0,r.idx[n-1]+1),DESIGN.line.runOn,true,true):
+      {pts:[[r.pts[0][0]-DESIGN.line.runOn,r.pts[0][1]],r.pts[0],[r.pts[0][0]+DESIGN.line.runOn,r.pts[0][1]]],shift:1};
     const P=ro.pts,idx=r.idx.slice(0,n).map(k=>k+ro.shift);
     L.pts=P; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
     L.model=GEO.strand(P,L.offset,L.R0);
@@ -852,7 +890,7 @@ const ghosts=()=>LINES.map(L=>L.ghost).filter(G=>G&&G.path);
 function nextStops(){
   const ro0=DESIGN.line.runOn, hw=LW/2, N=DESIGN.next;
   LINES.forEach(L=>{
-    const n=L.st.length; if(L.ended||!n){L.ghost=null;return}
+    const n=L.st.length; if(L.ended||L.irregular||!n){L.ghost=null;return}   // irregular (G): no next date to show
     const last=L.st[n-1], G=L.ghost||(L.ghost={ghost:true,id:L.key+'-next',line:L});   // kept across redraws (an open popup holds it)
     G.b=last.b; G.ser=last.ser; G.d=nextDate(L); G.samp=[];
     const lr=L.lead&&L.lead.route;
@@ -908,7 +946,7 @@ function draw(){
   stations.forEach(s=>{
     const L=s.line;
     if(s.owner){s.g=s.owner.g;return}
-    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${T('dayLong')[L.day]} ${stName(s)}`,'data-id':s.id},gS);
+    const g=el('g',{class:'station',tabindex:0,role:'button','aria-label':`${dayName(L)}${stName(s)}`,'data-id':s.id},gS);
     g.setAttribute('transform',`translate(${s.vx},${s.vy})`);
     el('circle',{class:'hit',r:DESIGN.station.hitRadius},g);
     if(s.xfer){const z=DESIGN.interchange.size;el('rect',{class:'dot xdot',x:-z/2,y:-z/2,width:z,height:z,rx:z/2,'stroke-width':DESIGN.interchange.stroke},g)}
@@ -1311,9 +1349,9 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(n=>{n.textContent=T(n.dataset.i18n)});
   document.querySelectorAll('[data-i18n-label]').forEach(n=>{const v=T(n.dataset.i18nLabel);n.setAttribute('aria-label',v);if(n.hasAttribute('title'))n.title=v});
   $('#langbtn').lang=lang==='en'?'ko':'en';   // the button names the other language, in that language
-  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${T('day')[L.day]}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span class="nm">${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`;
-    lg.querySelector(`[data-line="${L.key}"]`).setAttribute('aria-label',`${T('dayLong')[L.day]} ${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}`)});
-  $('#srlist').innerHTML=LINES.map(L=>`<h2>${T('dayLong')[L.day]}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
+  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${L.day?T('day')[L.day]:''}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span class="nm">${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`;
+    lg.querySelector(`[data-line="${L.key}"]`).setAttribute('aria-label',`${dayName(L)}${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}`)});
+  $('#srlist').innerHTML=LINES.map(L=>`<h2>${L.day?T('dayLong')[L.day]:seriesName(L.key,L.series[0][1])}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
 }
 applyLang();
 // [eee] UI plates in module sizes (GRID-012): the shortest standard length (DESIGN.plate.lengths) that leaves ≥ .roomIn
@@ -1432,7 +1470,8 @@ function openStation(s,fromHash,keepView){
   focusLine(s.line);
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
-  const ps=$('#psum'); if(s.ghost){ps.textContent=ghostText(s);ps.href=DESIGN.next.account}else{ps.textContent=stSum(s)||stTitle(s); ps.href=s.u;}   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers (the other station's name + its disc) and → close on one row (2026-11-19)
+  const ps=$('#psum'); if(s.ghost){ps.textContent=ghostText(s);ps.href=DESIGN.next.account}else{ps.textContent=stSum(s)||stTitle(s); ps.href=s.u;}
+  ps.target=s.post?'_self':'_blank';   // G (웹 연재): the summary opens the article on this site, in this tab   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers (the other station's name + its disc) and → close on one row (2026-11-19)
   const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.textContent=stName(x);b.insertAdjacentHTML('beforeend',disc(x.line,x.b));b.setAttribute('aria-label',`${T('xfer')}: ${stName(x)} (${seriesName(x.b,x.ser)})`);b.onclick=()=>openStation(x);xr.appendChild(b)});
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPopup(); placePopup();
   if(!fromHash) try{history.replaceState(null,'',s.ghost?location.pathname+location.search:'#'+s.id)}catch(e){}
@@ -1515,8 +1554,10 @@ function growLine(L,start){
   [...gB.querySelectorAll(`[data-line="${L.key}"]`),...gN.querySelectorAll(`[data-line="${L.key}"]`),L.train].forEach(n=>n&&n.animate([{opacity:0},{opacity:1}],{duration:300,delay:end,fill:'backwards'}));
   return end;
 }
+// [eee] back from a web-series article (posts/*.html, G): no growth intro, its station opens at once
+const FROM_POST=(()=>{try{const r=new URL(document.referrer);return r.origin===location.origin&&/\/posts\/[^/]+\.html$/.test(r.pathname)}catch(e){return false}})();
 function intro(){
-  if(reduce)return;
+  if(reduce||FROM_POST)return;
   // a line starts growing when its parent line's growth reaches the transfer
   const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
   const order=[],add=L=>{if(order.includes(L))return;order.push(L);LINES.forEach(C=>{if(C.parent===L)add(C)})};
@@ -1588,7 +1629,7 @@ $('#theme').onclick=e=>{
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
 fitPlates();
 if(document.fonts){const f=()=>{relabel();fitPlates()};document.fonts.ready.then(f);document.fonts.addEventListener('loadingdone',f)}
-function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===m[1]); if(s) setTimeout(()=>openStation(s,true),reduce?0:900)}}
+function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===newId(m[1])); if(s) setTimeout(()=>openStation(s,true),reduce||FROM_POST?0:900)}}
 fromHash(); addEventListener('hashchange',fromHash);
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
 addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});

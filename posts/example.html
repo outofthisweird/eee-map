@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<!-- built from posts/example.md by build.py: edit the .md, not this file -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>웹 연재 글 페이지 예시 — EEE</title>
+<meta name="description" content="웹 연재 글 페이지가 어떻게 보이는지 확인하는 예시입니다. 누르면 글로 넘어갑니다.">
+<link rel="stylesheet" href="post.css">
+<script>/* ◐ 노선도에서 고른 흑백 반전을 그대로 따른다(localStorage eee-theme). 로컬에서는 헬베티카 미리보기(src/map.html과 같은 규칙) */
+(function(){try{if(localStorage.getItem('eee-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../index.html#G-01"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a>
+</header>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
+<main>
+  <article>
+    <p class="meta"><span class="disc" data-line="G" style="--line:var(--c-orange);--on:var(--c-white)" aria-hidden="true"><span>G</span></span><span>웹 연재</span><time datetime="2026-11-21">2026년 11월 21일</time></p>
+    <h1>웹 연재 글 페이지 예시</h1>
+    <div class="body">
+      <p>이 글은 글 페이지 모양을 확인하려고 만든 예시입니다. 초안이라서 배포 사이트의 노선도에는 나오지 않고, 내 컴퓨터에서 연 노선도에만 보입니다. 첫 글을 쓰시면 이 파일은 지워도 됩니다.</p>
+      <p>긴 문단이 어떻게 흐르는지 보려고 문장을 조금 더 이어 씁니다. 현대미술을 쉽게 풀어 주는 글은 대개 작품 하나를 오래 들여다보는 데서 시작합니다. 무엇이 보이는지, 왜 그렇게 놓였는지, 작가가 무엇을 비워 두었는지를 차례로 묻다 보면 처음에는 낯설던 작품이 조금씩 말을 걸어옵니다.</p>
+      <h2>소제목</h2>
+      <p>소제목 위에는 가는 선이 하나 그어집니다. 문단 사이는 한 줄 높이만큼 띄웁니다.</p>
+      <blockquote><p>인용문은 왼쪽에 굵은 선이 붙습니다.</p></blockquote>
+      <ul><li>목록 첫째 줄</li><li>목록 둘째 줄은 조금 길게 써서 다음 줄로 넘어갈 때 들여쓰기가 어떻게 맞는지 확인합니다.</li><li><a href="https://www.instagram.com/eee_exhibition/" target="_blank" rel="noopener">인스타그램 계정</a>으로 가는 링크</li></ul>
+      <hr>
+      <p>구분선 아래 마지막 문단입니다.</p>
+    </div>
+  </article>
+  <nav class="seq" aria-label="이전 글과 다음 글"></nav>
+  <p class="end"><a class="back" href="../index.html#G-01"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도로 돌아가기</a></p>
+</main>
+</body>
+</html>

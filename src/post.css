@@ -1,0 +1,72 @@
+/* ==========================================================================
+   [eee] 웹 연재(G) 글 페이지. build.py가 nycta 토큰(§0–1 + 원판 글자 윤곽) 뒤에 이 파일을 붙여 posts/post.css를 만든다.
+   노선도(src/map.html)와 같은 규칙: 한 굵기(TYPE-002), 문장 대소문자(DONT-005), 왼쪽 정렬, 직각(DEC-009),
+   한국어는 DEC-033(keep-all·단어 간격·첫 글자 보정). 글 읽기용 크기와 행간은 [eee] 결정이다(nycta 원장에는 아직 없음).
+   ========================================================================== */
+:root{
+  --font:var(--font-sign);
+  --side:max(16px, calc(var(--doc-in) * 3));      /* [eee] 화면 가장자리 여백 */
+  --measure:36rem;                                 /* [eee] 본문 한 줄 폭(한글 약 32자) */
+  --body-fs:1.25rem;                               /* [eee] 본문 크기(데스크톱 20px, 폰 18px) */
+  --body-lh:1.75;                                  /* [eee] 긴 글 행간. 한글이 cap 위·기준선 아래로 튀어나와 넉넉히 둔다 */
+  --title-fs:2.5rem;                               /* [eee] 제목 */
+  color-scheme:light;
+}
+:root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}
+@media (max-width:640px){:root{--body-fs:1.125rem;--title-fs:1.75rem}}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{background:var(--bg);color:var(--fg);font-family:var(--font);font-weight:var(--font-weight);font-size:100%;
+  font-kerning:normal;font-synthesis:none;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+body{min-height:100vh;padding:0 var(--side) calc(var(--doc-in) * 12)}
+*{--lsb-pull:var(--lsb-comp)}
+:lang(ko){word-break:keep-all;line-break:strict;word-spacing:var(--ws-ko);--lsb-pull:var(--lsb-comp-ko)}
+:lang(en){word-spacing:var(--ws)}
+a{color:inherit;text-decoration:none}
+:focus:not(:focus-visible){outline:none}
+:focus-visible{outline:1px solid currentColor;outline-offset:2px}
+
+/* 노선도로 돌아가는 링크: 화살표(ARROW-005) + 글자, 반전 판 대신 맨 위 ⅛in 선 아래 */
+.top{max-width:var(--measure);margin:0 auto;padding-top:calc(var(--doc-in) * 3)}
+.back{display:inline-flex;align-items:baseline;gap:calc(var(--doc-in) * .5);line-height:var(--lh-g1)}
+.arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:0 0 auto;fill:currentColor;overflow:visible;
+  align-self:center}
+.arrow[data-dir=left]{transform:rotate(180deg)}
+
+main{max-width:var(--measure);margin:0 auto}
+article{padding-top:calc(var(--doc-in) * 4)}
+.meta{display:flex;align-items:center;gap:calc(var(--doc-in) * 1);line-height:var(--lh-g1)}
+.meta time{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+h1{font-size:var(--title-fs);font-weight:inherit;line-height:1.3;margin-top:calc(var(--doc-in) * 3);
+  padding-bottom:calc(var(--doc-in) * 3);border-bottom:max(1px, calc(var(--doc-in) * .125)) solid currentColor;text-wrap:balance}
+
+.body{font-size:var(--body-fs);line-height:var(--body-lh);padding-top:calc(var(--doc-in) * 4)}
+.body>*+*{margin-top:1em}
+.body h2,.body h3{font-size:inherit;font-weight:inherit;margin-top:2.5em}
+.body h2{border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;padding-top:.75em}
+.body a{text-decoration:underline;text-decoration-thickness:max(1px, .06em);text-underline-offset:.2em}
+.body ul,.body ol{padding-inline-start:1.25em}
+.body li+li{margin-top:.35em}
+.body blockquote{padding-inline-start:1em;border-inline-start:max(2px, calc(var(--doc-in) * .25)) solid currentColor}
+.body img{display:block;max-width:100%;height:auto}
+.body figure figcaption{font-size:1rem;line-height:1.5;margin-top:.5em}
+.body hr{border:0;border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;margin:2.5em 0}
+.body strong,.body em{font-weight:inherit;font-style:normal}   /* 한 굵기(TYPE-002), 기울임 없음: 강조는 글로 */
+
+/* 이전 글 · 다음 글 */
+.seq{display:flex;justify-content:space-between;gap:calc(var(--doc-in) * 3);margin-top:calc(var(--doc-in) * 9);
+  padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;line-height:1.5}
+.seq a{display:flex;flex-direction:column;gap:.25em;max-width:48%}
+.seq .next{margin-inline-start:auto;text-align:right}
+.seq:empty{display:none}
+.end{margin-top:calc(var(--doc-in) * 9);padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor}
+.seq:not(:empty)+.end{margin-top:calc(var(--doc-in) * 4);border-top:0;padding-top:0}
+.seq small{font-size:inherit;opacity:.55}
+
+/* 노선 원판(DISC-001/004, 윤곽 DEC-035): src/map.html의 .disc·.disc--inline과 같은 규칙. 그쪽이 바뀌면 여기도 맞춘다 */
+.disc{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375 * 1.4);display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);
+  border-radius:50%;background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
+  line-height:1;position:relative}
+.disc>span{display:block;color:var(--disc-text,inherit)}
+.disc::after{content:"";position:absolute;inset:0;background:currentColor;pointer-events:none;
+  -webkit-mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat;mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat}
