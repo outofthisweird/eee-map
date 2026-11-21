@@ -251,7 +251,11 @@ def build_posts(data_text, post_tokens):
                                      item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True))))   # 항목 사이에 빈칸 없음(2026-11-21 사용자 요청: 제목 안 띄어쓰기만)
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl
-        for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", rich(p["title"])),
+        # 글 머리(2026-11-21 사용자 요청, 매뉴얼 SIGN-016 열차 표지처럼): 흰 칸에 원판, 그 옆에 제목. 제목이 원판으로 시작하면 그 원판, 아니면 G
+        th = rich(p["title"]); lead = re.match(r'(<span class="disc[^>]*><span>[^<]*</span></span>)\s*', th)
+        head_disc, head_title = (lead.group(1), th[lead.end():]) if lead else (disc, th)
+        head_disc = head_disc.replace("disc disc--inline", "disc", 1)   # 칸 안의 큰 원판: 줄 안 원판 규칙(DEC-034)이 아니라 지름에서 글자 크기를 잡는다
+        for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", head_title), ("__HEADDISC__", head_disc),
                          ("__SUMMARY__", html.escape(plain(p.get("summary", "")))), ("__ID__", p["id"]),
                          ("__DISC__", disc), ("__SERIES__", html.escape(G_SERIES)), ("__DATE_TEXT__", f"{y}년 {mo}월 {d}일"),
                          ("__DATE__", p["date"]), ("__SEQ__", seq), ("__BODY__", md_blocks(p["body"]))):

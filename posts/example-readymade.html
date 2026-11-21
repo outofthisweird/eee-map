@@ -19,7 +19,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.w
   <main>
     <article>
       <header>
-        <div class="plate head"><div class="m m-6"><h1 class="t-direction trim"><span class="disc disc--inline" data-line="G" data-color="orange" style="--line:var(--c-orange);color:var(--c-white)"><span>G</span></span> 변기가 미술관에 들어간 날</h1></div></div>
+        <div class="plate head"><div class="m hcell"><span class="disc" data-line="G" data-color="orange" style="--line:var(--c-orange);color:var(--c-white)"><span>G</span></span></div><div class="m m-6"><h1 class="t-direction trim">변기가 미술관에 들어간 날</h1></div></div>
       </header>
       <div class="body">
       <p>1917년 뉴욕, 한 미술 단체가 연 전시에 이상한 출품작이 하나 들어왔습니다. 가게에서 파는 남성용 소변기를 눕혀 놓고 R. Mutt라는 서명과 날짜를 적은 것이었습니다. 출품료만 내면 누구나 작품을 걸 수 있다고 한 전시였지만, 이 작품은 결국 전시장에 나오지 못했습니다. 이 작품이 바로 마르셀 뒤샹의 「샘」입니다.</p>
@@ -36,13 +36,17 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.w
 <script>/* [eee] 모듈 판 길이(글 머리·끝 줄): 노선도 로고·범례(fitPlates)와 같은 규칙. 표준 길이(GRID-012/SIGN-012) 1·2·4·6ft 중
    글 한 줄 옆에 1in 이상 남는 가장 짧은 것(DEC-030), 안 되면 6ft. 제목은 6ft에서 줄을 바꾸고, 끝 줄은 6ft에서 글처럼 흘러 다음 줄로 이어진다.
    높이는 1ft, 넘치면 1ft 단위. 스크립트가 없으면 6×1ft */
-(function(){var L=[1,2,4,6],cells=[].slice.call(document.querySelectorAll('.page .plate>.m'));if(!cells.length)return;
+(function(){var L=[1,2,4,6],cells=[].slice.call(document.querySelectorAll('.page .plate>.m:not(.hcell)'));if(!cells.length)return;
 function fit(){cells.forEach(function(c){var t=c.firstElementChild;
-  L.forEach(function(n){c.classList.remove('m-'+n)});c.classList.add('m-6');c.style.height='';
+  L.forEach(function(n){c.classList.remove('m-'+n)});c.classList.add('m-6');c.style.height='';c.style.width='';
   var M=c.getBoundingClientRect().width/6,inch=M/12,r=document.createRange();
   var w;if(t.tagName==='UL'){t.style.width='max-content';w=t.getBoundingClientRect().width;t.style.width=''}   /* 끝 줄: 한 줄일 때의 길이 */
-  else{t.style.whiteSpace='nowrap';r.selectNodeContents(t);w=r.getBoundingClientRect().width;t.style.whiteSpace=''}
-  var n=L.filter(function(n){return inch*.5+w+inch<=n*M})[0];if(n){c.classList.remove('m-6');if(n>1)c.classList.add('m-'+n)}
+  else{t.style.maxWidth='';t.style.whiteSpace='nowrap';r.selectNodeContents(t);w=r.getBoundingClientRect().width;t.style.whiteSpace=''}
+  if(c.previousElementSibling&&c.previousElementSibling.classList.contains('hcell')&&t.tagName!=='UL'){   /* 원판 칸 옆 제목은 두 줄(SIGN-016처럼): 한 줄 길이의 절반부터 넓혀 두 줄이 되는 가장 좁은 폭, balance로 고르게, 가장 긴 줄로 판 길이를 고른다 */
+    var h1=t.getBoundingClientRect().height,lh=parseFloat(getComputedStyle(t).lineHeight),f;t.style.whiteSpace='nowrap';h1=t.getBoundingClientRect().height;t.style.whiteSpace='';
+    for(f=.5;f<1;f+=.04){t.style.maxWidth=Math.ceil(w*f)+'px';if(t.getBoundingClientRect().height<=h1+lh*1.5)break}if(f>=1)t.style.maxWidth='';r.selectNodeContents(t);var L0=t.getBoundingClientRect().left;w=0;[].forEach.call(r.getClientRects(),function(x){w=Math.max(w,x.right-L0)})}
+  var h=c.previousElementSibling&&c.previousElementSibling.classList.contains('hcell'),pad=h?0:inch*.5;   /* 원판 칸 옆 제목 칸: 왼쪽 여백은 원판 칸이 준다 */
+  var n=L.filter(function(n){return pad+w+inch<=n*M&&(!h||n<6)})[0]||(h?5:0);if(n){c.classList.remove('m-6');if(n>1)c.classList.add('m-'+n);if(n===5)c.style.width=5*M+'px'}
   var H=c.scrollHeight;if(H>M+1)c.style.height=Math.ceil(H/M-.02)*M+'px'})}
 fit();if(document.fonts)document.fonts.ready.then(fit);addEventListener('resize',fit)})();</script>
 </body>

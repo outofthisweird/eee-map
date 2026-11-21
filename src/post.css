@@ -23,6 +23,13 @@
 
 /* 글 머리: 표준 길이 모듈 판 하나(.plate > .m, GRID-012/014). 제목은 방향 크기 Grid 2(.t-direction), 길이·높이는 post.html 스크립트 */
 .head h1{text-wrap:balance}
+/* [eee] 원판 칸(2026-11-21 사용자 요청: 매뉴얼 열차 표지 SIGN-016처럼 흰 바탕에 원판, 그 옆에 제목 두 줄). 1 ft 칸 전체를 판과 반대 색(페이지 색)으로
+   칠하고 그 가운데에 원판 11in(매뉴얼 실측 칸 10½in : 원판 약 9½in와 같은 비)를 둔다. 제목 칸은 보통 칸처럼 위·왼쪽 ½in(GRID-003) */
+.page .plate.head{padding-top:0;background:var(--fg)}   /* [eee] 글 머리에는 띠·선 없음(2026-11-21 사용자 요청: 위에 디바이더 없이) */
+/* [eee] 가장자리 선(2026-11-21 사용자 요청): 원판 칸은 위·왼쪽·아래에 판 색 ⅛in 선(SIGN-023)을 ㄷ자로 둘러 페이지와 이어지지 않게 한다(제목 아래 흰 선은 시험 후 뺌, 사용자 요청) */
+.head .hcell{box-shadow:inset var(--stroke-divider) 0 0 0 var(--fg),inset 0 var(--stroke-divider) 0 0 var(--fg),inset 0 calc(-1 * var(--stroke-divider)) 0 0 var(--fg)}
+.head .hcell{flex:0 0 auto;width:var(--module);padding:0;background:var(--bg);display:grid;place-items:center}   /* 위·왼쪽 마진 없이 판 모서리에 붙은 1 ft 정사각형 */
+.head .hcell .disc{--d:calc(var(--in) * 10.5)}   /* 사용자 요청: 원판 조금 작게(DISC-001 11in → 10½in), 칸은 그대로 */
 /* 글 속 원판 {G}·{G:orange}(build.py가 .disc--inline으로 바꿈, DEC-034). 색을 정해 준 원판(data-color)은 다크 모드 테두리도 그 색으로 정한다:
    검정 원판만 흰 테두리(nycta의 1970 검정 노선 규칙과 같은 값). {B:orange}처럼 검정 노선을 다른 색으로 바꾸면 테두리를 뺀다 */
 :root[data-theme=dark] .disc[data-color]{box-shadow:none}

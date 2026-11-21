@@ -458,8 +458,8 @@
      (2026-11-21 사용자 보고: 제목 글자 윗부분이 잘림): the title hangs from the cap line, and its disc and the Hangul strokes that rise
      above the cap were cut where a scroll box starting at the cap line clips. Now they show in the ½in under the rule, and the copy
      scrolls up to the rule and under the band */
-  #panel.reading::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--rp-band) + var(--rp-rule));z-index:1;pointer-events:none;
-    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-band) / 100% var(--rp-rule) no-repeat, var(--fg)}
+  /* [eee] no band or rule over the reading plate (2026-11-21 사용자 요청: 위에 디바이더 없이): the title head starts at the top edge */
+  #panel.reading{background:var(--fg)}
   #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
     padding:var(--rp-top) var(--r-room) calc(var(--p-in) * 2) var(--rp-side);scrollbar-width:thin;   /* margins inside the scroll box: nothing that hangs out (disc, first-glyph pull) is clipped */
    scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
@@ -469,17 +469,24 @@
   /* title: direction size (TYPE-006, Grid 2 cap 4¼in) at the map popup's 1.5× sign scale, the plate it grew from (2026-11-21 사용자 요청:
      제목을 더 크게; was the copy's inch: 61 → 74px on desktop); phones up to 11vw (31 → 43px at 390px), so both take about the same
      share of the plate */
-  #rtitle{font-size:min(calc(var(--doc-in) * 1.5 * 4.25 / var(--cap-em)), 11vw);line-height:var(--lh-g2);text-wrap:balance;
-    --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);
-    /* [eee] the lead disc (DEC-034: D = cap × 1 11/16 ÷ 1 3/8, centred on the cap) rises above the cap by (D − cap) / 2; the title
-       comes down by that much, so the disc's top, not the cap, keeps the band's ½in under the rule (2026-11-21 사용자 보고: 데스크톱에서
-       커진 원판이 위 선에 닿음) */
-    --t-disc:calc(1em * var(--cap-em) * (1.6875 / 1.375 - 1) / 2);margin:calc(var(--t-trim) + var(--t-disc)) 0 .7em calc(-1 * var(--lsb-pull))}
+  /* [eee] title head (2026-11-21 사용자 요청: 매뉴얼 열차 표지 SIGN-016 "179 Street / Euclid Avenue"처럼 흰 바탕에 원판, 그 옆에 제목 두 줄).
+     One 1 ft directional module at the title's own inch (--t-in = title cap / 4¼, GRID-006): a 12in square in the page colour flush with
+     the plate's top and left edges, as on the manual sign (사용자 요청: 위·왼쪽 마진 없이), the disc at 11/12 of it in the middle (manual: cell
+     10½in, disc ≈ 9½in, the same ratio); the title ½in right of the square, its cap line ½in below the top edge (GRID-003) */
+  #rhead{font-size:min(calc(var(--doc-in) * 1.5 * 4.25 / var(--cap-em)), 11vw);--t-in:calc(1em * var(--cap-em) / 4.25);
+    display:flex;align-items:flex-start;gap:calc(var(--t-in) * .5);min-height:calc(var(--t-in) * 12);
+    margin:calc(-1 * var(--rp-top)) calc(-1 * var(--r-room)) var(--rp-gap) calc(-1 * var(--rp-side));position:relative}
+  /* edge lines (2026-11-21 사용자 요청): the cell gets a ㄷ of ⅛in rule (SIGN-023) in the plate colour on its top, left and bottom, so it
+     does not run into the page (the white line under the title was tried and dropped, 사용자 요청) */
+  #rhead .rcell{flex:0 0 auto;width:calc(var(--t-in) * 12);height:calc(var(--t-in) * 12);background:var(--bg);display:grid;place-items:center;
+    box-shadow:inset var(--rp-rule) 0 0 0 var(--fg),inset 0 var(--rp-rule) 0 0 var(--fg),inset 0 calc(-1 * var(--rp-rule)) 0 0 var(--fg)}
+  #rhead .rcell .disc{--d:calc(var(--t-in) * 10.5)}   /* 사용자 요청: 원판 조금 작게(11 → 10½in), 칸은 그대로 */
+  #rtitle{flex:1 1 auto;min-width:0;font-size:1em;line-height:var(--lh-g2);text-wrap:balance;
+    --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);margin:calc(var(--t-in) * .5 + var(--t-trim)) 0 0 calc(-1 * var(--lsb-pull))}
   @supports (text-box: trim-both cap alphabetic){#rtitle{--t-trim:0px;text-box:trim-start cap alphabetic}}
   /* --here = the font size of the line a disc or arrow sits in, as a length (registered, so 1em is fixed where it is set, not inside
      the disc, whose own font size is its glyph) */
   #rtitle,#rbody,#rbody h2,#rbody h3,#rbody blockquote,#rnav{--here:1em}
-  #rtitle>.disc:first-child{margin-inline-end:calc(var(--here) * var(--cap-em) / 4.25 * 1.375)}   /* GRID-006 gap at the title's size */
   #reader .disc--inline{--d:calc(var(--here) * var(--cap-em) * 1.6875 / 1.375)}               /* DEC-034 at each line's own size */
   #reader .disc[data-color=black]{box-shadow:0 0 0 1px var(--bg)}                         /* a black disc on the black plate: page-colour ring */
   /* copy: the size and pitch the user picked (clamp 17–20px, 1.5), lines ≈ 34em */
@@ -567,7 +574,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
       <p id="ptext"><span id="pxfer"></span><a id="psum" target="_blank" rel="noopener"></a><span class="pclose"><svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg><button id="pclose" data-i18n="close">닫기</button></span></p>
     </div>
   </div>
-  <article id="reader" lang="ko" tabindex="-1"><h1 id="rtitle"></h1><div id="rbody"></div><nav id="rnav" aria-label="이전 글, 다음 글, 돌아가기"></nav></article>
+  <article id="reader" lang="ko" tabindex="-1"><div id="rhead"><span class="rcell"></span><h1 id="rtitle"></h1></div><div id="rbody"></div><nav id="rnav" aria-label="이전 글, 다음 글, 돌아가기"></nav></article>
 </aside>
 <nav class="sr" id="srlist" data-i18n-label="list" aria-label="역 목록"></nav>
 
@@ -2238,7 +2245,12 @@ function fitPlate(el){
   el.style.width=w*ft+'px'; if(phone)return;   // phones: the logo keeps its standard length (the room on the right), its height hugs (2026-11-19)
   const bd=bandH(el); el.style.height=bd+Math.max(1,Math.ceil((el.getBoundingClientRect().height-bd)/ft-1e-6))*ft+'px';   // modules stack in whole feet below the band (DEC-040)
 }
-function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup();if(reading&&follow===reading)centerOn(reading,0,false)}
+// [eee] a title beside the disc cell breaks into two balanced lines (2026-11-21 사용자 요청, SIGN-016 "179 Street / Euclid Avenue"):
+// the narrowest width (from half the one-line width up) that still takes two lines, then text-wrap:balance evens them
+function twoLines(el){if(!el)return;el.style.maxWidth='';el.style.whiteSpace='nowrap';const r=document.createRange();r.selectNodeContents(el);
+  const w=r.getBoundingClientRect().width,h1=el.getBoundingClientRect().height,lh=parseFloat(getComputedStyle(el).lineHeight);el.style.whiteSpace='';
+  if(!(w>0))return; for(let f=.5;f<1;f+=.04){el.style.maxWidth=Math.ceil(w*f)+'px';if(el.getBoundingClientRect().height<=h1+lh*1.5)return}el.style.maxWidth=''}
+function fitPlates(){if(reading)twoLines($('#rtitle'));['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup();if(reading&&follow===reading)centerOn(reading,0,false)}
 // [eee] the popup width fits its text (2026-11-19): a wrapped paragraph keeps its max width, so shrink it to the longest line. Height stays in whole feet
 function fitPopup(){
   if(!panel.classList.contains('open')||reading)return; /* the reading plate sizes itself (CSS) */ const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
@@ -2401,7 +2413,9 @@ function readerAnchor(s,k=view.k){
 }
 function fillReader(s){
   const L=s.line, st=L.st, k=st.indexOf(s), p=st[k-1], n=st[k+1];
-  $('#rtitle').innerHTML=(/^<span class="disc/.test(s.th)?'':disc(L,s.b))+s.th.replace(/^(<span class="disc[^>]*><span>[^<]*<\/span><\/span>)\s+/,'$1');   // the G disc, unless the title starts with its own (then its ½in gap, not a space too)
+  const lead=s.th.match(/^(<span class="disc[^>]*><span>[^<]*<\/span><\/span>)\s*/);   // the title's own lead disc goes in the cell, else the G disc
+  reader.querySelector('.rcell').innerHTML=lead?lead[1].replace('disc disc--inline','disc'):disc(L,s.b,'disc');
+  $('#rtitle').innerHTML=lead?s.th.slice(lead[0].length):s.th; requestAnimationFrame(()=>twoLines($('#rtitle')));
   $('#rbody').innerHTML=s.body;
   const a=d=>`<svg class="arrow" data-dir="${d}" aria-hidden="true"><use href="#nyarrow"/></svg>`;
   $('#rnav').innerHTML=[p&&`<a class="prev" href="#read=${encodeURIComponent(p.slug)}" aria-label="이전 글: ${escA(p.tt)}">${p.np}</a>`,
