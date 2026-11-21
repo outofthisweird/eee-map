@@ -441,18 +441,27 @@
      The plate's own inch comes from the copy: copy = information size (cap 1⅜in), so the band, margins and rule scale with it.
      Width hugs the copy: ½in left + ~34em + DEC-030's ≥ 1in room on the right. It scrolls inside; the band stays on top. */
   #reader{display:none}
-  /* closing: the blank plate that shrinks back into the popup (exitReading); its band at the popup's scale */
-  .rghost{position:fixed;left:0;top:0;z-index:11;pointer-events:none;--rp-gap:calc(var(--doc-in) * .75);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
+  /* opening / closing: the blank plate that grows from / shrinks back into the popup (plateMorph); no ink filter on it (a filter would
+     repaint every frame) */
+  .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;--rp-gap:calc(var(--doc-in) * .75);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
+  :root[data-print] .rghost{filter:none}
   @media (max-width:640px){.rghost{--rp-gap:calc(var(--doc-in) * .5);--rp-rule:max(1px, calc(var(--doc-in) * .125))}}
-  #panel.hold{visibility:hidden}
+  #panel.hold{opacity:0}   /* (not visibility: the reader takes the focus while the ghost grows) */
   #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
     --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
     --r-lmin:max(72px, 8vw);font-size:var(--r-fs);
     left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:calc(var(--edge) + var(--sa-t));width:var(--r-w);max-width:none;height:auto;
-    max-height:calc(100dvh - 2 * var(--edge) - var(--sa-t) - var(--sa-b));display:flex;flex-direction:column;padding:var(--rp-top) 0 0 var(--rp-side)}
+    max-height:calc(100dvh - 2 * var(--edge) - var(--sa-t) - var(--sa-b));display:flex;flex-direction:column;padding:0}
   #panel.reading .body{display:none}
+  /* [eee] the scroll box starts at the plate's top edge and the band (½in field + ⅛in rule) is laid over it, not above it
+     (2026-11-21 사용자 보고: 제목 글자 윗부분이 잘림): the title hangs from the cap line, and its disc and the Hangul strokes that rise
+     above the cap were cut where a scroll box starting at the cap line clips. Now they show in the ½in under the rule, and the copy
+     scrolls up to the rule and under the band */
+  #panel.reading::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--rp-gap) + var(--rp-rule));z-index:1;pointer-events:none;
+    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
   #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
-    padding:0 var(--r-room) calc(var(--p-in) * 2) 0;scrollbar-width:thin;scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
+    padding:var(--rp-top) var(--r-room) calc(var(--p-in) * 2) var(--rp-side);scrollbar-width:thin;   /* margins inside the scroll box: nothing that hangs out (disc, first-glyph pull) is clipped */
+   scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
   :root[data-print] #panel.reading{filter:none}   /* [eee] no ink edge on the reading plate: a filter over a scrolling box re-rasters on every scroll, and blurs long copy */
   html.reading #logo,html.reading #legend,html.reading #tools,html.reading #zoom,html.reading #snaptune{visibility:hidden}   /* the map's chrome steps aside */
   #reader h1,#reader h2,#reader h3,#reader strong,#reader em{font-weight:inherit;font-style:normal}   /* TYPE-002, DONT-001: one weight */
@@ -2398,10 +2407,21 @@ function openReader(s,how,instant){
   const h='#read='+encodeURIComponent(s.slug);
   try{if(how==='push')history.pushState({eeeRead:1},'',h);else if(how==='replace')history.replaceState(history.state,'',h)}catch(e){}
   follow=s; centerOn(s,instant?0:DESIGN.motion.centerMs,first);
-  if(r0){const r1=panel.getBoundingClientRect(),c=(v,m)=>Math.max(0,Math.min(m,v));   // the popup's box grows into the plate
-    const t=c(r0.top-r1.top,r1.height-2),l=c(r0.left-r1.left,r1.width-2),b=c(r1.bottom-r0.bottom,r1.height-2-t),rr=c(r1.right-r0.right,r1.width-2-l);
-    panel.animate([{clipPath:`inset(${t}px ${rr}px ${b}px ${l}px)`},{clipPath:'inset(0px 0px 0px 0px)'}],{duration:DESIGN.motion.readerMs,easing:'cubic-bezier(.2,0,0,1)'})}
+  if(r0)plateMorph(r0,panel.getBoundingClientRect(),DESIGN.motion.readerMs,'cubic-bezier(.2,0,0,1)');   // the popup's box grows into the plate
   inMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});
+}
+// [eee] the plate growing / shrinking between the popup and the reading plate. A blank reverse plate (.rghost) moves and scales
+// from one box to the other while the real panel waits hidden (.hold), then shows. Transform only (2026-11-21: on the iPhone the
+// first version, a clip-path animation on the panel itself, did not show in dark or print mode: WebKit repaints a clip-path on the
+// main thread every frame, and the print layer's full-screen filter and grain stalled it; a transform runs on the compositor).
+// The ghost is drawn at the bigger box and scaled down from there, so its band is never blown up.
+function plateMorph(a,b,ms,ease){
+  const big=a.width*a.height>=b.width*b.height?a:b, g=document.createElement('div'); g.className='rplate rghost';
+  g.style.cssText=`left:${big.left}px;top:${big.top}px;width:${big.width}px;height:${big.height}px`; document.body.append(g);
+  const tf=r=>({transform:`translate(${r.left-big.left}px,${r.top-big.top}px) scale(${r.width/big.width},${r.height/big.height})`});
+  panel.classList.add('hold');
+  const done=()=>{g.remove();panel.classList.remove('hold')};
+  g.animate([tf(a),tf(b)],{duration:ms,easing:ease,fill:'forwards'}).finished.then(done,done);
 }
 // back to the popup of the station being read (keepView: when something else takes over the camera)
 // [eee] closing (2026-11-21 사용자 요청: 닫힐 때도 애니메이션): the open animation backwards. The copy goes at once and a blank
@@ -2413,11 +2433,7 @@ function exitReading(keepView){
   reading=null; panel.classList.remove('reading'); document.documentElement.classList.remove('reading');
   $('#rbody').innerHTML=''; fitPopup();
   if(current&&!keepView){follow=current; const v=centerView(current,false), ms=DESIGN.motion.centerMs; animateTo(v,ms);
-    if(anim){const [x,y]=popupPos(v), g=document.createElement('div'); g.className='rplate rghost'; document.body.append(g);
-      const box=(l,t,w,h)=>({transform:`translate(${l}px,${t}px)`,width:w+'px',height:h+'px'});
-      panel.classList.add('hold');
-      g.animate([box(r1.left,r1.top,r1.width,r1.height),box(x,y,popW,popH)],{duration:ms,easing:'cubic-bezier(.33,1,.68,1)',fill:'forwards'})
-        .finished.then(()=>{g.remove();panel.classList.remove('hold')},()=>{g.remove();panel.classList.remove('hold')})}}
+    if(anim){const [x,y]=popupPos(v); plateMorph(r1,{left:x,top:y,width:popW,height:popH},ms,'cubic-bezier(.33,1,.68,1)')}}
   placePopup();
 }
 function closeReader(){
