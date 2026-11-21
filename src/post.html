@@ -7,7 +7,8 @@
 <meta name="description" content="__SUMMARY__">
 <link rel="stylesheet" href="post.css">
 <script>/* ◐ 노선도에서 고른 흑백 반전을 그대로 따른다(localStorage eee-theme). 로컬에서는 헬베티카 미리보기(src/map.html과 같은 규칙) */
-(function(){try{if(localStorage.getItem('eee-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+(function(){try{if(localStorage.getItem('eee-theme')==='dark')document.documentElement.dataset.theme='dark';
+  if(localStorage.getItem('nycta-print')==='1')document.documentElement.setAttribute('data-print','')}catch(e){}   /* ⁘ 인쇄 질감도 노선도에서 고른 대로 */
 var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
 </head>
@@ -43,5 +44,6 @@ function fit(){cells.forEach(function(c){var t=c.firstElementChild;
   var n=L.filter(function(n){return pad+w+inch<=n*M&&(!h||n<6)})[0]||(h?5:0);if(n){c.classList.remove('m-6');if(n>1)c.classList.add('m-'+n);if(n===5)c.style.width=5*M+'px'}
   var H=c.scrollHeight;if(H>M+1)c.style.height=Math.ceil(H/M-.02)*M+'px'})}
 fit();if(document.fonts)document.fonts.ready.then(fit);addEventListener('resize',fit)})();</script>
+<script>/*__NYCTA_PRINT__*/</script>
 </body>
 </html>

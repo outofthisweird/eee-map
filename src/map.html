@@ -75,6 +75,7 @@
   .dot{fill:var(--c-black)}                                      /* DEC-036 station = plain black circle, no letter; no dark-mode ring (it always sits on a line) */
   .xdot{fill:var(--bg);stroke:var(--fg)}  /* [eee] layout-made interchange, kept until the transfer decision */
   .train{fill:var(--bg)}
+  :root[data-print] .train{filter:var(--print-filter)}   /* [eee] each train is inked on its own (a small box), not the whole #mapfx layer: that re-rastered the screen every frame */
   .dim{opacity:.18}
   /* [eee] next stop under construction (2026-11-20): dashed strand past the newest station, an open dashed station */
   .next-path{stroke-linecap:butt}
@@ -250,7 +251,15 @@
   #panel.reading #rscroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
     padding:var(--rp-top) var(--r-room) calc(var(--p-in) * 2) var(--rp-side);scrollbar-width:thin;   /* margins inside the scroll box: nothing that hangs out (disc, first-glyph pull) is clipped */
    scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
-  :root[data-print] #panel.reading{filter:none}   /* [eee] no ink edge on the reading plate: a filter over a scrolling box re-rasters on every scroll, and blurs long copy */
+  /* the reading plate is inked too (2026-11-22 사용자 요청: 종이 질감은 모든 요소에), but not as one filter over #panel: a filter over a
+     scrolling box re-rasters the whole plate on every scroll (Chrome ~38fps). Instead each still part carries its own filter and the
+     scrolled copy is filtered inside the scroller, so it is rastered once and scrolling only moves it. The copy plate's field moves to a
+     filtered ::after so its edge is ragged like the other plates */
+  :root[data-print] #panel.reading{filter:none}
+  :root[data-print] #panel.reading :is(#rhead,#rbody>*,#rnav){filter:var(--print-filter)}   /* per block, not the whole #rbody: WebKit stalled ~180ms rastering one tall filtered box */
+  :root[data-print] #panel.reading #rbox::before{filter:var(--print-filter)}
+  :root[data-print] #panel.reading #rbox{background:none}
+  :root[data-print] #panel.reading #rbox::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--fg);filter:var(--print-filter)}
   html.reading #logo,html.reading #legend,html.reading #tools,html.reading #zoom,html.reading #snaptune{visibility:hidden}   /* the map's chrome steps aside */
   #reader h1,#reader h2,#reader h3,#reader strong,#reader em{font-weight:inherit;font-style:normal}   /* TYPE-002, DONT-001: one weight */
   /* title: direction size (TYPE-006, Grid 2 cap 4¼in) at the map popup's 1.5× sign scale, the plate it grew from (2026-11-21 사용자 요청:

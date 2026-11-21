@@ -228,7 +228,7 @@ def map_body(body_html):
 def build_posts(data_text, post_tokens):
     if not POSTS.is_dir():
         return data_text
-    tpl = (root / "src/post.html").read_text(encoding="utf-8")
+    tpl = (root / "src/post.html").read_text(encoding="utf-8").replace("/*__NYCTA_PRINT__*/", printjs)   # ⁘ 인쇄 질감(잉크 번짐 필터 주입)
     (POSTS / "post.css").write_text("/* posts/post.css — build.py가 만든다: vendor/nycta/nycta.css 전체 + src/post.css. src/post.css를 고친다. */\n" + post_tokens + "\n\n" +
         (root / "src/post.css").read_text(encoding="utf-8"), encoding="utf-8")
     posts = []
