@@ -141,19 +141,19 @@
   #logo p{--l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);margin:var(--l-trim) 0 var(--l-trim) calc(-1 * var(--lsb-pull));white-space:nowrap}   /* DEC-025 */
   @supports (text-box: trim-both cap alphabetic){#logo p{--l-trim:0px;text-box:trim-both cap alphabetic}}
 
-  /* legend: [disc] [day] [series], hierarchy by order, rows split by ⅛in rules */
-  /* [eee] informational plate, Grid 1 (GRID-007, TYPE-007): five rows of 1⅜in caps at pitch 1⅞in in one 1 ft module,
-     discs inline (DEC-034); no rules between rows (a ⅛in rule does not fit the ½in gap). Bottom ½in below the descender guide, like DEC-031 */
-  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:block;line-height:var(--lh-g1);
-    --l-trim:calc((var(--trim-k) - var(--lh-g1) / 2) * 1em);
+  /* legend: [disc] [series], hierarchy by order (no weekday since 2026-11-21, 사용자 요청) */
+  /* [eee] informational plate (TYPE-007): 1⅜in caps, discs inline (DEC-034); no rules between rows. Bottom ½in below the descender guide, like DEC-031.
+     [eee 설계결정 2026-11-21] six rows (G added) at Grid 1's 1⅞in pitch came to 12.7in, so the plate grew to 2 ft. The legend's pitch is
+     1.7in instead (gap ½ → .325in): 1⅛ (band) + 1⅜ + 5 × 1.7 + .82 (descender + ½) = 11.8in, one 1 ft module (user approved) */
+  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:block;
+    --l-lh:calc(1.7 / 1.375 * var(--cap-em));line-height:var(--l-lh);
+    --l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);
     padding:calc(var(--rp-top) + var(--l-trim)) var(--rp-side) calc(var(--doc-in) * (.5 + .235 * 1.375) + var(--l-trim))}
   @supports (text-box: trim-both cap alphabetic){#legend{--l-trim:0px}   /* trim on the rows: a button trims its own lines */
     #legend button:first-child{text-box:trim-start cap alphabetic} #legend button:last-child{text-box:trim-end cap alphabetic}}
   #legend button{display:block;white-space:nowrap;margin-inline-start:calc(-1 * var(--lsb-pull))}
   #legend .bs{margin-inline-end:calc(var(--doc-in) * .5)}                                 /* GRID-009 disc → text ½in */
   #legend .bs .disc+.disc{margin-inline-start:2px}
-  #legend .day{display:inline-block;min-width:1.25em;margin-inline-end:calc(var(--doc-in) * .5)}
-  :lang(en) #legend .day{min-width:2.25em}            /* Mon / Wed / Fri / Sun line up */
 
   /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
   /* [test] snap strength slider: local (file://, localhost) or ?tune only, never on the public site by default */
@@ -216,7 +216,7 @@
     #panel .text{max-width:calc(var(--p-in) * 20)}
     /* legend folds to its discs (a column as wide as the tool buttons); a tap opens it, a line tap fits that line and folds it */
     #legend:not(.open){min-width:var(--ui-btn)}
-    #legend:not(.open) .day,#legend:not(.open) .nm{display:none}
+    #legend:not(.open) .nm{display:none}
     #legend:not(.open) .bs{margin-inline-end:0}
   }
   /* [eee] touch screens: re-running the DEC-038 ink-edge filter over the whole map every frame stalls phones. With the
@@ -262,10 +262,10 @@ const DATA_EN = __DATA_EN__;   // data/en.json: English series names, station na
 const I18N={
   ko:{map:'EEE 노선도',legend:'노선 범례',grid:'그리드 보기',replay:'랜덤 배치 (노선 모양·환승역을 새로 섞기)',theme:'흑백 반전',print:'인쇄 질감',
       rand:'아무 역에서나 내리기',lang:'English',langBtn:'En',zin:'확대',zout:'축소',zfit:'전체 보기',all:'전체',close:'닫기',list:'역 목록',xfer:'환승',
-      day:{월:'월',수:'수',금:'금',일:'일'},dayLong:{월:'월요일',수:'수요일',금:'금요일',일:'일요일'}},
+      dayLong:{월:'월요일',수:'수요일',금:'금요일',일:'일요일'}},
   en:{map:'EEE route map',legend:'Lines',grid:'Show grid',replay:'Random layout (reshuffle the lines and transfers)',theme:'Invert',print:'Print texture',
       rand:'Random stop',lang:'한국어',langBtn:'한',zin:'Zoom in',zout:'Zoom out',zfit:'Show all',all:'All',close:'Close',list:'Stations',xfer:'Transfer',
-      day:{월:'Mon',수:'Wed',금:'Fri',일:'Sun'},dayLong:{월:'Monday',수:'Wednesday',금:'Friday',일:'Sunday'}},
+      dayLong:{월:'Monday',수:'Wednesday',금:'Friday',일:'Sunday'}},
 };
 let lang=(()=>{const q=location.search.match(/[?&]lang=(ko|en)\b/);if(q)return q[1];try{return localStorage.getItem('eee-lang')==='en'?'en':'ko'}catch(e){return'ko'}})();
 document.documentElement.lang=lang;
@@ -1353,7 +1353,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(n=>{n.textContent=T(n.dataset.i18n)});
   document.querySelectorAll('[data-i18n-label]').forEach(n=>{const v=T(n.dataset.i18nLabel);n.setAttribute('aria-label',v);if(n.hasAttribute('title'))n.title=v});
   $('#langbtn').lang=lang==='en'?'ko':'en';   // the button names the other language, in that language
-  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="day">${L.day?T('day')[L.day]:''}</span><span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span class="nm">${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`;
+  LINES.forEach(L=>{lg.querySelector(`[data-line="${L.key}"]`).innerHTML=`<span class="bs">${L.series.map(([c])=>disc(L,c)).join('')}</span><span class="nm">${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}</span>`;
     lg.querySelector(`[data-line="${L.key}"]`).setAttribute('aria-label',`${dayName(L)}${L.series.map(([c,n])=>seriesName(c,n)).join(' → ')}`)});
   $('#srlist').innerHTML=LINES.map(L=>`<h2>${L.day?T('dayLong')[L.day]:seriesName(L.key,L.series[0][1])}</h2><ul>${L.st.map(s=>`<li><a href="#${s.id}">${stTitle(s)}</a></li>`).join('')}</ul>`).join('');
 }

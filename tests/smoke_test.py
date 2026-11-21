@@ -73,7 +73,7 @@ async def main():
         ko_clash = await pg.evaluate("nameClashes")   # this layout is crowded by the drags above: compare, don't demand 0
         await pg.evaluate("setLang('en')"); await pg.wait_for_timeout(300)
         r = await pg.evaluate("""(()=>({lang:document.documentElement.lang,btn:langbtn.textContent,all:zfit.textContent,
-          name:byLine.K.st[0].label,legend:legend.innerText.includes('Wed'),clash:nameClashes,curved:curvedNow.length}))()""")
+          name:byLine.K.st[0].label,legend:legend.innerText.includes('Knowledge Channel')&&!legend.innerText.includes('Wed'),clash:nameClashes,curved:curvedNow.length}))()""")
         await pg.reload(); await pg.wait_for_timeout(800)
         r["kept"] = await pg.evaluate("document.documentElement.lang")
         await pg.click("#langbtn"); r["back"] = await pg.evaluate("document.documentElement.lang+' '+byLine.K.st[0].label")
