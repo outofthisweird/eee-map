@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: ca85960 2026-11-21 Reverse plates: 1½in field above the ⅛in rule, band = 1⅝in (DEC-040)
+commit: 0d741b3 2026-11-22 Dark mode: plates and popup keep light colours with a 1px white ring (DEC-041)

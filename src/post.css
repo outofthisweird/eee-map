@@ -18,7 +18,9 @@
 .page .plate{border-top:0;padding-top:calc(var(--in) * 1.5 + var(--stroke-divider));color:var(--bg);
   background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * 1.5) / 100% var(--stroke-divider) no-repeat, var(--fg);
   --font-weight:var(--font-weight-dark);font-weight:var(--font-weight)}          /* DEC-019: 검정 판의 흰 글자 */
-:root[data-theme=dark] .page .plate{--font-weight:var(--font-weight-light)}
+/* 다크 모드: nycta DEC-041대로 판은 반전하지 않는다(라이트 모드의 검은 판·흰 글자 그대로 + 1px 흰 테두리, nycta.css가 처리).
+   흰 글자라서 굵기는 nycta의 light 대신 dark 굵기를 유지한다 */
+:root[data-theme=dark] .page .plate{--font-weight:var(--font-weight-dark)}
 .page .plate h1,.page .plate .t-direction{font-weight:inherit}
 
 /* 글 머리: 표준 길이 모듈 판 하나(.plate > .m, GRID-012/014). 제목은 방향 크기 Grid 2(.t-direction), 길이·높이는 post.html 스크립트 */

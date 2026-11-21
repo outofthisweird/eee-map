@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>EEE — Map</title>
 <style>
-/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (commit: ca85960 2026-11-21 Reverse plates: 1½in field above the ⅛in rule, band = 1⅝in (DEC-040)) */
+/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (commit: 0d741b3 2026-11-22 Dark mode: plates and popup keep light colours with a 1px white ring (DEC-041)) */
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -82,7 +82,8 @@
   --c-lightblue:  #02C6F4;                              /* COLOR-005 | pdf p.54 | [이미지판독] PMS 312 */
   --c-blue:       #0262D3;                              /* COLOR-005 | pdf p.55 | [이미지판독] PMS 300 */
   --c-grey:       #9A9392;                              /* COLOR-005, COLOR-007, DEC-027 | pdf p.57,88 | [설계결정] scan #9E9897 darkened to 3:1 with white */
-  --c-red-text:   #E72400;                              /* DEC-026 | - | [설계결정] scan red darkened (same hue) to 4.5:1 on white, small red text only */
+  --c-red-text-light: #E72400;                          /* DEC-026 | - | [설계결정] scan red darkened (same hue) to 4.5:1 on white, small red text only */
+  --c-red-text:   var(--c-red-text-light);              /* DEC-026, DEC-041 | - | [설계결정] dark mode swaps it; plates keep the light value */
 
   /* semantic (swapped in dark mode, DEC-019) */
   --fg: var(--c-black);                                 /* COLOR-009 | pdf p.65 | [확정] black on white */
@@ -348,7 +349,11 @@
   /* ---- reverse plate (DEC-031): every UI box ---- */
   .rplate{--font-weight:var(--font-weight-dark);color:var(--bg);font-weight:var(--font-weight);
     background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-band) / 100% var(--rp-rule) no-repeat, var(--fg)}
-  :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
+  /* dark mode (nycta DEC-041, 2026-11-22): only the page inverts. The plates keep the light-mode sign (black field, white type, dark
+     weight) and get a 1px white ring so the black field does not melt into the black page. The reading plate draws two plates of its
+     own (#rhead, #rbox), so the ring goes on those, not on the #panel that holds them */
+  :root[data-theme=dark] :is(.rplate,.rghost){--fg:var(--c-black);--bg:var(--c-white);--font-weight:var(--font-weight-dark)}
+  :root[data-theme=dark] :is(.rplate:not(.reading),.rghost,#panel.reading #rhead,#panel.reading #rbox){box-shadow:0 0 0 1px var(--c-white)}
   :root[data-print] .rplate{filter:var(--print-filter)}                   /* nycta DEC-038 ink edge on eee's plates (nycta names them .plate/.popup) */
   /* [eee] the map's ink edge is its own filter, #eee-ink (2026-11-19, phones): the same displacement as nycta's #nycta-ink,
      but (1) its region is the screen in px, not a % of the box: WebKit sized nycta's by the map content, which zoomed in
