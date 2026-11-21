@@ -688,7 +688,7 @@ td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg)
    - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 원판·연재·날짜는 판 아래 한 줄
    - 모듈 판은 바탕과 반대 색(반전 판, DEC-031 구성)
    - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
-   - 이전·다음 글 = .guide(DEC-014), 끝 = .plate.sign-direction(SIGN-003): [화살표 1ft][노선도 4ft]
+   - 끝 = 모듈 판 하나에 .nav 한 줄: [← 이전 글] [→ 다음 글] [← 노선도] (팝업 글처럼)
    ========================================================================== */
 
 /* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 6ft 판이 화면 폭에 꼭 맞을 때까지만 줄인다.
@@ -716,6 +716,8 @@ td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg)
    검정 원판만 흰 테두리(nycta의 1970 검정 노선 규칙과 같은 값). {B:orange}처럼 검정 노선을 다른 색으로 바꾸면 테두리를 뺀다 */
 :root[data-theme=dark] .disc[data-color]{box-shadow:none}
 :root[data-theme=dark] .disc[data-color=black]{box-shadow:0 0 0 1px var(--c-white)}
+/* 제목 판(반전 판) 안의 검정 원판: 흰 바탕에서는 판이 검정이라 판 바탕색(--bg) 테두리로 원을 드러낸다 */
+.page .plate .disc:is([data-color=black],:not([data-color]):is([data-line="5"],[data-line="B"],[data-line="LL"],[data-line="QJ"])){box-shadow:0 0 0 1px var(--bg)}
 
 /* 본문: 데스크톱에서는 5ft 폭(긴 글 한 줄 30자 안팎), 폰에서는 6ft 판 폭 전체 */
 .body{max-width:calc(var(--module) * 5);margin-top:var(--doc-space-4)}
@@ -733,17 +735,11 @@ td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg)
 .body img{display:block;max-width:100%;height:auto}
 .body figcaption{line-height:var(--lh-g1);margin-top:var(--doc-space-1)}
 
-/* 이전 글 · 다음 글: .guide 두 개를 반씩 */
-.seq{display:grid;grid-template-columns:1fr 1fr;gap:var(--doc-space-3);margin-top:var(--doc-space-5)}
-.seq:empty{display:none}
-.seq .next{grid-column:2}
-.seq .guide{text-decoration:none}
-.seq .guide>span{display:flex;flex-direction:column}
-.seq .guide .arrow{margin-top:calc((var(--lh-g1) / 2 + var(--cap-em) / 2 - var(--trim-k)) * 1em - var(--d) / 2)}   /* cap 높이 가운데(.guide는 flex라 vertical-align이 듣지 않음) */
-.seq .guide:hover .t{text-decoration:underline;text-decoration-thickness:var(--doc-rule);text-underline-offset:.18em}
-@media (max-width:640px){.seq{grid-template-columns:1fr}.seq .next{grid-column:1}}
-
-/* 끝: 방향 표지 — 링크라서 nycta a의 밑줄만 뺀다 */
-.back{margin-top:var(--doc-space-5);text-decoration:none}
-.seq:not(:empty)+.back{margin-top:var(--doc-space-4)}
-.back:hover .t-direction{text-decoration:underline;text-decoration-thickness:var(--stroke-divider);text-underline-offset:.18em}
+/* 끝 줄: 모듈 판 하나에 [← 이전 글] [→ 다음 글] [← 노선도] 한 줄(2026-11-21 사용자 요청: 줄바꿈 없이, 팝업 글처럼).
+   nycta .nav(DEC-014: 화살표 먼저 COPY-005, 화살표→글 ½in, 항목 사이 1⅞in GRID-007)를 안내 크기(.t-info, TYPE-007)로 판 안에 둔다.
+   첫 글자가 아니라 화살표가 여백에 붙으므로 DEC-025 보정은 뺀다. 링크는 팝업의 닫기처럼 글에만 ⅛in 밑줄(DEC-006). 길이는 post.html 스크립트 */
+.seqbar{margin-top:var(--doc-space-5)}
+.seqbar .nav{flex-wrap:nowrap;gap:0 calc(var(--in) * 1.875);margin-inline-start:0;line-height:var(--lh-g1)}
+.seqbar li{white-space:nowrap}
+.seqbar .nav a{color:inherit;gap:calc(var(--in) * .5)}
+.seqbar .nav a span{text-decoration:underline;text-decoration-thickness:var(--stroke-divider);text-underline-offset:.18em}

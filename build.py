@@ -110,6 +110,15 @@ def md_discs(t):
     # <code> 안은 건드리지 않는다
     return "".join(seg if seg.startswith("<code>") else DISC_RE.sub(one, seg) for seg in re.split(r"(<code>.*?</code>)", t))
 
+def rich(t):
+    """머리말 글(제목·요약)을 글 페이지에 넣을 때: 원판 표기를 원판으로(본문과 같은 규칙)."""
+    return md_discs(html.escape(t))
+
+def plain(t):
+    """원판을 그릴 수 없는 곳(브라우저 탭 이름, 검색 설명, 노선도 역 이름·팝업 요약)에는 원판 표기를 빼고 글자만 남긴다."""
+    md_discs(html.escape(t))   # 색 이름 확인만
+    return re.sub(r"\s{2,}", " ", DISC_RE.sub(lambda m: m.group(0)[1:] if m.group(1) else "", t)).strip()
+
 def md_inline(t):
     t = html.escape(t)
     def link(m):
@@ -205,16 +214,22 @@ def build_posts(data_text, post_tokens):
     public = [p for p in posts if not p["draft"]]
     disc = disc_html("G", G_TOKEN, hidden=True)
     for p in posts:
+        CURRENT[0] = f"posts/{p['file'].name}"; plain(p.get("station", ""))   # 오류 메시지용, 역 이름의 색 이름도 확인
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
-        arrow = '<svg class="arrow arrow--inline" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'   # nycta .guide(DEC-014): 띠 + [화살표][글]
-        seq = (f'<a class="guide prev" href="{prev["slug"]}.html">{arrow.format("left")}<span><span>이전 글</span>'
-               f'<span class="t">{html.escape(prev["title"])}</span></span></a>' if prev else "") + \
-              (f'<a class="guide next" href="{nxt["slug"]}.html">{arrow.format("right")}<span><span>다음 글</span>'
-               f'<span class="t">{html.escape(nxt["title"])}</span></span></a>' if nxt else "")
+        # [eee] 끝 줄(2026-11-21 사용자 요청: 이전 글·다음 글·노선도를 한 모듈 판에 줄바꿈 없이, 팝업 글처럼).
+        # 화살표가 먼저(COPY-005), 글 제목은 줄을 넘기지 않게 title·aria-label로만 건넨다
+        arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'
+        def item(cls, href, d, label, title=None):
+            t = f' title="{html.escape(label + ": " + plain(title))}"' if title else ""
+            return f'<li class="trim"><a class="{cls}" href="{href}"{t}>{arrow.format(d)}<span>{label}</span></a></li>'
+        seq = (item("prev", f'{prev["slug"]}.html', "left", "이전 글", prev["title"]) if prev else "") + \
+              (item("next", f'{nxt["slug"]}.html', "right", "다음 글", nxt["title"]) if nxt else "") + \
+              item("back", f'../index.html#{p["id"]}', "left", "노선도")
         y, mo, d = map(int, p["date"].split("-"))
-        page = tpl; CURRENT[0] = f"posts/{p['file'].name}"
-        for key, val in (("__TITLE__", html.escape(p["title"])), ("__SUMMARY__", html.escape(p.get("summary", ""))), ("__ID__", p["id"]),
+        page = tpl
+        for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", rich(p["title"])),
+                         ("__SUMMARY__", html.escape(plain(p.get("summary", "")))), ("__ID__", p["id"]),
                          ("__DISC__", disc), ("__SERIES__", html.escape(G_SERIES)), ("__DATE_TEXT__", f"{y}년 {mo}월 {d}일"),
                          ("__DATE__", p["date"]), ("__SEQ__", seq), ("__BODY__", md_blocks(p["body"]))):
             page = page.replace(key, val)
@@ -225,8 +240,8 @@ def build_posts(data_text, post_tokens):
         if not (POSTS / f"{h.stem}.md").exists() and "by build.py: edit the .md" in h.read_text(encoding="utf-8")[:400]:
             h.unlink(); print(f"posts/{h.name}: removed (no .md)")
     d = json.loads(data_text)
-    d["글"] = [{"id": p["id"], "b": "G", "s": p.get("station") or p["title"], "t": p.get("station") or p["title"], "d": p["date"],
-               "u": f'posts/{p["slug"]}.html', "ser": G_SERIES, "m": p.get("summary", ""), "post": 1, **({"draft": 1} if p["draft"] else {})}
+    d["글"] = [{"id": p["id"], "b": "G", "s": plain(p.get("station") or p["title"]), "t": plain(p.get("station") or p["title"]), "d": p["date"],
+               "u": f'posts/{p["slug"]}.html', "ser": G_SERIES, "m": plain(p.get("summary", "")), "post": 1, **({"draft": 1} if p["draft"] else {})}
               for p in posts]
     if posts:
         print(f"posts: {len(public)} published, {len(posts) - len(public)} draft(s) (drafts show on file:// / localhost only)")
