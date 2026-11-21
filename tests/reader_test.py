@@ -40,7 +40,7 @@ async def main():
             check(f"{tag} end line has next / back", nxt is not None and await pg.query_selector("#rnav a.back") is not None)
             await nxt.click(); await pg.wait_for_timeout(900)
             r2 = await pg.evaluate("""(()=>{const p=panel.getBoundingClientRect(),d=reading.g.querySelector('.dot').getBoundingClientRect();
-              return {hash:location.hash,reading:reading.id,title:rtitle.textContent,top:reader.scrollTop,
+              return {hash:location.hash,reading:reading.id,title:rtitle.textContent,top:rscroll.scrollTop,
               st:{x:d.x+d.width/2,y:d.y+d.height/2},anchor:readerAnchor(reading),current:current.id}})()""")
             check(f"{tag} next moves to the next station and swaps the article", r2["reading"] == G[k + 1]["id"] == r2["current"]
                   and r2["hash"] == "#read=" + G[k + 1]["slug"] and G[k + 1]["tt"] in r2["title"] and r2["top"] == 0

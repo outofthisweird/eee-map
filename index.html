@@ -444,9 +444,8 @@
   #reader{display:none}
   /* opening / closing: the blank plate that grows from / shrinks back into the popup (plateMorph); no ink filter on it (a filter would
      repaint every frame) */
-  .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;--rp-band:calc(var(--doc-in) * 2.25);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
+  .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;background:var(--fg)}   /* plain: the reading plates have no band */
   :root[data-print] .rghost{filter:none}
-  @media (max-width:640px){.rghost{--rp-band:calc(var(--doc-in) * 1.5);--rp-rule:max(1px, calc(var(--doc-in) * .125))}}
   #panel.hold{opacity:0}   /* (not visibility: the reader takes the focus while the ghost grows) */
   #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
     --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
@@ -458,9 +457,16 @@
      (2026-11-21 사용자 보고: 제목 글자 윗부분이 잘림): the title hangs from the cap line, and its disc and the Hangul strokes that rise
      above the cap were cut where a scroll box starting at the cap line clips. Now they show in the ½in under the rule, and the copy
      scrolls up to the rule and under the band */
-  /* [eee] no band or rule over the reading plate (2026-11-21 사용자 요청: 위에 디바이더 없이): the title head starts at the top edge */
-  #panel.reading{background:var(--fg)}
-  #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
+  /* [eee] two plates (2026-11-21 사용자 요청: 제목 박스와 본문 박스가 살짝 떨어진 다른 박스 두 개): the title plate (#rhead) on top, held
+     still, no band or rule over it (위에 디바이더 없이); ½in of map between (GRID-003 margin at the copy's inch); the copy plate (#rscroll)
+     below, the same width, scrolling inside. The copy plate keeps the reverse-plate band on top (DEC-031/040: 1½in field, ⅛in rule, ½in to
+     the first cap; 사용자 요청: 본문에는 원래 모듈의 윗 디바이더), laid over the scroll box so the copy scrolls up under it */
+  #panel.reading{background:none}
+  #panel.reading #reader{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+  #panel.reading #rbox{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:relative;background:var(--fg)}
+  #panel.reading #rbox::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--rp-band) + var(--rp-rule));z-index:1;pointer-events:none;
+    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-band) / 100% var(--rp-rule) no-repeat, var(--fg)}
+  #panel.reading #rscroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
     padding:var(--rp-top) var(--r-room) calc(var(--p-in) * 2) var(--rp-side);scrollbar-width:thin;   /* margins inside the scroll box: nothing that hangs out (disc, first-glyph pull) is clipped */
    scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
   :root[data-print] #panel.reading{filter:none}   /* [eee] no ink edge on the reading plate: a filter over a scrolling box re-rasters on every scroll, and blurs long copy */
@@ -475,7 +481,7 @@
      10½in, disc ≈ 9½in, the same ratio); the title ½in right of the square, its cap line ½in below the top edge (GRID-003) */
   #rhead{font-size:min(calc(var(--doc-in) * 1.5 * 4.25 / var(--cap-em)), 11vw);--t-in:calc(1em * var(--cap-em) / 4.25);
     display:flex;align-items:flex-start;gap:calc(var(--t-in) * .5);min-height:calc(var(--t-in) * 12);
-    margin:calc(-1 * var(--rp-top)) calc(-1 * var(--r-room)) var(--rp-gap) calc(-1 * var(--rp-side));position:relative}
+    flex:0 0 auto;background:var(--fg);margin:0 0 var(--rp-gap)}
   /* edge lines (2026-11-21 사용자 요청): the cell gets a ㄷ of ⅛in rule (SIGN-023) in the plate colour on its top, left and bottom, so it
      does not run into the page (the white line under the title was tried and dropped, 사용자 요청) */
   #rhead .rcell{flex:0 0 auto;width:calc(var(--t-in) * 12);height:calc(var(--t-in) * 12);background:var(--bg);display:grid;place-items:center;
@@ -574,7 +580,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
       <p id="ptext"><span id="pxfer"></span><a id="psum" target="_blank" rel="noopener"></a><span class="pclose"><svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg><button id="pclose" data-i18n="close">닫기</button></span></p>
     </div>
   </div>
-  <article id="reader" lang="ko" tabindex="-1"><div id="rhead"><span class="rcell"></span><h1 id="rtitle"></h1></div><div id="rbody"></div><nav id="rnav" aria-label="이전 글, 다음 글, 돌아가기"></nav></article>
+  <article id="reader" lang="ko"><div id="rhead"><span class="rcell"></span><h1 id="rtitle"></h1></div><div id="rbox"><div id="rscroll" tabindex="-1"><div id="rbody"></div><nav id="rnav" aria-label="이전 글, 다음 글, 돌아가기"></nav></div></div></article>
 </aside>
 <nav class="sr" id="srlist" data-i18n-label="list" aria-label="역 목록"></nav>
 
@@ -2401,7 +2407,7 @@ $('#pclose').onclick=closePanel;
 // History: opening pushes #read=…, so the browser's back closes the plate; 이전·다음 replace it (back still means "back to the map").
 // 돌아가기 / Esc / back all return to that station's popup on the map.
 var reading=null;   // (var: fitPopup/placePopup, earlier in the file, read it) the G station whose article fills the plate
-const reader=$('#reader'), escA=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reader=$('#reader'), rscroll=$('#rscroll'), escA=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // where the camera keeps the station while reading: left of the title, far enough that its name (if it sits on the right)
 // clears the plate too; phones: the strip above the plate
 function readerAnchor(s,k=view.k){
@@ -2409,7 +2415,7 @@ function readerAnchor(s,k=view.k){
   if(PHONE.matches)return [innerWidth/2,(SAFE.t+r.top)/2];   // the middle of the strip below the status bar
   const t=$('#rtitle').getBoundingClientRect(), cap=parseFloat(getComputedStyle($('#rtitle')).fontSize)*parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cap-em'));
   const right=s&&s.lab?Math.max(0,s.lab.box[2]-(s.vx??s.x))*k:0;
-  return [Math.max(28,r.left-24-Math.max(16,right)),t.top+reader.scrollTop+cap/2];
+  return [Math.max(28,r.left-24-Math.max(16,right)),t.top+cap/2];   // the title plate holds still
 }
 function fillReader(s){
   const L=s.line, st=L.st, k=st.indexOf(s), p=st[k-1], n=st[k+1];
@@ -2423,7 +2429,7 @@ function fillReader(s){
     `<a class="back" href="#${s.id}" aria-label="노선도로 돌아가기"><span class="nw">돌아가기${a('down-left')}</span></a>`].filter(Boolean).join('');   // no space between the items (2026-11-21)
   $('#rnav').querySelectorAll('a').forEach(x=>x.onclick=e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();
     if(x.classList.contains('back'))closeReader(); else openReader(x.classList.contains('prev')?p:n,'replace')});
-  reader.setAttribute('aria-label',s.tt); reader.scrollTop=0;
+  reader.setAttribute('aria-label',s.tt); rscroll.scrollTop=0;
 }
 // how: 'push' (from the popup), 'replace' (이전·다음), 'none' (the address already says it). instant: no growth, no camera glide
 function openReader(s,how,instant){
@@ -2435,7 +2441,7 @@ function openReader(s,how,instant){
   try{if(how==='push')history.pushState({eeeRead:1},'',h);else if(how==='replace')history.replaceState(history.state,'',h)}catch(e){}
   follow=s; centerOn(s,instant?0:DESIGN.motion.centerMs,first);
   if(r0)plateMorph(r0,panel.getBoundingClientRect(),DESIGN.motion.readerMs,'cubic-bezier(.2,0,0,1)');   // the popup's box grows into the plate
-  inMotion(DESIGN.motion.centerMs); if(!instant)readerMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});   // 이전·다음 too: the camera glides
+  inMotion(DESIGN.motion.centerMs); if(!instant)readerMotion(DESIGN.motion.centerMs); rscroll.focus({preventScroll:true});   // 이전·다음 too: the camera glides
 }
 // [eee] the plate growing / shrinking between the popup and the reading plate. A blank reverse plate (.rghost) moves and scales
 // from one box to the other while the real panel waits hidden (.hold), then shows. Transform only (2026-11-21: on the iPhone the
@@ -2444,26 +2450,34 @@ function openReader(s,how,instant){
 // The ghost is drawn at the bigger box and scaled down from there, so its band is never blown up.
 let rmT=0;
 function readerMotion(ms){const r=document.documentElement;r.classList.add('reader-moving');clearTimeout(rmT);rmT=setTimeout(()=>r.classList.remove('reader-moving'),ms+120)}
-function plateMorph(a,b,ms,ease){
+function plateMorph(a,b,ms,ease,parts){
   readerMotion(Math.max(ms,DESIGN.motion.centerMs));
-  const big=a.width*a.height>=b.width*b.height?a:b, g=document.createElement('div'); g.className='rplate rghost';
-  g.style.cssText=`left:${big.left}px;top:${big.top}px;width:${big.width}px;height:${big.height}px`; document.body.append(g);
-  const tf=r=>({transform:`translate(${r.left-big.left}px,${r.top-big.top}px) scale(${r.width/big.width},${r.height/big.height})`});
+  // [eee] the reading plate is two plates (title above, copy below, ½in apart: 2026-11-21 사용자 요청), so the ghost is two pieces: at the
+  // popup they meet edge to edge (split in the reading plate's proportion), at the reading plate they are the title and copy plates
+  const R=parts||readerParts(), toR=b.height>=a.height, P=toR?a:b, f=R[0].height/(R[0].height+R[1].height);
+  const pp=[{left:P.left,top:P.top,width:P.width,height:P.height*f},{left:P.left,top:P.top+P.height*f,width:P.width,height:P.height*(1-f)}];
+  const gs=[], tf=(r,big)=>({transform:`translate(${r.left-big.left}px,${r.top-big.top}px) scale(${r.width/big.width},${r.height/big.height})`});
   panel.classList.add('hold');
-  const done=()=>{g.remove();panel.classList.remove('hold')};
-  g.animate([tf(a),tf(b)],{duration:ms,easing:ease,fill:'forwards'}).finished.then(done,done);
+  const done=()=>{gs.forEach(g=>g.remove());panel.classList.remove('hold')};
+  const runs=[0,1].map(k=>{const from=toR?pp[k]:R[k], to=toR?R[k]:pp[k], big=from.width*from.height>=to.width*to.height?from:to;
+    const g=document.createElement('div'); g.className='rghost'; gs.push(g);
+    g.style.cssText=`left:${big.left}px;top:${big.top}px;width:${big.width}px;height:${big.height}px`; document.body.append(g);
+    return g.animate([tf(from,big),tf(to,big)],{duration:ms,easing:ease,fill:'forwards'}).finished});
+  Promise.all(runs).then(done,done);
 }
+// the reading plate's two boxes (title plate, copy plate), as plain rects
+function readerParts(){return ['#rhead','#rbox'].map(q=>{const r=$(q).getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height}})}
 // back to the popup of the station being read (keepView: when something else takes over the camera)
 // [eee] closing (2026-11-21 사용자 요청: 닫힐 때도 애니메이션): the open animation backwards. The copy goes at once and a blank
 // plate (.rghost, same reverse-plate band) shrinks from the reading plate to where the popup lands, in step with the camera
 // gliding back (same length and ease-out); then the popup shows there.
 function exitReading(keepView){
   if(!reading)return;
-  const anim=!keepView&&current&&!reduce&&DESIGN.motion.readerMs, r1=anim&&panel.getBoundingClientRect();
+  const anim=!keepView&&current&&!reduce&&DESIGN.motion.readerMs, r1=anim&&panel.getBoundingClientRect(), parts=anim&&readerParts();
   reading=null; panel.classList.remove('reading'); document.documentElement.classList.remove('reading');
   $('#rbody').innerHTML=''; fitPopup();
   if(current&&!keepView){follow=current; const v=centerView(current,false), ms=DESIGN.motion.centerMs; animateTo(v,ms);
-    if(anim){const [x,y]=popupPos(v); plateMorph(r1,{left:x,top:y,width:popW,height:popH},ms,'cubic-bezier(.33,1,.68,1)')}}
+    if(anim){const [x,y]=popupPos(v); plateMorph(r1,{left:x,top:y,width:popW,height:popH},ms,'cubic-bezier(.33,1,.68,1)',parts)}}
   placePopup();
 }
 function closeReader(){
