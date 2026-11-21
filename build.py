@@ -246,9 +246,9 @@ def build_posts(data_text, post_tokens):
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
         def item(cls, href, label, d, title=None, after=False):
             return f'<li><a class="{cls}" href="{href}"{seq_aria(label, title)}>{seq_body(d, title, label, after)}</a></li>'
-        seq = " ".join(filter(None, (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "",
+        seq = "".join(filter(None, (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "",
                                      item("next", f'{nxt["slug"]}.html', "다음 글", "right", nxt["title"], after=True) if nxt else "",
-                                     item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True))))   # 항목 사이 빈칸 = 줄이 넘어갈 수 있는 자리
+                                     item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True))))   # 항목 사이에 빈칸 없음(2026-11-21 사용자 요청: 제목 안 띄어쓰기만)
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl
         for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", rich(p["title"])),

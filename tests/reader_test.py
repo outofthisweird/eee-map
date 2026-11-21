@@ -58,6 +58,22 @@ async def main():
             await pg.go_back(); await pg.wait_for_timeout(900)
             r5 = await pg.evaluate("({reading:!!reading,open:panel.classList.contains('open'),hash:location.hash,url:location.href})")
             check(f"{tag} Esc closes the plate", not r4["reading"] and r4["open"] and r4["hash"].startswith("#G-"), r4)
+            # 4b. 판 바깥(노선도)을 누르면 돌아가기와 같다. 닫힐 때는 빈 판이 팝업 자리로 줄어든다
+            await pg.click("#psum"); await pg.wait_for_timeout(700)
+            await pg.mouse.click(30 if w > 640 else 195, h - 30 if w > 640 else 30); await pg.wait_for_timeout(120)
+            ghost = await pg.evaluate("!!document.querySelector('.rghost')&&panel.classList.contains('hold')")
+            await pg.wait_for_timeout(900)
+            r7 = await pg.evaluate("({reading:!!reading,open:panel.classList.contains('open'),hold:panel.classList.contains('hold'),ghost:!!document.querySelector('.rghost'),hash:location.hash})")
+            check(f"{tag} a click outside the plate goes back, with a closing animation", ghost and not r7["reading"] and r7["open"]
+                  and not r7["hold"] and not r7["ghost"] and r7["hash"].startswith("#G-"), {"ghostSeen": ghost, **r7})
+            # 4c. 끝 줄: 제목 안 띄어쓰기 말고는 빈칸·간격이 없다
+            await pg.click("#psum"); await pg.wait_for_timeout(700)
+            r8 = await pg.evaluate("""(()=>{const n=rnav,a=[...n.querySelectorAll('a')];
+              const gaps=[...n.querySelectorAll('a,.disc,.arrow')].map(x=>{const c=getComputedStyle(x);return parseFloat(c.marginLeft)+parseFloat(c.marginRight)});
+              return {between:[...n.childNodes].filter(x=>x.nodeType===3).length,gaps:Math.max(...gaps),
+                spaces:a.map(x=>x.textContent.split(' ').length-1),titles:a.map(x=>x.classList.contains('back')?0:(x.getAttribute('aria-label').split(': ')[1].split(' ').length-1))}})()""")
+            check(f"{tag} end line has no spaces but the titles' own", r8["between"] == 0 and r8["gaps"] == 0 and r8["spaces"] == r8["titles"], r8)
+            await pg.keyboard.press("Escape"); await pg.wait_for_timeout(900)
             check(f"{tag} browser back closes the plate and stays on the map", not r5["reading"] and r5["open"]
                   and r5["url"].split("#")[0] == href.split("#")[0] and r5["hash"].startswith("#G-"), r5)
             # 5. 주소로 바로 들어오면 그 역에서 판이 열린 채로 시작

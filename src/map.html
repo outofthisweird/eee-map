@@ -2,7 +2,7 @@
 <html lang="ko" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>EEE — Map</title>
 <style>
 /*__NYCTA__*/
@@ -20,6 +20,9 @@
   :root{
     --font:var(--font-sign);                       /* DEC-017, DEC-032 (preview/helvetica.css overrides --font-sign) */
     --edge:20px;                                   /* [eee] distance of the UI from the screen edge */
+    /* [eee] iPhone (2026-11-21 사용자 보고: 읽기 판 위 띠에서 노선이 위에서 잘려 보임): the page covers the whole screen (viewport-fit=cover),
+       so the map runs on under the status bar; the UI keeps clear of it by the safe-area insets (0 elsewhere) */
+    --sa-t:env(safe-area-inset-top, 0px);--sa-r:env(safe-area-inset-right, 0px);--sa-b:env(safe-area-inset-bottom, 0px);--sa-l:env(safe-area-inset-left, 0px);
     --ui-btn:40px;                                 /* [eee] tool / zoom button = square */
     --rp-gap:calc(var(--doc-in) * .5);             /* DEC-031 | ½in field above the rule */
     --rp-rule:max(1px, calc(var(--doc-in) * .125));/* DEC-031, SIGN-023 | ⅛in rule */
@@ -136,7 +139,7 @@
 
   /* logo: directional plate, Grid 2 (GRID-006, TYPE-006): two lines of 4¼in caps, pitch 5⅝in, hung from the top-left margin.
      [eee] the reverse-plate band (½ + ⅛in) comes out of GRID-006's 1⅝in bottom: 1⅛ + 4¼ + 1⅜ + 4¼ + 1in (descender guide, GRID-011) = 12in */
-  #logo{position:fixed;top:var(--edge);left:var(--edge);z-index:5;
+  #logo{position:fixed;top:calc(var(--edge) + var(--sa-t));left:calc(var(--edge) + var(--sa-l));z-index:5;
     --l-cap:4.25;--l-lh:var(--lh-g2);font-size:calc(var(--doc-in) * var(--l-cap) / var(--cap-em));line-height:var(--l-lh);
     padding:var(--rp-top) var(--rp-side) calc(var(--doc-in) * var(--l-cap) * .235) var(--rp-side)}
   #logo p{--l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);margin:var(--l-trim) 0 var(--l-trim) calc(-1 * var(--lsb-pull));white-space:nowrap}   /* DEC-025 */
@@ -146,7 +149,7 @@
   /* [eee] informational plate (TYPE-007): 1⅜in caps, discs inline (DEC-034); no rules between rows. Bottom ½in below the descender guide, like DEC-031.
      [eee 설계결정 2026-11-21] six rows (G added) at Grid 1's 1⅞in pitch came to 12.7in, so the plate grew to 2 ft. The legend's pitch is
      1.7in instead (gap ½ → .325in): 1⅛ (band) + 1⅜ + 5 × 1.7 + .82 (descender + ½) = 11.8in, one 1 ft module (user approved) */
-  #legend{position:fixed;left:var(--edge);bottom:var(--edge);z-index:5;display:block;
+  #legend{position:fixed;left:calc(var(--edge) + var(--sa-l));bottom:calc(var(--edge) + var(--sa-b));z-index:5;display:block;
     --l-lh:calc(1.7 / 1.375 * var(--cap-em));line-height:var(--l-lh);
     --l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);
     padding:calc(var(--rp-top) + var(--l-trim)) var(--rp-side) calc(var(--doc-in) * (.5 + .235 * 1.375) + var(--l-trim))}
@@ -158,7 +161,7 @@
 
   /* tools & zoom: stacks of square buttons, ⅛in rules between, pressed / hover = reversed (DEC-007 active state) */
   /* [test] snap strength slider: local (file://, localhost) or ?tune only, never on the public site by default */
-  #snaptune{position:fixed;top:var(--edge);left:50%;transform:translateX(-50%);z-index:6;padding:calc(var(--rp-top) + 6px) 12px 6px;font-size:max(12px,.75rem)}
+  #snaptune{position:fixed;top:calc(var(--edge) + var(--sa-t));left:50%;transform:translateX(-50%);z-index:6;padding:calc(var(--rp-top) + 6px) 12px 6px;font-size:max(12px,.75rem)}
   #snaptune label{display:flex;align-items:center;gap:8px}
   #snaptune input{width:160px;accent-color:currentColor}
   #snaptune output{min-width:2.5em;font-variant-numeric:tabular-nums}
@@ -173,9 +176,9 @@
   #curarrow path{vector-effect:non-scaling-stroke}
   #curarrow.inv{fill:var(--bg);stroke:var(--fg)}
   #curarrow[hidden]{display:none}
-  #tools,#zoom{position:fixed;right:var(--edge);z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
-  #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
-  #zoom{bottom:var(--edge)}
+  #tools,#zoom{position:fixed;right:calc(var(--edge) + var(--sa-r));z-index:5;display:flex;flex-direction:column;padding-top:var(--rp-top)}
+  #tools{bottom:calc(var(--edge) + var(--sa-b) + 3 * var(--ui-btn) + var(--rp-top) + 16px)}
+  #zoom{bottom:calc(var(--edge) + var(--sa-b))}
   #tools button,#zoom button{width:var(--ui-btn);height:var(--ui-btn);display:flex;align-items:center;justify-content:center;font-size:1.125rem;line-height:1}
   #zoom #zfit,#tools #langbtn{font-size:max(12px, .75rem)}
   #tools button+button,#zoom button+button{border-top:var(--rp-rule) solid currentColor}
@@ -214,11 +217,15 @@
      The plate's own inch comes from the copy: copy = information size (cap 1⅜in), so the band, margins and rule scale with it.
      Width hugs the copy: ½in left + ~34em + DEC-030's ≥ 1in room on the right. It scrolls inside; the band stays on top. */
   #reader{display:none}
+  /* closing: the blank plate that shrinks back into the popup (exitReading); its band at the popup's scale */
+  .rghost{position:fixed;left:0;top:0;z-index:11;pointer-events:none;--rp-gap:calc(var(--doc-in) * .75);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
+  @media (max-width:640px){.rghost{--rp-gap:calc(var(--doc-in) * .5);--rp-rule:max(1px, calc(var(--doc-in) * .125))}}
+  #panel.hold{visibility:hidden}
   #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
     --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
     --r-lmin:max(72px, 8vw);font-size:var(--r-fs);
-    left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:var(--edge);width:var(--r-w);max-width:none;height:auto;
-    max-height:calc(100dvh - 2 * var(--edge));display:flex;flex-direction:column;padding:var(--rp-top) 0 0 var(--rp-side)}
+    left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:calc(var(--edge) + var(--sa-t));width:var(--r-w);max-width:none;height:auto;
+    max-height:calc(100dvh - 2 * var(--edge) - var(--sa-t) - var(--sa-b));display:flex;flex-direction:column;padding:var(--rp-top) 0 0 var(--rp-side)}
   #panel.reading .body{display:none}
   #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
     padding:0 var(--r-room) calc(var(--p-in) * 2) 0;scrollbar-width:thin;scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
@@ -261,20 +268,20 @@
     background:linear-gradient(currentColor, currentColor) 0 0 / 100% var(--rp-rule) no-repeat}
   @supports (text-box: trim-both cap alphabetic){#rnav{text-box:trim-both cap alphabetic}}
   #rnav a{color:inherit;text-decoration:none}
-  #rnav a:not(:last-child){margin-inline-end:calc(var(--n-in) * 1.875 - .25em)}   /* with the space (≈ ¼em) 1⅞in, GRID-007 */
+  /* [eee] no space anywhere in the end line but inside the titles (2026-11-21 사용자 요청): arrow, disc, title and the next item touch,
+     like the map popup's 역이름ⓡ요약→닫기. The line still wraps at the titles' own spaces */
   #rnav .nw{white-space:nowrap}
-  #rnav .disc--inline,#rnav .prev .arrow{margin-inline:0 calc(var(--n-in) * .5)}   /* GRID-009 ½in, toward the words only */
-  #rnav .next .arrow,#rnav .back .arrow{margin-inline:calc(var(--n-in) * .5) 0}
   @media (max-width:640px){
     /* phones: the plate covers almost everything; the station shows in the strip above it */
-    #panel.reading{--r-lmin:0px;left:8px;width:calc(100vw - 16px);top:64px;max-height:calc(100dvh - 72px)}
+    #panel.reading{--r-lmin:0px;left:calc(8px + var(--sa-l));width:calc(100vw - 16px - var(--sa-l) - var(--sa-r));top:calc(64px + var(--sa-t));
+      max-height:calc(100dvh - 72px - var(--sa-t) - var(--sa-b))}
     #rnav{font-size:1em}
   }
 
   @media (max-width:640px){
     :root{--edge:12px}
     #logo{--l-cap:1.375;--l-lh:var(--lh-g1)}                        /* small screens: one tier down → Information (Grid 1), like .compact */
-    #tools{bottom:calc(var(--edge) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
+    #tools{bottom:calc(var(--edge) + var(--sa-b) + 3 * var(--ui-btn) + var(--rp-top) + 12px)}
     /* [eee] phones (2026-11-19 사용자 요청): the module plates (1 ft high, standard lengths) took a third of the screen.
        Logo, legend and popup hug their copy instead (fitPlate/fitPopup skip the module sizes), ½in below the descender
        guide like the legend. The popup copy wraps at 20in (desktop 40in; 28/24/20 compared, 2026-11-19). */
@@ -1555,20 +1562,29 @@ function openStation(s,fromHash,keepView){
 let follow=null;
 function visibleCentre(s,k){if(reading)return readerAnchor(s,k);return innerWidth>640?[innerWidth/2,innerHeight/2]:[innerWidth/2,innerHeight*.3]}
 // popup sits beside its station and moves with the map
-function placePopup(){
-  if(!current||!panel.classList.contains('open')||reading)return;
+// the safe-area insets (iPhone status bar, home indicator; 0 elsewhere), measured once and on resize
+const SAFE={t:0,r:0,b:0,l:0}; {const pr=document.createElement('div');pr.style.cssText='position:fixed;visibility:hidden;pointer-events:none;padding:var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l)';document.body.append(pr);
+  const m=()=>{const c=getComputedStyle(pr);SAFE.t=parseFloat(c.paddingTop)||0;SAFE.r=parseFloat(c.paddingRight)||0;SAFE.b=parseFloat(c.paddingBottom)||0;SAFE.l=parseFloat(c.paddingLeft)||0};m();addEventListener('resize',m)}
+// where the popup goes for a given view (v): beside its station, inside the safe area
+function popupPos(v){
   if(!popW){popW=panel.offsetWidth;popH=panel.offsetHeight}
-  const s=current, sx=view.x+s.x*view.k, sy=view.y+s.y*view.k, w=popW, h=popH, m=12, gap=28;
+  const s=current, sx=v.x+s.x*v.k, sy=v.y+s.y*v.k, w=popW, h=popH, m=12, gap=28;
   let x,y;
   if(innerWidth<=640){x=(innerWidth-w)/2;y=sy+gap}
-  else{x=sx+gap; if(x+w>innerWidth-m)x=sx-gap-w; y=sy-h*.3}
-  x=Math.max(m,Math.min(innerWidth-w-m,x)); y=Math.max(m,Math.min(innerHeight-h-m,y));
+  else{x=sx+gap; if(x+w>innerWidth-m-SAFE.r)x=sx-gap-w; y=sy-h*.3}
+  x=Math.max(m+SAFE.l,Math.min(innerWidth-w-m-SAFE.r,x)); y=Math.max(m+SAFE.t,Math.min(innerHeight-h-m-SAFE.b,y));
+  return [x,y];
+}
+function placePopup(){
+  if(!current||!panel.classList.contains('open')||reading)return;
+  const [x,y]=popupPos(view);
   const tr=`translate(${Math.round(x)}px,${Math.round(y)}px)`; if(tr!==popT){popT=tr;panel.style.transform=tr}
 }
-function centerOn(s,ms,zoomIn){
+function centerView(s,zoomIn){
   const [z0,z1]=DESIGN.zoom.focus, k=zoomIn?Math.min(z1,Math.max(view.k,z0)):view.k, [cx,cy]=visibleCentre(s,k);
-  const v={k,x:cx-s.x*k,y:cy-s.y*k}; if(ms)animateTo(v,ms); else {view=v;apply()}
+  return {k,x:cx-s.x*k,y:cy-s.y*k};
 }
+function centerOn(s,ms,zoomIn){const v=centerView(s,zoomIn); if(ms)animateTo(v,ms); else {view=v;apply()}}
 function release(){follow=null;target=null;if(ride){stopRide();if(!current)focusLine(null)}}
 function closePanel(){if(reading)exitReading(true);release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
 // close: the 닫기 text button at the bottom, Esc, or a click on the empty map
@@ -1586,7 +1602,7 @@ const reader=$('#reader'), escA=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;',
 // clears the plate too; phones: the strip above the plate
 function readerAnchor(s,k=view.k){
   const r=panel.getBoundingClientRect();
-  if(PHONE.matches)return [innerWidth/2,r.top/2];
+  if(PHONE.matches)return [innerWidth/2,(SAFE.t+r.top)/2];   // the middle of the strip below the status bar
   const t=$('#rtitle').getBoundingClientRect(), cap=parseFloat(getComputedStyle($('#rtitle')).fontSize)*parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cap-em'));
   const right=s&&s.lab?Math.max(0,s.lab.box[2]-(s.vx??s.x))*k:0;
   return [Math.max(28,r.left-24-Math.max(16,right)),t.top+reader.scrollTop+cap/2];
@@ -1598,7 +1614,7 @@ function fillReader(s){
   const a=d=>`<svg class="arrow" data-dir="${d}" aria-hidden="true"><use href="#nyarrow"/></svg>`;
   $('#rnav').innerHTML=[p&&`<a class="prev" href="#read=${encodeURIComponent(p.slug)}" aria-label="이전 글: ${escA(p.tt)}">${p.np}</a>`,
     n&&`<a class="next" href="#read=${encodeURIComponent(n.slug)}" aria-label="다음 글: ${escA(n.tt)}">${n.nn}</a>`,
-    `<a class="back" href="#${s.id}" aria-label="노선도로 돌아가기"><span class="nw">돌아가기${a('down-left')}</span></a>`].filter(Boolean).join(' ');   // spaces = where the line may wrap
+    `<a class="back" href="#${s.id}" aria-label="노선도로 돌아가기"><span class="nw">돌아가기${a('down-left')}</span></a>`].filter(Boolean).join('');   // no space between the items (2026-11-21)
   $('#rnav').querySelectorAll('a').forEach(x=>x.onclick=e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();
     if(x.classList.contains('back'))closeReader(); else openReader(x.classList.contains('prev')?p:n,'replace')});
   reader.setAttribute('aria-label',s.tt); reader.scrollTop=0;
@@ -1618,9 +1634,21 @@ function openReader(s,how,instant){
   inMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});
 }
 // back to the popup of the station being read (keepView: when something else takes over the camera)
+// [eee] closing (2026-11-21 사용자 요청: 닫힐 때도 애니메이션): the open animation backwards. The copy goes at once and a blank
+// plate (.rghost, same reverse-plate band) shrinks from the reading plate to where the popup lands, in step with the camera
+// gliding back (same length and ease-out); then the popup shows there.
 function exitReading(keepView){
-  if(!reading)return; reading=null; panel.classList.remove('reading'); document.documentElement.classList.remove('reading');
-  $('#rbody').innerHTML=''; fitPopup(); placePopup(); if(current&&!keepView){follow=current;centerOn(current,DESIGN.motion.centerMs,false)}
+  if(!reading)return;
+  const anim=!keepView&&current&&!reduce&&DESIGN.motion.readerMs, r1=anim&&panel.getBoundingClientRect();
+  reading=null; panel.classList.remove('reading'); document.documentElement.classList.remove('reading');
+  $('#rbody').innerHTML=''; fitPopup();
+  if(current&&!keepView){follow=current; const v=centerView(current,false), ms=DESIGN.motion.centerMs; animateTo(v,ms);
+    if(anim){const [x,y]=popupPos(v), g=document.createElement('div'); g.className='rplate rghost'; document.body.append(g);
+      const box=(l,t,w,h)=>({transform:`translate(${l}px,${t}px)`,width:w+'px',height:h+'px'});
+      panel.classList.add('hold');
+      g.animate([box(r1.left,r1.top,r1.width,r1.height),box(x,y,popW,popH)],{duration:ms,easing:'cubic-bezier(.33,1,.68,1)',fill:'forwards'})
+        .finished.then(()=>{g.remove();panel.classList.remove('hold')},()=>{g.remove();panel.classList.remove('hold')})}}
+  placePopup();
 }
 function closeReader(){
   if(!reading)return;
@@ -1657,9 +1685,9 @@ $('#randbtn').onclick=randomStop;
 addEventListener('keydown',e=>{if(e.key==='Escape'){if(reading)closeReader();else closePanel()}});
 svg.addEventListener('click',e=>{
   if(moved)return;
+  if(reading){closeReader();return}   // [eee] a click anywhere outside the reading plate goes back, like 돌아가기 (2026-11-21 사용자 요청)
   const hit=document.elementFromPoint(e.clientX,e.clientY), g=hit&&hit.closest&&hit.closest('.station');
-  if(g){const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)||ghosts().find(x=>x.g===g); if(s){if(reading)exitReading(true);openStation(s);return}}
-  if(reading)return;   // the reading plate closes only by 돌아가기, Esc or the browser's back (2026-11-21)
+  if(g){const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)||ghosts().find(x=>x.g===g); if(s){openStation(s);return}}
   if(current)closePanel();
 });
 
