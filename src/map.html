@@ -1739,8 +1739,11 @@ function growLine(L,start){
   return end;
 }
 // [eee] back from a web-series article (posts/*.html, G): no growth intro, its station opens at once
-const FROM_POST=(()=>{try{const r=new URL(document.referrer);return r.origin===location.origin&&/\/posts\/[^/]+\.html$/.test(r.pathname)}catch(e){return false}})();
-const START_READ=/^#read=/.test(location.hash);   // opened straight on an article: the plate is there from the start
+// A reload starts over (2026-11-21 사용자 보고: 새로고침해도 첫 애니메이션이 안 나옴): the browser keeps the referrer and the #read= address
+// through a reload, so without this a tab that once came back from an article, or was reloaded while reading, never grew its lines again
+const RELOAD=(()=>{try{return performance.getEntriesByType('navigation')[0].type==='reload'}catch(e){return false}})();
+const FROM_POST=!RELOAD&&(()=>{try{const r=new URL(document.referrer);return r.origin===location.origin&&/\/posts\/[^/]+\.html$/.test(r.pathname)}catch(e){return false}})();
+const START_READ=!RELOAD&&/^#read=/.test(location.hash);   // opened straight on an article: the plate is there from the start (not on a reload)
 function intro(){
   if(reduce||FROM_POST||START_READ)return;
   // a line starts growing when its parent line's growth reaches the transfer
@@ -1818,7 +1821,10 @@ if(document.fonts){const f=()=>{relabel();fitPlates()};document.fonts.ready.then
 function fromHash(first){
   let h=location.hash.slice(1); try{h=decodeURIComponent(h)}catch(e){}
   const r=h.match(/^read=(.+)$/);
-  if(r){const s=stations.find(x=>x.post&&x.slug===r[1]&&!x.owner); if(s&&reading!==s)openReader(s,'none',first); return}
+  if(r){const s=stations.find(x=>x.post&&x.slug===r[1]&&!x.owner); if(!s||reading===s)return;
+    if(first&&!START_READ&&!reduce)   // reloaded while reading: the lines grow first, then that station's popup grows into the plate
+      setTimeout(()=>{openStation(s,true);setTimeout(()=>{if(!reading&&current===s)openReader(s,'none')},DESIGN.motion.centerMs)},900);
+    else openReader(s,'none',first); return}
   if(reading){exitReading(); try{history.replaceState(null,'','#'+current.id)}catch(e){} return}   // back: the station read last stays open
   const m=h.match(/^([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===newId(m[1])); if(s&&s!==current) setTimeout(()=>openStation(s,true),first&&!(reduce||FROM_POST)?900:0)}
 }
