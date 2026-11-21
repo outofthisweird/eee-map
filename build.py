@@ -79,6 +79,37 @@ assert m, "DESIGN.lines.G token not found in src/map.html: check build.py"
 G_TOKEN = m.group(1)   # 노선 색은 src/map.html DESIGN.lines.G 한 곳에서만 정한다
 G_SERIES = re.search(r"\{key:'G'[^}]*series:\[\['G','([^']+)'\]\]", src).group(1)
 
+# 글 속 원판 {G}, {G:orange} (2026-11-21 사용자 요청: 본문 중간에 원판을 바로 부르기). 모양은 nycta 줄 안 원판(.disc--inline, DEC-034).
+# 색: 이름을 적으면 그 색, 아니면 노선도 노선(DESIGN.lines/groups, src/map.html 한 곳)의 색, 그것도 아니면 nycta.css의
+# 1970 매뉴얼 노선 색(data-line 규칙, 예: {A} 파랑), 그마저 없으면 검정. 글자는 노랑에만 검정, 나머지는 흰색(DEC-004).
+LINE_TOKENS = dict(re.findall(r"\b(\w+): \{ token:'(--c-[a-z]+)' \}", src[src.index("lines: {"):src.index("groups: {")]))
+GROUP_TOKENS = dict(re.findall(r"\b(\w+): \{ token:'(--c-[a-z]+)', lines:", src[src.index("groups: {"):]))
+for k, g in re.findall(r"\b(\w+): \{ group:'(\w+)' \}", src[src.index("lines: {"):src.index("groups: {")]):
+    LINE_TOKENS[k] = GROUP_TOKENS[g]
+assert LINE_TOKENS.get("G") == G_TOKEN, "DESIGN.lines parse failed: check build.py"
+DISC_COLORS = ("yellow", "orange", "red", "magenta", "green", "lightblue", "blue", "black")   # nycta 팔레트(COLOR-005) + 검정
+for c in DISC_COLORS:
+    assert f"--c-{c}:" in nycta, f"nycta.css has no --c-{c}: check build.py"
+DISC_RE = re.compile(r"(\\?)\{([0-9A-Z]{1,2})(?::([a-z]+))?\}")
+
+def disc_html(label, token=None, hidden=False):
+    style = f' style="--line:var({token});color:var(--c-{"black" if token == "--c-yellow" else "white"})"' if token else ""
+    color = f' data-color="{token[4:]}"' if token else ""
+    return (f'<span class="disc disc--inline" data-line="{label}"{color}{style}' + (' aria-hidden="true"' if hidden else "") +
+            f'><span>{label}</span></span>')
+
+CURRENT = ["posts"]   # 오류 메시지에 쓸 지금 만드는 글
+
+def md_discs(t):
+    def one(m):
+        if m.group(1): return m.group(0)[1:]          # \{G} → 글자 그대로 {G}
+        label, name = m.group(2), m.group(3)
+        if name and name not in DISC_COLORS:
+            raise SystemExit(f"{CURRENT[0]}: 원판 {m.group(0)}에 쓴 색 이름을 찾지 못했습니다. 쓸 수 있는 색은 {', '.join(DISC_COLORS)}입니다.")
+        return disc_html(label, f"--c-{name}" if name else LINE_TOKENS.get(label))
+    # <code> 안은 건드리지 않는다
+    return "".join(seg if seg.startswith("<code>") else DISC_RE.sub(one, seg) for seg in re.split(r"(<code>.*?</code>)", t))
+
 def md_inline(t):
     t = html.escape(t)
     def link(m):
@@ -89,7 +120,7 @@ def md_inline(t):
     t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
     t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
     t = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", t)
-    return t
+    return md_discs(t)
 
 def md_blocks(text):
     """작은 마크다운: 문단, ## 소제목, > 인용, - · 1. 목록, --- 구분선, 이미지 한 줄(설명이 있으면 캡션), <로 시작하는 HTML은 그대로.
@@ -172,7 +203,7 @@ def build_posts(data_text, post_tokens):
     posts.sort(key=lambda p: (p["date"], p["slug"]))   # 역 번호는 게시일 순서(G-01부터)
     for i, p in enumerate(posts): p["id"] = f"G-{i + 1:02d}"
     public = [p for p in posts if not p["draft"]]
-    disc = (f'<span class="disc disc--inline" data-line="G" style="--line:var({G_TOKEN})" aria-hidden="true"><span>G</span></span>')
+    disc = disc_html("G", G_TOKEN, hidden=True)
     for p in posts:
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
@@ -182,7 +213,7 @@ def build_posts(data_text, post_tokens):
               (f'<a class="guide next" href="{nxt["slug"]}.html">{arrow.format("right")}<span><span>다음 글</span>'
                f'<span class="t">{html.escape(nxt["title"])}</span></span></a>' if nxt else "")
         y, mo, d = map(int, p["date"].split("-"))
-        page = tpl
+        page = tpl; CURRENT[0] = f"posts/{p['file'].name}"
         for key, val in (("__TITLE__", html.escape(p["title"])), ("__SUMMARY__", html.escape(p.get("summary", ""))), ("__ID__", p["id"]),
                          ("__DISC__", disc), ("__SERIES__", html.escape(G_SERIES)), ("__DATE_TEXT__", f"{y}년 {mo}월 {d}일"),
                          ("__DATE__", p["date"]), ("__SEQ__", seq), ("__BODY__", md_blocks(p["body"]))):
