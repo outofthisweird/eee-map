@@ -245,7 +245,11 @@
      제목을 더 크게; was the copy's inch: 61 → 74px on desktop); phones up to 11vw (31 → 43px at 390px), so both take about the same
      share of the plate */
   #rtitle{font-size:min(calc(var(--doc-in) * 1.5 * 4.25 / var(--cap-em)), 11vw);line-height:var(--lh-g2);text-wrap:balance;
-    --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);margin:var(--t-trim) 0 .7em calc(-1 * var(--lsb-pull))}
+    --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);
+    /* [eee] the lead disc (DEC-034: D = cap × 1 11/16 ÷ 1 3/8, centred on the cap) rises above the cap by (D − cap) / 2; the title
+       comes down by that much, so the disc's top, not the cap, keeps the band's ½in under the rule (2026-11-21 사용자 보고: 데스크톱에서
+       커진 원판이 위 선에 닿음) */
+    --t-disc:calc(1em * var(--cap-em) * (1.6875 / 1.375 - 1) / 2);margin:calc(var(--t-trim) + var(--t-disc)) 0 .7em calc(-1 * var(--lsb-pull))}
   @supports (text-box: trim-both cap alphabetic){#rtitle{--t-trim:0px;text-box:trim-start cap alphabetic}}
   /* --here = the font size of the line a disc or arrow sits in, as a length (registered, so 1em is fixed where it is set, not inside
      the disc, whose own font size is its glyph) */
