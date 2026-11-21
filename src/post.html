@@ -12,20 +12,23 @@ var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\
 if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
 </head>
 <body>
-<header class="top">
-  <a class="back" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a>
-</header>
 <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
-<main>
-  <article>
-    <p class="meta">__DISC__<span>__SERIES__</span><time datetime="__DATE__">__DATE_TEXT__</time></p>
-    <h1>__TITLE__</h1>
-    <div class="body">
+<div class="page">
+  <nav class="top" aria-label="노선도"><a class="nav" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a></nav>
+  <main>
+    <article>
+      <header class="train">
+        <div class="train__disc">__DISC__</div>
+        <div class="train__field"><h1>__TITLE__</h1></div>
+      </header>
+      <p class="meta"><span>__SERIES__</span><time datetime="__DATE__">__DATE_TEXT__</time></p>
+      <div class="body">
 __BODY__
-    </div>
-  </article>
-  <nav class="seq" aria-label="이전 글과 다음 글">__SEQ__</nav>
-  <p class="end"><a class="back" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도로 돌아가기</a></p>
-</main>
+      </div>
+    </article>
+    <nav class="seq" aria-label="이전 글과 다음 글">__SEQ__</nav>
+    <a class="dir" href="../index.html#__ID__"><span class="dir__arrow"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg></span><span class="dir__copy">노선도</span></a>
+  </main>
+</div>
 </body>
 </html>

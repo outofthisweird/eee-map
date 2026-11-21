@@ -830,9 +830,11 @@ function geometry(){
   const unit=(a,b)=>{const v=[b[0]-a[0],b[1]-a[1]],m=Math.hypot(...v)||1;return[v[0]/m,v[1]/m]};
   LINES.forEach(L=>{
     const r=(L.lead||L).route,n=L.st.length;
-    // [eee] one station (a new series): a stub of the strand across it, as long as both run-ons (horizontal)
+    // [eee] one station (a new series): a short horizontal stub across it, half a grid cell + the run-on each side
+    // (2026-11-21: run-ons alone made it as long as it is wide, an orange square rather than a piece of line)
+    const sx=DESIGN.grid.unit/2+DESIGN.line.runOn;
     const ro=r.pts.length>1?GEO.runOn(r.pts.slice(0,r.idx[n-1]+1),DESIGN.line.runOn,true,true):
-      {pts:[[r.pts[0][0]-DESIGN.line.runOn,r.pts[0][1]],r.pts[0],[r.pts[0][0]+DESIGN.line.runOn,r.pts[0][1]]],shift:1};
+      {pts:[[r.pts[0][0]-sx,r.pts[0][1]],r.pts[0],[r.pts[0][0]+sx,r.pts[0][1]]],shift:1};
     const P=ro.pts,idx=r.idx.slice(0,n).map(k=>k+ro.shift);
     L.pts=P; L.idx=idx; L.px=L.st.map(s=>[s.x,s.y]);
     L.model=GEO.strand(P,L.offset,L.R0);
@@ -971,7 +973,9 @@ function draw(){
   });
   try{if(current&&current.g)current.g.classList.add('active')}catch(e){} // (popup state is declared further down)
   // fresh nodes keep the current highlight: dimmed from the start, no flash of full colour mid-drag (2026-11-19)
-  LINES.forEach(L=>{const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);
+  // [eee] a one-station line (a new series, the G stub) has no train: the stub is no longer than the train, which hid it (2026-11-21)
+  LINES.forEach(L=>{if(L.st.length<2){L.train=null;L.plen=0;return}
+    const T=DESIGN.train;L.train=el('rect',{class:'train',width:T.w,height:T.h,x:-T.w/2,y:-T.h/2,rx:T.radius,stroke:L.color,'stroke-width':T.stroke,'data-line':L.key},gT);
     L.tclip=el('rect',{width:T.w+T.stroke,height:T.h+T.stroke,x:-(T.w+T.stroke)/2,y:-(T.h+T.stroke)/2},gTC);   // the stations repeated over this train
     L.plen=L.model.total;L.tpos=L.tpos??Math.random()});
   if(keepFocus)focusLine(keepFocus,true);

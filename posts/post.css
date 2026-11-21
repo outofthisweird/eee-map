@@ -169,71 +169,130 @@
 
 /* ==========================================================================
    [eee] 웹 연재(G) 글 페이지. build.py가 nycta 토큰(§0–1 + 원판 글자 윤곽) 뒤에 이 파일을 붙여 posts/post.css를 만든다.
-   노선도(src/map.html)와 같은 규칙: 한 굵기(TYPE-002), 문장 대소문자(DONT-005), 왼쪽 정렬, 직각(DEC-009),
-   한국어는 DEC-033(keep-all·단어 간격·첫 글자 보정). 글 읽기용 크기와 행간은 [eee] 결정이다(nycta 원장에는 아직 없음).
+   노선도(src/map.html)와 같은 규칙: 한 굵기(TYPE-002), 문장 대소문자(DONT-005), 왼쪽 정렬(GRID-004), 직각(DEC-009),
+   한국어는 DEC-033(keep-all·단어 간격·첫 글자 보정).
+
+   짜임(2026-11-21): 페이지 전체가 표지 한 벌이다. 크기는 매뉴얼의 세 단계(TYPE-008) 중 두 개만 쓴다.
+   - 글 머리 = 열차 바깥 행선 표지(SIGN-016, pdf p.82): 흰 1ft 칸의 노선 원판 + 검정 판에 흰 글자, 방향 크기(4¼in, TYPE-006)를
+     1ft 판의 Grid 2(GRID-006)로 두 줄까지. 다크 모드는 흰-검 반전(팝업 DEC-031과 같음).
+   - 본문 = 안내 크기(1⅜in, TYPE-007). 소제목(h2) = 방향 크기(DEC-005). 문단·간격은 매뉴얼 간격(½ · 1⅜ · 1⅞ · 5⅝in · 1ft)만 쓴다.
+   - 끝 = 방향 표지(SIGN-003): 띠(GRID-013) + [화살표 1ft 칸][문구]. 이전·다음 글은 문서 규모 안내 막대(DEC-014 .guide).
+   - 단(column)은 6ft 판(SIGN-012) 폭. 본문은 원판 칸(1ft) 다음, 표지 문구와 같은 왼쪽 선에서 시작한다(데스크톱).
    ========================================================================== */
 :root{
   --font:var(--font-sign);
-  --side:max(16px, calc(var(--doc-in) * 3));      /* [eee] 화면 가장자리 여백 */
-  --measure:36rem;                                 /* [eee] 본문 한 줄 폭(한글 약 32자) */
-  --body-fs:1.25rem;                               /* [eee] 본문 크기(데스크톱 20px, 폰 18px) */
-  --body-lh:1.75;                                  /* [eee] 긴 글 행간. 한글이 cap 위·기준선 아래로 튀어나와 넉넉히 둔다 */
-  --title-fs:2.5rem;                               /* [eee] 제목 */
+  --s:1.125;                                       /* [eee] 긴 글 읽기용 배율(데스크톱). 팝업 --p-scale처럼 표지 비율은 그대로, 크기만 키운다 */
+  --fs:calc(1rem * var(--s));                      /* TYPE-007, DEC-005 | 본문 = 안내 크기 */
+  --in:calc(var(--fs) * var(--cap-em) / 1.375);    /* DEC-002 | 본문 cap = 1⅜in → 1in */
+  --ft:calc(var(--in) * 12);                       /* GRID-002 | 1 모듈 */
+  --t-fs:calc(var(--fs) * 4.25 / 1.375);           /* TYPE-006, DEC-005 | 방향 크기(같은 인치) */
+  --tin:calc(var(--t-fs) * var(--cap-em) / 4.25);  /* 표지의 1in(데스크톱에서는 --in과 같음) */
+  --rule:max(1px, calc(var(--in) * .125));         /* SIGN-023 | ⅛in 선 */
+  --band:calc(var(--in) * 1.625);                  /* GRID-013 | 띠 1⅝in */
+  --gut:calc(var(--tin) * 12.5);                   /* 본문 왼쪽 선 = 원판 칸 1ft + 판 여백 ½in(표지 문구와 같은 선) */
+  --hang:calc(var(--in) * 1.875);                  /* 목록 기호·인용 선이 걸리는 자리(본문 선 왼쪽 1⅞in) */
+  --lh:1.5;                                        /* DEC-020 | 긴 글 행간 */
+  --side:16px;
   color-scheme:light;
 }
-:root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}
-@media (max-width:640px){:root{--body-fs:1.125rem;--title-fs:1.75rem}}
+:root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}   /* DEC-019 */
+/* [eee] 폰: 배율 1, 표지는 DEC-005의 방향 크기 최솟값(1.75rem)으로 내리고 표지 인치도 그 글자에서 다시 잰다(DEC-016처럼 한 벌째 축소).
+   원판 칸 옆 단이 좁아서 본문은 원판 칸 아래까지 넓게 쓰고, 목록 기호·인용 선은 걸지 않고 들여 넣는다 */
+@media (max-width:640px){:root{--s:1;--t-fs:1.75rem;--gut:0px}}
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}   /* DEC-009 */
 html{background:var(--bg);color:var(--fg);font-family:var(--font);font-weight:var(--font-weight);font-size:100%;
   font-kerning:normal;font-synthesis:none;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
-body{min-height:100vh;padding:0 var(--side) calc(var(--doc-in) * 12)}
-*{--lsb-pull:var(--lsb-comp)}
-:lang(ko){word-break:keep-all;line-break:strict;word-spacing:var(--ws-ko);--lsb-pull:var(--lsb-comp-ko)}
-:lang(en){word-spacing:var(--ws)}
+*{letter-spacing:var(--ls);word-spacing:var(--ws);--lsb-pull:var(--lsb-comp)}           /* DEC-018, DEC-025 */
+:lang(ko){word-break:keep-all;line-break:strict;word-spacing:var(--ws-ko);--lsb-pull:var(--lsb-comp-ko)}   /* DEC-033 */
+body{font-size:var(--fs);line-height:var(--lh-g1)}
 a{color:inherit;text-decoration:none}
-:focus:not(:focus-visible){outline:none}
+:focus:not(:focus-visible){outline:none}                                                 /* DEC-008 */
 :focus-visible{outline:1px solid currentColor;outline-offset:2px}
+/* 대문자 윗선·기준선까지 잘라 여백을 격자대로 잰다(GRID-003). 대체: (trim-k − lh/2)em */
+.trim,.train h1,.dir__copy,.body h2{margin-block:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em)}
+@supports (text-box: trim-both cap alphabetic){.trim,.train h1,.dir__copy,.body h2{margin-block:0;text-box:trim-both cap alphabetic}}
 
-/* 노선도로 돌아가는 링크: 화살표(ARROW-005) + 글자, 반전 판 대신 맨 위 ⅛in 선 아래 */
-.top{max-width:var(--measure);margin:0 auto;padding-top:calc(var(--doc-in) * 3)}
-.back{display:inline-flex;align-items:baseline;gap:calc(var(--doc-in) * .5);line-height:var(--lh-g1)}
-.arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:0 0 auto;fill:currentColor;overflow:visible;
-  align-self:center}
+.page{width:min(100% - 2 * var(--side), var(--ft) * 6);margin:0 auto;padding:calc(var(--in) * 1.875) 0 var(--ft)}   /* SIGN-012 | 6ft 판 폭 */
+
+/* 맨 위 [화살표][노선도] — DEC-014 */
+.nav{display:inline-flex;align-items:baseline;gap:calc(var(--in) * .5)}
+.arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:none;fill:currentColor;overflow:visible}   /* GRID-008 | 줄 안 원 크기 */
+.nav .arrow,.seq .arrow{position:relative;top:calc((var(--d) - 1em * var(--cap-em)) / 2)}   /* cap 높이 가운데 */
 .arrow[data-dir=left]{transform:rotate(180deg)}
+.nav:hover,.seq a:hover .t{text-decoration:underline;text-decoration-thickness:var(--rule);text-underline-offset:.18em}
 
-main{max-width:var(--measure);margin:0 auto}
-article{padding-top:calc(var(--doc-in) * 4)}
-.meta{display:flex;align-items:center;gap:calc(var(--doc-in) * 1);line-height:var(--lh-g1)}
-.meta time{margin-inline-start:auto;font-variant-numeric:tabular-nums}
-h1{font-size:var(--title-fs);font-weight:inherit;line-height:1.3;margin-top:calc(var(--doc-in) * 3);
-  padding-bottom:calc(var(--doc-in) * 3);border-bottom:max(1px, calc(var(--doc-in) * .125)) solid currentColor;text-wrap:balance}
+/* 글 머리: 열차 행선 표지 — SIGN-016 | pdf p.82 */
+.train{display:flex;align-items:flex-start;margin-top:calc(var(--in) * 5.625)}
+.train__disc{flex:none;display:grid;place-items:center;width:calc(var(--tin) * 12);height:calc(var(--tin) * 12)}   /* GRID-016 | 1ft 칸 */
+.train__disc .disc{--d:calc(var(--tin) * 11)}                                                                    /* DISC-001 | 11in */
+.train__field{flex:1 1 auto;min-width:0;min-height:calc(var(--tin) * 12);background:var(--fg);color:var(--bg);
+  --font-weight:var(--font-weight-dark);font-weight:var(--font-weight);                     /* DEC-019: 검정 바탕 흰 글자 */
+  padding:calc(var(--tin) * .5) calc(var(--tin) * .5) calc(var(--tin) * 1.625)}            /* GRID-003/006 | 위·옆 ½in, 두 줄이면 아래 1⅝in로 정확히 12in */
+:root[data-theme=dark] .train__field{--font-weight:var(--font-weight-light)}
+.train h1{font-size:var(--t-fs);line-height:var(--lh-g2);font-weight:inherit;margin-inline-start:calc(-1 * var(--lsb-pull));text-wrap:balance}   /* GRID-006, DEC-025 */
 
-.body{font-size:var(--body-fs);line-height:var(--body-lh);padding-top:calc(var(--doc-in) * 4)}
-.body>*+*{margin-top:1em}
-.body h2,.body h3{font-size:inherit;font-weight:inherit;margin-top:2.5em}
-.body h2{border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;padding-top:.75em}
-.body a{text-decoration:underline;text-decoration-thickness:max(1px, .06em);text-underline-offset:.2em}
-.body ul,.body ol{padding-inline-start:1.25em}
-.body li+li{margin-top:.35em}
-.body blockquote{padding-inline-start:1em;border-inline-start:max(2px, calc(var(--doc-in) * .25)) solid currentColor}
+/* 노선 · 날짜 — 안내 크기 한 줄 */
+.meta{display:flex;flex-wrap:wrap;gap:0 calc(var(--in) * 1.875);margin:calc(var(--in) * 1.875) 0 0 var(--gut)}
+
+/* 본문 */
+.body{--lh:1.5;margin:calc(var(--in) * 5.625) 0 0 var(--gut);line-height:var(--lh)}         /* DEC-020 */
+.body:lang(ko){--lh:1.7}                                                                    /* DEC-033 | 긴 한글 글 */
+.body>*+*{margin-top:calc(var(--in) * 1.875)}                                               /* GRID-007 | 1⅞in */
+.body h2{font-size:var(--t-fs);line-height:var(--lh-g2);font-weight:inherit;text-wrap:balance;margin-inline-start:calc(-1 * var(--lsb-pull))}   /* DEC-005 | 방향 크기 */
+.body>h2{margin-top:calc(var(--in) * 5.625)}                                                /* GRID-006 | 5⅝in */
+.body>h2+*{margin-top:calc(var(--in) * 1.875 - (var(--lh) / 2 - var(--trim-k)) * 1em)}       /* GRID-007 | 소제목 기준선 → 본문 대문자 윗선 1⅞in */
+.body h3{font-size:inherit;font-weight:inherit;border-top:var(--rule) solid currentColor;padding-top:calc(var(--in) * 1.875)}
+.body>h3{margin-top:calc(var(--in) * 5.625)}
+.body>h3+*{margin-top:calc(var(--in) * .5)}
+.body a{text-decoration:underline;text-decoration-thickness:var(--rule);text-underline-offset:.18em}   /* DEC-006 */
+.body strong,.body em{font-weight:inherit;font-style:normal}                                 /* TYPE-002, DONT-001: 한 굵기, 기울임 없음 */
+.body code{font:inherit}                                                                     /* DONT-001: 다른 서체 없음 */
+
+/* 목록: 기호는 본문 선 왼쪽에 건다(본문 왼쪽 선이 끊기지 않게). 기호 = 안내 cap의 절반 원, cap 높이 가운데 */
+.body ul,.body ol{list-style:none}
+.body li{position:relative}
+.body li+li{margin-top:calc(var(--in) * .5)}
+.body li::before{position:absolute;left:calc(-1 * var(--hang))}
+.body ul>li::before{content:"";--b:calc(var(--in) * .6875);width:var(--b);height:var(--b);border-radius:50%;background:currentColor;
+  top:calc((var(--lh) / 2 + var(--cap-em) / 2 - var(--trim-k)) * 1em - var(--b) / 2)}
+.body ol{counter-reset:n}
+.body ol>li{counter-increment:n}
+.body ol>li::before{content:counter(n)}
+/* 인용: 같은 크기, 1⅞in 들여 넣고 본문 왼쪽 선에 ½in 선. 선은 첫 줄 대문자 윗선부터 끝 줄 기준선까지 */
+.body blockquote{position:relative;padding-inline-start:var(--hang)}
+.body blockquote::before{content:"";position:absolute;left:0;width:calc(var(--in) * .5);background:currentColor;
+  top:calc((var(--lh) / 2 - var(--trim-k)) * 1em);bottom:calc((var(--lh) / 2 + var(--trim-k) - var(--cap-em)) * 1em)}
+.body blockquote>*+*{margin-top:calc(var(--in) * 1.875)}
+@media (max-width:640px){.body ul,.body ol{padding-inline-start:var(--hang)}}
+/* 구분선·그림은 단 전체(원판 칸 아래까지) */
+.body hr{border:0;border-top:var(--rule) solid currentColor;margin-inline-start:calc(-1 * var(--gut))}
+.body>hr,.body>hr+*{margin-top:calc(var(--in) * 5.625)}
+.body figure{margin-inline-start:calc(-1 * var(--gut))}
 .body img{display:block;max-width:100%;height:auto}
-.body figure figcaption{font-size:1rem;line-height:1.5;margin-top:.5em}
-.body hr{border:0;border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;margin:2.5em 0}
-.body strong,.body em{font-weight:inherit;font-style:normal}   /* 한 굵기(TYPE-002), 기울임 없음: 강조는 글로 */
+.body figure img{width:100%}
+.body figcaption{font-size:1rem;line-height:var(--lh-g1);margin:calc(var(--in) * .5) 0 0 var(--gut)}   /* 안내 크기(배율 없이) */
 
-/* 이전 글 · 다음 글 */
-.seq{display:flex;justify-content:space-between;gap:calc(var(--doc-in) * 3);margin-top:calc(var(--doc-in) * 9);
-  padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor;line-height:1.5}
-.seq a{display:flex;flex-direction:column;gap:.25em;max-width:48%}
-.seq .next{margin-inline-start:auto;text-align:right}
+/* 이전 글 · 다음 글 — DEC-014 안내 막대: 띠 + [화살표][글] */
+.seq{display:grid;grid-template-columns:1fr 1fr;gap:var(--in);margin-top:var(--ft)}
 .seq:empty{display:none}
-.end{margin-top:calc(var(--doc-in) * 9);padding-top:calc(var(--doc-in) * 2);border-top:max(1px, calc(var(--doc-in) * .125)) solid currentColor}
-.seq:not(:empty)+.end{margin-top:calc(var(--doc-in) * 4);border-top:0;padding-top:0}
-.seq small{font-size:inherit;opacity:.55}
+.seq a{grid-column:1;display:flex;align-items:baseline;gap:calc(var(--in) * .5);border-top:var(--band) solid currentColor;
+  padding-top:calc(var(--in) * .5)}
+.seq a.next{grid-column:2}
+.seq a>span{display:flex;flex-direction:column;min-width:0}
+.seq small{font-size:inherit}
+@media (max-width:640px){.seq{grid-template-columns:1fr}.seq a.next{grid-column:1}}
 
-/* 노선 원판(DISC-001/004, 윤곽 DEC-035): src/map.html의 .disc·.disc--inline과 같은 규칙. 그쪽이 바뀌면 여기도 맞춘다 */
-.disc{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375 * 1.4);display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);
+/* 끝: 방향 표지 — SIGN-003 | pdf p.62: 띠 + [화살표 1ft 칸][문구 Grid 2] */
+.dir{display:flex;align-items:flex-start;margin-top:var(--ft);border-top:calc(var(--tin) * 1.625) solid currentColor}
+.seq:not(:empty)+.dir{margin-top:calc(var(--in) * 5.625)}
+.dir__arrow{flex:none;display:grid;place-items:center;width:calc(var(--tin) * 12);height:calc(var(--tin) * 12)}   /* GRID-017 */
+.dir__arrow .arrow{--d:calc(var(--tin) * 11)}                                                                    /* ARROW-004 | 11in 원 */
+.dir__copy{padding:calc(var(--tin) * .5) 0 0 calc(var(--tin) * .5);font-size:var(--t-fs);line-height:var(--lh-g2)}   /* GRID-003 | ½in */
+.dir:hover .dir__copy{text-decoration:underline;text-decoration-thickness:max(1px, calc(var(--tin) * .125));text-underline-offset:.18em}
+
+/* 노선 원판(DISC-001/004, 윤곽 DEC-035): src/map.html의 .disc와 같은 규칙. 그쪽이 바뀌면 여기도 맞춘다 */
+.disc{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375);display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);
   border-radius:50%;background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
   line-height:1;position:relative}
 .disc>span{display:block;color:var(--disc-text,inherit)}

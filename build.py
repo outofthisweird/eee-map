@@ -175,8 +175,11 @@ def build_posts(data_text, post_tokens):
     for p in posts:
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
-        seq = (f'<a class="prev" href="{prev["slug"]}.html"><small>이전 글</small>{html.escape(prev["title"])}</a>' if prev else "") + \
-              (f'<a class="next" href="{nxt["slug"]}.html"><small>다음 글</small>{html.escape(nxt["title"])}</a>' if nxt else "")
+        arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#nyarrow"/></svg>'   # DEC-014: [화살표][글]
+        seq = (f'<a class="prev" href="{prev["slug"]}.html">{arrow.format("left")}<span><small>이전 글</small>'
+               f'<span class="t">{html.escape(prev["title"])}</span></span></a>' if prev else "") + \
+              (f'<a class="next" href="{nxt["slug"]}.html">{arrow.format("right")}<span><small>다음 글</small>'
+               f'<span class="t">{html.escape(nxt["title"])}</span></span></a>' if nxt else "")
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl
         for key, val in (("__TITLE__", html.escape(p["title"])), ("__SUMMARY__", html.escape(p.get("summary", ""))), ("__ID__", p["id"]),
