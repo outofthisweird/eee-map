@@ -552,14 +552,14 @@ td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg)
   --font-weight: var(--font-weight-dark);               /* DEC-031, DEC-019 | - | [설계결정] white type → irradiation weight */
   color: var(--bg);                                     /* DEC-031, SIGN-016 | pdf p.82 | [설계결정] reverse of the page */
   background:
-    linear-gradient(var(--bg), var(--bg)) 0 calc(var(--p-in) * 0.5) / 100% var(--p-rule) no-repeat, /* DEC-031 | - | [설계결정] rule ½in below the top edge */
+    linear-gradient(var(--bg), var(--bg)) 0 calc(var(--p-in) * 1.5) / 100% var(--p-rule) no-repeat, /* DEC-031, DEC-040 | - | [설계결정] rule 1½in below the top edge: 1½ + ⅛in = the 1⅝in band (GRID-013) */
     var(--fg);
   font-size: var(--p-fs);                               /* DEC-031, TYPE-007 | - | [설계결정] */
   font-weight: var(--font-weight);
   line-height: var(--lh-g1);                            /* GRID-007 | pdf p.11 | [변환] */
   border: 0;
   margin: auto;                                         /* DEC-031 | - | [설계결정] centred when modal */
-  padding: calc(var(--p-in) * 1.125) calc(var(--p-in) * 0.5) calc(var(--p-in) * (0.5 + 0.235 * 1.375)); /* DEC-031, GRID-003, GRID-011 | - | [설계결정] top ½ + ⅛ + ½in; sides ½in; bottom ½in below the descender guide (0.235 cap) */
+  padding: calc(var(--p-in) * 2.125) calc(var(--p-in) * 0.5) calc(var(--p-in) * (0.5 + 0.235 * 1.375)); /* DEC-031, GRID-003, GRID-011 | - | [설계결정] top 1½ + ⅛ + ½in (DEC-040); sides ½in; bottom ½in below the descender guide (0.235 cap) */
   width: max-content;
   max-inline-size: min(calc(var(--p-in) * 48), calc(100% - 2 * var(--doc-space-3))); /* DEC-031 | - | [설계결정] ≤ 4 ft */
   max-block-size: calc(100% - 2 * var(--doc-space-3));
@@ -697,9 +697,9 @@ td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg)
   width:calc(var(--module) * 6);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
 
 /* [eee] 이 페이지의 모듈 판(글 머리·끝 표지)은 바탕과 반대 색 반전 판(2026-11-21 사용자 요청: 판이 바탕과 분리되어 보이게).
-   노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 대신 위 ½in + ⅛in 바탕색 줄, 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
-.page .plate{border-top:0;padding-top:calc(var(--in) * .5 + var(--stroke-divider));color:var(--bg);
-  background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * .5) / 100% var(--stroke-divider) no-repeat, var(--fg);
+   노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 자리에 위 1½in + ⅛in 바탕색 줄(합쳐서 띠 1⅝in, DEC-040), 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
+.page .plate{border-top:0;padding-top:calc(var(--in) * 1.5 + var(--stroke-divider));color:var(--bg);
+  background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * 1.5) / 100% var(--stroke-divider) no-repeat, var(--fg);
   --font-weight:var(--font-weight-dark);font-weight:var(--font-weight)}          /* DEC-019: 검정 판의 흰 글자 */
 :root[data-theme=dark] .page .plate{--font-weight:var(--font-weight-light)}
 .page .plate h1,.page .plate .t-direction{font-weight:inherit}

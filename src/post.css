@@ -14,9 +14,9 @@
   width:calc(var(--module) * 6);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
 
 /* [eee] 이 페이지의 모듈 판(글 머리·끝 표지)은 바탕과 반대 색 반전 판(2026-11-21 사용자 요청: 판이 바탕과 분리되어 보이게).
-   노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 대신 위 ½in + ⅛in 바탕색 줄, 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
-.page .plate{border-top:0;padding-top:calc(var(--in) * .5 + var(--stroke-divider));color:var(--bg);
-  background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * .5) / 100% var(--stroke-divider) no-repeat, var(--fg);
+   노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 자리에 위 1½in + ⅛in 바탕색 줄(합쳐서 띠 1⅝in, DEC-040), 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
+.page .plate{border-top:0;padding-top:calc(var(--in) * 1.5 + var(--stroke-divider));color:var(--bg);
+  background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * 1.5) / 100% var(--stroke-divider) no-repeat, var(--fg);
   --font-weight:var(--font-weight-dark);font-weight:var(--font-weight)}          /* DEC-019: 검정 판의 흰 글자 */
 :root[data-theme=dark] .page .plate{--font-weight:var(--font-weight-light)}
 .page .plate h1,.page .plate .t-direction{font-weight:inherit}

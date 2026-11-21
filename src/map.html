@@ -24,9 +24,10 @@
        so the map runs on under the status bar; the UI keeps clear of it by the safe-area insets (0 elsewhere) */
     --sa-t:env(safe-area-inset-top, 0px);--sa-r:env(safe-area-inset-right, 0px);--sa-b:env(safe-area-inset-bottom, 0px);--sa-l:env(safe-area-inset-left, 0px);
     --ui-btn:40px;                                 /* [eee] tool / zoom button = square */
-    --rp-gap:calc(var(--doc-in) * .5);             /* DEC-031 | ½in field above the rule */
+    --rp-band:calc(var(--doc-in) * 1.5);           /* DEC-040 | 1½in field above the rule (+ ⅛in rule = the 1⅝in band, GRID-013) */
+    --rp-gap:calc(var(--doc-in) * .5);             /* DEC-031 | ½in from the rule to the first cap line */
     --rp-rule:max(1px, calc(var(--doc-in) * .125));/* DEC-031, SIGN-023 | ⅛in rule */
-    --rp-top:calc(var(--rp-gap) * 2 + var(--rp-rule)); /* DEC-031 | ½ + ⅛ + ½in to the first cap line */
+    --rp-top:calc(var(--rp-band) + var(--rp-rule) + var(--rp-gap)); /* DEC-031, DEC-040 | 1½ + ⅛ + ½in to the first cap line */
     --rp-side:calc(var(--doc-in) * .5);            /* GRID-003 | ½in side margin */
     --ft:calc(var(--doc-in) * 12);                 /* GRID-002 | 1 ft module = 12in (≈ 100px) */
     /* [eee 설계결정] Hangul rises above the cap line and drops below the baseline, so Grid 1 (pitch 1⅞in, lh .95)
@@ -122,7 +123,7 @@
 
   /* ---- reverse plate (DEC-031): every UI box ---- */
   .rplate{--font-weight:var(--font-weight-dark);color:var(--bg);font-weight:var(--font-weight);
-    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
+    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-band) / 100% var(--rp-rule) no-repeat, var(--fg)}
   :root[data-theme=dark] .rplate{--font-weight:var(--font-weight-light)}   /* black type on white: no irradiation compensation */
   :root[data-print] .rplate{filter:var(--print-filter)}                   /* nycta DEC-038 ink edge on eee's plates (nycta names them .plate/.popup) */
   /* [eee] the map's ink edge is its own filter, #eee-ink (2026-11-19, phones): the same displacement as nycta's #nycta-ink,
@@ -138,7 +139,7 @@
      Copy hangs from the top-left margin (GRID-003/004); the extra room stays empty at the bottom right. DESIGN.plate */
 
   /* logo: directional plate, Grid 2 (GRID-006, TYPE-006): two lines of 4¼in caps, pitch 5⅝in, hung from the top-left margin.
-     [eee] the reverse-plate band (½ + ⅛in) comes out of GRID-006's 1⅝in bottom: 1⅛ + 4¼ + 1⅜ + 4¼ + 1in (descender guide, GRID-011) = 12in */
+     [eee] the reverse-plate band (1½ + ⅛in = 1⅝in, DEC-040) sits above the 12in field, like .plate: ½ + 4¼ + 1⅜ + 4¼ + 1in (descender guide, GRID-011) = 11⅜in */
   #logo{position:fixed;top:calc(var(--edge) + var(--sa-t));left:calc(var(--edge) + var(--sa-l));z-index:5;
     --l-cap:4.25;--l-lh:var(--lh-g2);font-size:calc(var(--doc-in) * var(--l-cap) / var(--cap-em));line-height:var(--l-lh);
     padding:var(--rp-top) var(--rp-side) calc(var(--doc-in) * var(--l-cap) * .235) var(--rp-side)}
@@ -148,7 +149,7 @@
   /* legend: [disc] [series], hierarchy by order (no weekday since 2026-11-21, 사용자 요청) */
   /* [eee] informational plate (TYPE-007): 1⅜in caps, discs inline (DEC-034); no rules between rows. Bottom ½in below the descender guide, like DEC-031.
      [eee 설계결정 2026-11-21] six rows (G added) at Grid 1's 1⅞in pitch came to 12.7in, so the plate grew to 2 ft. The legend's pitch is
-     1.7in instead (gap ½ → .325in): 1⅛ (band) + 1⅜ + 5 × 1.7 + .82 (descender + ½) = 11.8in, one 1 ft module (user approved) */
+     1.7in instead (gap ½ → .325in): ½ (below the band, DEC-040) + 1⅜ + 5 × 1.7 + .82 (descender + ½) = 11.2in, one 1 ft module (user approved) */
   #legend{position:fixed;left:calc(var(--edge) + var(--sa-l));bottom:calc(var(--edge) + var(--sa-b));z-index:5;display:block;
     --l-lh:calc(1.7 / 1.375 * var(--cap-em));line-height:var(--l-lh);
     --l-trim:calc((var(--trim-k) - var(--l-lh) / 2) * 1em);
@@ -188,7 +189,7 @@
   /* [eee] desktop popup is a bigger plate (2026-11-19 사용자 요청: 글자가 작다): the whole sign scales by --p-scale (type, margins,
      rule, disc, 1 ft module), so it stays a Grid 1 information plate, just larger. Phones keep 1 (DESIGN-free, CSS only). */
   #panel{--p-scale:1.5;--p-in:calc(var(--doc-in) * var(--p-scale));--p-fs:calc(1rem * var(--p-scale));
-    --rp-gap:calc(var(--p-in) * .5);--rp-rule:max(1px, calc(var(--p-in) * .125));--rp-top:calc(var(--rp-gap) * 2 + var(--rp-rule));
+    --rp-band:calc(var(--p-in) * 1.5);--rp-gap:calc(var(--p-in) * .5);--rp-rule:max(1px, calc(var(--p-in) * .125));--rp-top:calc(var(--rp-band) + var(--rp-rule) + var(--rp-gap));
     --rp-side:calc(var(--p-in) * .5);--ft:calc(var(--p-in) * 12);position:fixed;top:0;left:0;z-index:10;opacity:0;pointer-events:none;
     width:max-content;max-width:min(calc(var(--doc-in) * 48), calc(100vw - 24px));          /* ≤ 4 ft at page scale */
     padding:var(--rp-top) var(--rp-side) calc(var(--p-in) * (.5 + .235 * 1.375));           /* bottom ½in below the descender guide */
@@ -210,7 +211,7 @@
   .arrow[data-dir=down-left]{transform:rotate(135deg)}   /* [eee] ↙ 돌아가기: not one of the manual's directions (ARROW-001/006), user's pick, same as posts/post.css */
 
   /* ---- [eee] reading plate (2026-11-21 사용자 요청: 웹 연재(G) 팝업의 요약을 누르면 페이지를 넘기지 않고 팝업 판이 읽기 판으로 커진다) ----
-     Layout from lab/post-d.html ("팝업처럼"): the same reverse plate (DEC-031: ½in field, ⅛in rule, ½in to the first cap), grown into a
+     Layout from lab/post-d.html ("팝업처럼"): the same reverse plate (DEC-031: 1½in field (DEC-040), ⅛in rule, ½in to the first cap), grown into a
      wide plate in the middle of the screen; the map stays behind it (a few strands and the current station show beside it, the
      camera puts the station just left of the title). Inside: title (G disc + title, direction size), the copy, and the end line
      [← (G) 이전 글] [(G) 다음 글 →] [돌아가기 ↙] flowing like one paragraph (사용자 취향: no ellipsis, no per-item breaks, no underline).
@@ -219,9 +220,9 @@
   #reader{display:none}
   /* opening / closing: the blank plate that grows from / shrinks back into the popup (plateMorph); no ink filter on it (a filter would
      repaint every frame) */
-  .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;--rp-gap:calc(var(--doc-in) * .75);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
+  .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;--rp-band:calc(var(--doc-in) * 2.25);--rp-rule:max(1px, calc(var(--doc-in) * .1875))}
   :root[data-print] .rghost{filter:none}
-  @media (max-width:640px){.rghost{--rp-gap:calc(var(--doc-in) * .5);--rp-rule:max(1px, calc(var(--doc-in) * .125))}}
+  @media (max-width:640px){.rghost{--rp-band:calc(var(--doc-in) * 1.5);--rp-rule:max(1px, calc(var(--doc-in) * .125))}}
   #panel.hold{opacity:0}   /* (not visibility: the reader takes the focus while the ghost grows) */
   #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
     --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
@@ -229,12 +230,12 @@
     left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:calc(var(--edge) + var(--sa-t));width:var(--r-w);max-width:none;height:auto;
     max-height:calc(100dvh - 2 * var(--edge) - var(--sa-t) - var(--sa-b));display:flex;flex-direction:column;padding:0}
   #panel.reading .body{display:none}
-  /* [eee] the scroll box starts at the plate's top edge and the band (½in field + ⅛in rule) is laid over it, not above it
+  /* [eee] the scroll box starts at the plate's top edge and the band (1½in field + ⅛in rule, DEC-040) is laid over it, not above it
      (2026-11-21 사용자 보고: 제목 글자 윗부분이 잘림): the title hangs from the cap line, and its disc and the Hangul strokes that rise
      above the cap were cut where a scroll box starting at the cap line clips. Now they show in the ½in under the rule, and the copy
      scrolls up to the rule and under the band */
-  #panel.reading::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--rp-gap) + var(--rp-rule));z-index:1;pointer-events:none;
-    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-gap) / 100% var(--rp-rule) no-repeat, var(--fg)}
+  #panel.reading::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--rp-band) + var(--rp-rule));z-index:1;pointer-events:none;
+    background:linear-gradient(var(--bg),var(--bg)) 0 var(--rp-band) / 100% var(--rp-rule) no-repeat, var(--fg)}
   #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
     padding:var(--rp-top) var(--r-room) calc(var(--p-in) * 2) var(--rp-side);scrollbar-width:thin;   /* margins inside the scroll box: nothing that hangs out (disc, first-glyph pull) is clipped */
    scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
@@ -1454,6 +1455,8 @@ function applyLang(){
 applyLang();
 // [eee] UI plates in module sizes (GRID-012): the shortest standard length (DESIGN.plate.lengths) that leaves ≥ .roomIn
 // inch beside the copy (DEC-030's room rule); then the height it wraps to, in whole 1 ft modules.
+// the band (field + rule) above a reverse plate's whole-foot field, in px (DEC-040)
+function bandH(el){const pr=document.createElement('div');pr.style.cssText='position:absolute;visibility:hidden;height:calc(var(--rp-band) + var(--rp-rule))';el.append(pr);const h=pr.getBoundingClientRect().height;pr.remove();return h}
 function fitPlate(el){
   if(!el)return; el.style.width=el.style.height='';
   const phone=PHONE.matches;
@@ -1463,7 +1466,7 @@ function fitPlate(el){
   const w0=el.getBoundingClientRect().width/ft, n=P.lengths.length;
   const w=P.lengths.find(l=>(l-w0)*12>=P.roomIn)||P.lengths[n-1];   // shortest standard plate with ≥ 1in to spare
   el.style.width=w*ft+'px'; if(phone)return;   // phones: the logo keeps its standard length (the room on the right), its height hugs (2026-11-19)
-  el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
+  const bd=bandH(el); el.style.height=bd+Math.max(1,Math.ceil((el.getBoundingClientRect().height-bd)/ft-1e-6))*ft+'px';   // modules stack in whole feet below the band (DEC-040)
 }
 function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup();if(reading&&follow===reading)centerOn(reading,0,false)}
 // [eee] the popup width fits its text (2026-11-19): a wrapped paragraph keeps its max width, so shrink it to the longest line. Height stays in whole feet
@@ -1474,7 +1477,7 @@ function fitPopup(){
   tx.style.width=Math.ceil(w)+1+'px'; panel.style.height=''; popW=popH=0;
   if(PHONE.matches)return;   // phones: the height hugs the copy too
   const pr=document.createElement('div'); pr.style.cssText='position:absolute;visibility:hidden;width:var(--ft)'; panel.append(pr); const ft=pr.getBoundingClientRect().width; pr.remove();   // the popup's own (scaled) foot
-  panel.style.height=Math.max(1,Math.ceil(panel.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // height stays in whole feet (room below)
+  const bd=bandH(panel); panel.style.height=bd+Math.max(1,Math.ceil((panel.getBoundingClientRect().height-bd)/ft-1e-6))*ft+'px';   // whole feet below the band (DEC-040, room below)
 }
 function setLang(l){
   lang=l; try{localStorage.setItem('eee-lang',l)}catch(e){}
