@@ -1,2 +1,2 @@
 source: github.com/outofthisweird/nycta-gsm (public web/ output)
-commit: ea4af9c 2026-11-20 Print layer: hold texture at screen-pixel size at any zoom (DEC-039)
+commit: ff37911 2026-11-21 .compact: module-derived tokens follow its own --module (DEC-016)

@@ -3,24 +3,26 @@
    원칙(2026-11-21 사용자 요청 "원래 있는 모듈을 최대한 이용"): 모양은 nycta 구성요소가 정하고, 여기에는 그것들을
    한 페이지에 놓는 자리와 nycta에 없는 글 요소(인용·구분선·그림)만 둔다. 새 크기나 간격 값은 만들지 않는다.
    - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 원판·연재·날짜는 판 아래 한 줄
+   - 모듈 판은 바탕과 반대 색(반전 판, DEC-031 구성)
    - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
    - 이전·다음 글 = .guide(DEC-014), 끝 = .plate.sign-direction(SIGN-003): [화살표 1ft][노선도 4ft]
    ========================================================================== */
 
-/* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 6ft 판이 화면 폭에 꼭 맞을 때까지만 줄인다
-   (.compact처럼 --module만 바꾼다. 원래 값이면 390px 화면에서 6ft 판이 240px로 남는다) */
+/* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 6ft 판이 화면 폭에 꼭 맞을 때까지만 줄인다.
+   .module-scope(nycta DEC-016 메모)라서 글자·띠·원판 토큰도 이 모듈로 다시 계산된다 */
 .page{--module:clamp(40px, (100vw - 2 * var(--doc-space-3)) / 6, 97.75px);
-  /* 모듈에서 나오는 토큰은 :root에서 계산이 끝난 값으로 물려받으므로, 같은 공식(nycta §1)을 여기서 다시 선언해야 글자·원판·띠도 따라온다 */
-  --in:calc(var(--module) / 12);
-  --cap-l:calc(var(--in) * 9);--cap-m:calc(var(--in) * 4.25);--cap-s:calc(var(--in) * 1.375);
-  --fs-l:calc(var(--cap-l) / var(--cap-em));--fs-m:calc(var(--cap-m) / var(--cap-em));--fs-s:max(12px, calc(var(--cap-s) / var(--cap-em)));
-  --space-margin:calc(var(--in) * .5);--space-gap-g1:calc(var(--in) * .5);--space-gap-g2:calc(var(--in) * 1.375);--space-disc-text:calc(var(--in) * .5);
-  --stroke-band:calc(var(--in) * 1.625);--stroke-divider:max(1px, calc(var(--in) * .125));
-  --disc-l:calc(var(--in) * 11);--disc-m:calc(var(--in) * 5.5);--disc-s:calc(var(--in) * 1.6875);
   width:calc(var(--module) * 6);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
 
 /* 맨 위 [화살표][노선도] — nycta .nav 그대로, 아래로 GRID-006 5⅝in */
 .page>nav{margin-bottom:var(--doc-space-4)}
+
+/* [eee] 이 페이지의 모듈 판(글 머리·끝 표지)은 바탕과 반대 색 반전 판(2026-11-21 사용자 요청: 판이 바탕과 분리되어 보이게).
+   노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 대신 위 ½in + ⅛in 바탕색 줄, 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
+.page .plate{border-top:0;padding-top:calc(var(--in) * .5 + var(--stroke-divider));color:var(--bg);
+  background:linear-gradient(var(--bg), var(--bg)) 0 calc(var(--in) * .5) / 100% var(--stroke-divider) no-repeat, var(--fg);
+  --font-weight:var(--font-weight-dark);font-weight:var(--font-weight)}          /* DEC-019: 검정 판의 흰 글자 */
+:root[data-theme=dark] .page .plate{--font-weight:var(--font-weight-light)}
+.page .plate h1,.page .plate .t-direction{font-weight:inherit}
 
 /* 글 머리: 표준 길이 모듈 판 하나(.plate > .m, GRID-012/014). 제목은 방향 크기 Grid 2(.t-direction), 길이·높이는 post.html 스크립트 */
 .head h1{text-wrap:balance}
