@@ -30,13 +30,14 @@ __BODY__
   </main>
 </div>
 <script>/* [eee] 모듈 판 길이(글 머리·끝 줄): 노선도 로고·범례(fitPlates)와 같은 규칙. 표준 길이(GRID-012/SIGN-012) 1·2·4·6ft 중
-   글 한 줄 옆에 1in 이상 남는 가장 짧은 것(DEC-030), 안 되면 6ft. 제목은 6ft에서 줄을 바꾸고, 끝 줄은 바꾸지 않는다.
+   글 한 줄 옆에 1in 이상 남는 가장 짧은 것(DEC-030), 안 되면 6ft. 제목은 6ft에서 줄을 바꾸고, 끝 줄은 바꾸지 않고 6ft에서 제목을 말줄임한다.
    높이는 1ft, 넘치면 1ft 단위. 스크립트가 없으면 6×1ft */
 (function(){var L=[1,2,4,6],cells=[].slice.call(document.querySelectorAll('.page .plate>.m'));if(!cells.length)return;
 function fit(){cells.forEach(function(c){var t=c.firstElementChild;
   L.forEach(function(n){c.classList.remove('m-'+n)});c.classList.add('m-6');c.style.height='';
   var M=c.getBoundingClientRect().width/6,inch=M/12,r=document.createRange();
-  t.style.whiteSpace='nowrap';r.selectNodeContents(t);var w=r.getBoundingClientRect().width;t.style.whiteSpace='';
+  var w;if(t.tagName==='UL'){t.style.width='max-content';w=t.getBoundingClientRect().width;t.style.width=''}   /* 끝 줄: 말줄임 전 원래 길이 */
+  else{t.style.whiteSpace='nowrap';r.selectNodeContents(t);w=r.getBoundingClientRect().width;t.style.whiteSpace=''}
   var n=L.filter(function(n){return inch*.5+w+inch<=n*M})[0];if(n){c.classList.remove('m-6');if(n>1)c.classList.add('m-'+n)}
   var H=c.scrollHeight;if(H>M+1)c.style.height=Math.ceil(H/M-.02)*M+'px'})}
 fit();if(document.fonts)document.fonts.ready.then(fit);addEventListener('resize',fit)})();</script>
