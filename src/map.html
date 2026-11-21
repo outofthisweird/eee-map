@@ -86,6 +86,7 @@
   #gridpat .gl{fill:none;stroke:var(--fg);stroke-opacity:.09;stroke-width:1}
   #gridpat .gd{fill:var(--fg);fill-opacity:.28}
   ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+  @property --here{syntax:'<length>';inherits:true;initial-value:16px}   /* [eee] reading plate: see #reader */
   /* [eee] ◐ (2026-11-19): during the circle the page is a still picture of the old theme. So that it doesn't look frozen,
      the trains layer is its own live layer above the circle (only its new state, nothing to cross-fade).
      (Chrome sends every pointer event to <html> while the transition runs; pointer-events:none on ::view-transition
@@ -203,6 +204,72 @@
   #panel .pclose{white-space:nowrap}
   #panel a,#panel button{color:inherit;text-decoration:underline;text-decoration-thickness:var(--rp-rule);text-underline-offset:.18em}  /* DEC-006 */
   #panel #psum{text-decoration:none}                                                       /* [eee] the summary is the Instagram link, no underline (2026-11-19) */
+  .arrow[data-dir=down-left]{transform:rotate(135deg)}   /* [eee] ↙ 돌아가기: not one of the manual's directions (ARROW-001/006), user's pick, same as posts/post.css */
+
+  /* ---- [eee] reading plate (2026-11-21 사용자 요청: 웹 연재(G) 팝업의 요약을 누르면 페이지를 넘기지 않고 팝업 판이 읽기 판으로 커진다) ----
+     Layout from lab/post-d.html ("팝업처럼"): the same reverse plate (DEC-031: ½in field, ⅛in rule, ½in to the first cap), grown into a
+     wide plate in the middle of the screen; the map stays behind it (a few strands and the current station show beside it, the
+     camera puts the station just left of the title). Inside: title (G disc + title, direction size), the copy, and the end line
+     [← (G) 이전 글] [(G) 다음 글 →] [돌아가기 ↙] flowing like one paragraph (사용자 취향: no ellipsis, no per-item breaks, no underline).
+     The plate's own inch comes from the copy: copy = information size (cap 1⅜in), so the band, margins and rule scale with it.
+     Width hugs the copy: ½in left + ~34em + DEC-030's ≥ 1in room on the right. It scrolls inside; the band stays on top. */
+  #reader{display:none}
+  #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
+    --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
+    --r-lmin:max(72px, 8vw);font-size:var(--r-fs);
+    left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:var(--edge);width:var(--r-w);max-width:none;height:auto;
+    max-height:calc(100dvh - 2 * var(--edge));display:flex;flex-direction:column;padding:var(--rp-top) 0 0 var(--rp-side)}
+  #panel.reading .body{display:none}
+  #panel.reading #reader{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;outline:none;
+    padding:0 var(--r-room) calc(var(--p-in) * 2) 0;scrollbar-width:thin;scrollbar-color:color-mix(in srgb, currentColor 35%, transparent) transparent}
+  :root[data-print] #panel.reading{filter:none}   /* [eee] no ink edge on the reading plate: a filter over a scrolling box re-rasters on every scroll, and blurs long copy */
+  html.reading #logo,html.reading #legend,html.reading #tools,html.reading #zoom,html.reading #snaptune{visibility:hidden}   /* the map's chrome steps aside */
+  #reader h1,#reader h2,#reader h3,#reader strong,#reader em{font-weight:inherit;font-style:normal}   /* TYPE-002, DONT-001: one weight */
+  /* title: direction size (TYPE-006, Grid 2 cap 4¼in of the plate's inch), never wider than the phone allows */
+  #rtitle{font-size:min(calc(var(--p-in) * 4.25 / var(--cap-em)), 8vw);line-height:var(--lh-g2);text-wrap:balance;
+    --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);margin:var(--t-trim) 0 .7em calc(-1 * var(--lsb-pull))}
+  @supports (text-box: trim-both cap alphabetic){#rtitle{--t-trim:0px;text-box:trim-start cap alphabetic}}
+  /* --here = the font size of the line a disc or arrow sits in, as a length (registered, so 1em is fixed where it is set, not inside
+     the disc, whose own font size is its glyph) */
+  #rtitle,#rbody,#rbody h2,#rbody h3,#rbody blockquote,#rnav{--here:1em}
+  #rtitle>.disc:first-child{margin-inline-end:calc(var(--here) * var(--cap-em) / 4.25 * 1.375)}   /* GRID-006 gap at the title's size */
+  #reader .disc--inline{--d:calc(var(--here) * var(--cap-em) * 1.6875 / 1.375)}               /* DEC-034 at each line's own size */
+  #reader .disc[data-color=black]{box-shadow:0 0 0 1px var(--bg)}                         /* a black disc on the black plate: page-colour ring */
+  /* copy: the size and pitch the user picked (clamp 17–20px, 1.5), lines ≈ 34em */
+  #rbody{max-width:34em;line-height:1.5}
+  /* [eee] long white-on-black copy (light theme): pure white on pure black glares over many lines, so the copy (not the title or
+     the end line) is a softer white. The dark theme (black type on the white plate) keeps pure black. */
+  :root:not([data-theme=dark]) #rbody{color:color-mix(in srgb, var(--bg) 86%, var(--fg))}
+  #rbody>*{margin:0 0 1.1em}
+  #rbody>:last-child{margin-bottom:0}
+  #rbody h2{font-size:1.3em;line-height:1.3;margin:1.6em 0 .6em}
+  #rbody h3{font-size:1.1em;line-height:1.4;margin:1.4em 0 .5em}
+  #rbody blockquote{margin:1.3em 0;padding-inline-start:.9em;border-inline-start:4px solid var(--c-orange);font-size:1.3em;line-height:1.3}   /* 주황 왼쪽 줄 (D) */
+  #rbody blockquote>*{margin:0 0 .6em}
+  #rbody blockquote>:last-child{margin-bottom:0}
+  #rbody ul,#rbody ol{padding-inline-start:1.2em}
+  #rbody li+li{margin-top:.3em}
+  #rbody hr{border:0;border-top:var(--rp-rule) solid currentColor;margin:2em 0}
+  #rbody img{display:block;max-width:100%;height:auto}
+  #rbody figcaption{line-height:var(--lh-g1);margin-top:.5em}
+  #rbody code{font:inherit}
+  #rbody a{color:inherit}   /* DEC-006 underline from #panel a */
+  /* end line: one paragraph (posts/post.css .seqbar, the map popup's size), ⅛in rule across the plate above it */
+  #rnav{--n-in:calc(var(--here) * var(--cap-em) / 1.375);font-size:max(1em, 1.5rem);line-height:var(--lh-g1);
+    margin:2.4em calc(-1 * var(--r-room)) 0 calc(-1 * var(--rp-side));padding:calc(var(--p-in) * 1.375) var(--r-room) 0 var(--rp-side);   /* rule, then GRID-006 1⅜in to the cap */
+   
+    background:linear-gradient(currentColor, currentColor) 0 0 / 100% var(--rp-rule) no-repeat}
+  @supports (text-box: trim-both cap alphabetic){#rnav{text-box:trim-both cap alphabetic}}
+  #rnav a{color:inherit;text-decoration:none}
+  #rnav a:not(:last-child){margin-inline-end:calc(var(--n-in) * 1.875 - .25em)}   /* with the space (≈ ¼em) 1⅞in, GRID-007 */
+  #rnav .nw{white-space:nowrap}
+  #rnav .disc--inline,#rnav .prev .arrow{margin-inline:0 calc(var(--n-in) * .5)}   /* GRID-009 ½in, toward the words only */
+  #rnav .next .arrow,#rnav .back .arrow{margin-inline:calc(var(--n-in) * .5) 0}
+  @media (max-width:640px){
+    /* phones: the plate covers almost everything; the station shows in the strip above it */
+    #panel.reading{--r-lmin:0px;left:8px;width:calc(100vw - 16px);top:64px;max-height:calc(100dvh - 72px)}
+    #rnav{font-size:1em}
+  }
 
   @media (max-width:640px){
     :root{--edge:12px}
@@ -249,6 +316,7 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q))){document.
       <p id="ptext"><span id="pxfer"></span><a id="psum" target="_blank" rel="noopener"></a><span class="pclose"><svg class="arrow" data-dir="right" aria-hidden="true"><use href="#nyarrow"/></svg><button id="pclose" data-i18n="close">닫기</button></span></p>
     </div>
   </div>
+  <article id="reader" lang="ko" tabindex="-1"><h1 id="rtitle"></h1><div id="rbody"></div><nav id="rnav" aria-label="이전 글, 다음 글, 돌아가기"></nav></article>
 </aside>
 <nav class="sr" id="srlist" data-i18n-label="list" aria-label="역 목록"></nav>
 
@@ -290,7 +358,7 @@ const DESIGN = {
   interchange:{ size: 0, stroke: 4 },        // [eee] layout-made interchange (white circle) kept until the transfer decision; size ← strand + 8
   label:     { offset: 0, offsetAtInterchange: 0, maxChars: 8, maxCharsEn: 18, size: 0 },   // ← map. maxChars: longer names end in … (Hangul / English)
   train:     { w: 0, h: 0, stroke: 0, radius: 0, speed: 45 },   // w/h/stroke ← strand; speed: ms per px of line (higher = slower); radius 0 = exact rectangle (nycta DEC-009)
-  motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500,
+  motion:    { growPxPerMs: 1.1, popMs: 280, rebuildFadeMs: 240, centerMs: 500, readerMs: 260,   // readerMs: the popup growing into the reading plate (0 = none)
                // ◐ circle wipe: starts at the button's size and moves at once (ease-out); the old ease-in-out left the
                // screen a still picture for ~0.1s after the click (2026-11-19)
                themeMs: 700, themeEase: 'cubic-bezier(.2,.6,.3,1)' },
@@ -1371,10 +1439,10 @@ function fitPlate(el){
   el.style.width=w*ft+'px'; if(phone)return;   // phones: the logo keeps its standard length (the room on the right), its height hugs (2026-11-19)
   el.style.height=Math.max(1,Math.ceil(el.getBoundingClientRect().height/ft-1e-6))*ft+'px';   // modules stack in whole feet
 }
-function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup()}
+function fitPlates(){['#logo','#legend'].forEach(q=>fitPlate($(q)));fitPopup();placePopup();if(reading&&follow===reading)centerOn(reading,0,false)}
 // [eee] the popup width fits its text (2026-11-19): a wrapped paragraph keeps its max width, so shrink it to the longest line. Height stays in whole feet
 function fitPopup(){
-  if(!panel.classList.contains('open'))return; const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
+  if(!panel.classList.contains('open')||reading)return; /* the reading plate sizes itself (CSS) */ const tx=panel.querySelector('.text'), p=$('#ptext'); tx.style.width='';
   const rg=document.createRange(); rg.selectNodeContents(p); const L=p.getBoundingClientRect().left;
   let w=0; for(const r of rg.getClientRects())w=Math.max(w,r.right-L);
   tx.style.width=Math.ceil(w)+1+'px'; panel.style.height=''; popW=popH=0;
@@ -1475,7 +1543,8 @@ function openStation(s,fromHash,keepView){
   const L=s.line;
   $('#pb').innerHTML=disc(L,s.b,'disc');
   const ps=$('#psum'); if(s.ghost){ps.textContent=ghostText(s);ps.href=DESIGN.next.account}else{ps.textContent=stSum(s)||stTitle(s); ps.href=s.u;}
-  ps.target=s.post?'_self':'_blank';   // G (웹 연재): the summary opens the article on this site, in this tab   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers (the other station's name + its disc) and → close on one row (2026-11-19)
+  ps.target=s.post?'_self':'_blank'; ps.onclick=null;
+  if(s.post){ps.href='#read='+encodeURIComponent(s.slug);ps.onclick=e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();openReader(s,'push')}}   // [eee] G: the popup grows into the reading plate (2026-11-21), no page change   // G (웹 연재): the summary opens the article on this site, in this tab   // [eee] popup = summary (links to Instagram; the title if no summary), then transfers (the other station's name + its disc) and → close on one row (2026-11-19)
   const xr=$('#pxfer'); xr.innerHTML=''; (s.xfer||[]).forEach(x=>{const b=document.createElement('button');b.className='xbtn';b.textContent=stName(x);b.insertAdjacentHTML('beforeend',disc(x.line,x.b));b.setAttribute('aria-label',`${T('xfer')}: ${stName(x)} (${seriesName(x.b,x.ser)})`);b.onclick=()=>openStation(x);xr.appendChild(b)});
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); fitPopup(); placePopup();
   if(!fromHash) try{history.replaceState(null,'',s.ghost?location.pathname+location.search:'#'+s.id)}catch(e){}
@@ -1484,10 +1553,10 @@ function openStation(s,fromHash,keepView){
 }
 // ---------- camera lock: a clicked station stays centred until the user moves the map ----------
 let follow=null;
-function visibleCentre(){return innerWidth>640?[innerWidth/2,innerHeight/2]:[innerWidth/2,innerHeight*.3]}
+function visibleCentre(s,k){if(reading)return readerAnchor(s,k);return innerWidth>640?[innerWidth/2,innerHeight/2]:[innerWidth/2,innerHeight*.3]}
 // popup sits beside its station and moves with the map
 function placePopup(){
-  if(!current||!panel.classList.contains('open'))return;
+  if(!current||!panel.classList.contains('open')||reading)return;
   if(!popW){popW=panel.offsetWidth;popH=panel.offsetHeight}
   const s=current, sx=view.x+s.x*view.k, sy=view.y+s.y*view.k, w=popW, h=popH, m=12, gap=28;
   let x,y;
@@ -1497,14 +1566,67 @@ function placePopup(){
   const tr=`translate(${Math.round(x)}px,${Math.round(y)}px)`; if(tr!==popT){popT=tr;panel.style.transform=tr}
 }
 function centerOn(s,ms,zoomIn){
-  const [cx,cy]=visibleCentre(), [z0,z1]=DESIGN.zoom.focus;
-  const k=zoomIn?Math.min(z1,Math.max(view.k,z0)):view.k;
+  const [z0,z1]=DESIGN.zoom.focus, k=zoomIn?Math.min(z1,Math.max(view.k,z0)):view.k, [cx,cy]=visibleCentre(s,k);
   const v={k,x:cx-s.x*k,y:cy-s.y*k}; if(ms)animateTo(v,ms); else {view=v;apply()}
 }
 function release(){follow=null;target=null;if(ride){stopRide();if(!current)focusLine(null)}}
-function closePanel(){release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+function closePanel(){if(reading)exitReading(true);release();panel.classList.remove('open');panel.setAttribute('aria-hidden','true');current&&current.g.classList.remove('active');current=null;focusLine(null);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
 // close: the 닫기 text button at the bottom, Esc, or a click on the empty map
 $('#pclose').onclick=closePanel;
+// ---------- [eee] reading plate (2026-11-21 사용자 요청) ----------
+// A web-series (G) popup's summary grows the popup into a wide reading plate (CSS #panel.reading): the article (title, copy,
+// end line) comes from DATA['글'] (build.py puts each post's HTML there, so file:// works without fetch). The map stays behind,
+// the camera puts the station just left of the title. 이전·다음 글 move the camera to that station and swap the article
+// ("다음 역으로 간다"). Address: index.html#read=<post file name>, opened straight from the address too.
+// History: opening pushes #read=…, so the browser's back closes the plate; 이전·다음 replace it (back still means "back to the map").
+// 돌아가기 / Esc / back all return to that station's popup on the map.
+var reading=null;   // (var: fitPopup/placePopup, earlier in the file, read it) the G station whose article fills the plate
+const reader=$('#reader'), escA=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// where the camera keeps the station while reading: left of the title, far enough that its name (if it sits on the right)
+// clears the plate too; phones: the strip above the plate
+function readerAnchor(s,k=view.k){
+  const r=panel.getBoundingClientRect();
+  if(PHONE.matches)return [innerWidth/2,r.top/2];
+  const t=$('#rtitle').getBoundingClientRect(), cap=parseFloat(getComputedStyle($('#rtitle')).fontSize)*parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cap-em'));
+  const right=s&&s.lab?Math.max(0,s.lab.box[2]-(s.vx??s.x))*k:0;
+  return [Math.max(28,r.left-24-Math.max(16,right)),t.top+reader.scrollTop+cap/2];
+}
+function fillReader(s){
+  const L=s.line, st=L.st, k=st.indexOf(s), p=st[k-1], n=st[k+1];
+  $('#rtitle').innerHTML=(/^<span class="disc/.test(s.th)?'':disc(L,s.b))+s.th.replace(/^(<span class="disc[^>]*><span>[^<]*<\/span><\/span>)\s+/,'$1');   // the G disc, unless the title starts with its own (then its ½in gap, not a space too)
+  $('#rbody').innerHTML=s.body;
+  const a=d=>`<svg class="arrow" data-dir="${d}" aria-hidden="true"><use href="#nyarrow"/></svg>`;
+  $('#rnav').innerHTML=[p&&`<a class="prev" href="#read=${encodeURIComponent(p.slug)}" aria-label="이전 글: ${escA(p.tt)}">${p.np}</a>`,
+    n&&`<a class="next" href="#read=${encodeURIComponent(n.slug)}" aria-label="다음 글: ${escA(n.tt)}">${n.nn}</a>`,
+    `<a class="back" href="#${s.id}" aria-label="노선도로 돌아가기"><span class="nw">돌아가기${a('down-left')}</span></a>`].filter(Boolean).join(' ');   // spaces = where the line may wrap
+  $('#rnav').querySelectorAll('a').forEach(x=>x.onclick=e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();
+    if(x.classList.contains('back'))closeReader(); else openReader(x.classList.contains('prev')?p:n,'replace')});
+  reader.setAttribute('aria-label',s.tt); reader.scrollTop=0;
+}
+// how: 'push' (from the popup), 'replace' (이전·다음), 'none' (the address already says it). instant: no growth, no camera glide
+function openReader(s,how,instant){
+  const grow=!reading&&!instant&&!reduce&&DESIGN.motion.readerMs&&panel.classList.contains('open'), r0=grow&&panel.getBoundingClientRect();
+  if(current!==s||!panel.classList.contains('open'))openStation(s,true,true);   // the popup underneath: what closing returns to
+  const first=!reading; reading=s; fillReader(s);
+  if(first){panel.classList.add('reading');document.documentElement.classList.add('reading');panel.style.transform=panel.style.height='';popT=''}
+  const h='#read='+encodeURIComponent(s.slug);
+  try{if(how==='push')history.pushState({eeeRead:1},'',h);else if(how==='replace')history.replaceState(history.state,'',h)}catch(e){}
+  follow=s; centerOn(s,instant?0:DESIGN.motion.centerMs,first);
+  if(r0){const r1=panel.getBoundingClientRect(),c=(v,m)=>Math.max(0,Math.min(m,v));   // the popup's box grows into the plate
+    const t=c(r0.top-r1.top,r1.height-2),l=c(r0.left-r1.left,r1.width-2),b=c(r1.bottom-r0.bottom,r1.height-2-t),rr=c(r1.right-r0.right,r1.width-2-l);
+    panel.animate([{clipPath:`inset(${t}px ${rr}px ${b}px ${l}px)`},{clipPath:'inset(0px 0px 0px 0px)'}],{duration:DESIGN.motion.readerMs,easing:'cubic-bezier(.2,0,0,1)'})}
+  inMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});
+}
+// back to the popup of the station being read (keepView: when something else takes over the camera)
+function exitReading(keepView){
+  if(!reading)return; reading=null; panel.classList.remove('reading'); document.documentElement.classList.remove('reading');
+  $('#rbody').innerHTML=''; fitPopup(); placePopup(); if(current&&!keepView){follow=current;centerOn(current,DESIGN.motion.centerMs,false)}
+}
+function closeReader(){
+  if(!reading)return;
+  if(history.state&&history.state.eeeRead){history.back();return}   // the hashchange that follows closes it (fromHash)
+  exitReading(); try{history.replaceState(null,'','#'+current.id)}catch(e){}
+}
 // [eee] random stop by train (DESIGN.ride, 2026-11-21 사용자 요청: 룰렛보다 열차와 이어지게). The picked station's
 // line train stops, the camera glides onto it (board), then rides it to the station: the train speeds up and brakes,
 // the camera stays on it, and the popup opens when it stops. Afterwards the train runs on from there, the same way.
@@ -1532,11 +1654,12 @@ function rideStep(t){const r=ride; if(t<r.t0)return r.d0;
   if(p>=1){stopRide(); openStation(r.s,false,true); follow=r.s}
   return r.d}
 $('#randbtn').onclick=randomStop;
-addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+addEventListener('keydown',e=>{if(e.key==='Escape'){if(reading)closeReader();else closePanel()}});
 svg.addEventListener('click',e=>{
   if(moved)return;
   const hit=document.elementFromPoint(e.clientX,e.clientY), g=hit&&hit.closest&&hit.closest('.station');
-  if(g){const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)||ghosts().find(x=>x.g===g); if(s){openStation(s);return}}
+  if(g){const s=stations.find(x=>x.g===g&&!x.owner)||stations.find(x=>x.g===g)||ghosts().find(x=>x.g===g); if(s){if(reading)exitReading(true);openStation(s);return}}
+  if(reading)return;   // the reading plate closes only by 돌아가기, Esc or the browser's back (2026-11-21)
   if(current)closePanel();
 });
 
@@ -1560,8 +1683,9 @@ function growLine(L,start){
 }
 // [eee] back from a web-series article (posts/*.html, G): no growth intro, its station opens at once
 const FROM_POST=(()=>{try{const r=new URL(document.referrer);return r.origin===location.origin&&/\/posts\/[^/]+\.html$/.test(r.pathname)}catch(e){return false}})();
+const START_READ=/^#read=/.test(location.hash);   // opened straight on an article: the plate is there from the start
 function intro(){
-  if(reduce||FROM_POST)return;
+  if(reduce||FROM_POST||START_READ)return;
   // a line starts growing when its parent line's growth reaches the transfer
   const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
   const order=[],add=L=>{if(order.includes(L))return;order.push(L);LINES.forEach(C=>{if(C.parent===L)add(C)})};
@@ -1633,8 +1757,15 @@ $('#theme').onclick=e=>{
 view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
 fitPlates();
 if(document.fonts){const f=()=>{relabel();fitPlates()};document.fonts.ready.then(f);document.fonts.addEventListener('loadingdone',f)}
-function fromHash(){const m=location.hash.match(/#([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===newId(m[1])); if(s) setTimeout(()=>openStation(s,true),reduce||FROM_POST?0:900)}}
-fromHash(); addEventListener('hashchange',fromHash);
+// #K-14 opens that station's popup; #read=<post> opens the reading plate (2026-11-21). Leaving #read=… (back) closes the plate
+function fromHash(first){
+  let h=location.hash.slice(1); try{h=decodeURIComponent(h)}catch(e){}
+  const r=h.match(/^read=(.+)$/);
+  if(r){const s=stations.find(x=>x.post&&x.slug===r[1]&&!x.owner); if(s&&reading!==s)openReader(s,'none',first); return}
+  if(reading){exitReading(); try{history.replaceState(null,'','#'+current.id)}catch(e){} return}   // back: the station read last stays open
+  const m=h.match(/^([A-Z]-\d+)$/); if(m){const s=stations.find(x=>x.id===newId(m[1])); if(s&&s!==current) setTimeout(()=>openStation(s,true),first&&!(reduce||FROM_POST)?900:0)}
+}
+fromHash(true); addEventListener('hashchange',()=>fromHash(false));
 // closing the tab mid-tidy-up: save where the stations were heading, not where they happened to be
 addEventListener('pagehide',()=>{if(tween){tween.plans.forEach(q=>{q.s.x=q.to[0];q.s.y=q.to[1]});tween=null}savePos()});
 addEventListener('resize',()=>{fitPlates();if(follow)centerOn(follow,0,false);else if(!current){view=fitView(all.map(s=>[s.x,s.y]),90);apply()}});

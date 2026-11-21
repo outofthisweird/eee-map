@@ -198,6 +198,33 @@ def front_matter(text, name):
     meta["draft"] = meta.get("draft", "").lower() in ("true", "yes", "1", "예")
     return meta, m.group(2)
 
+# [eee] 끝 줄(2026-11-21 사용자 요청, 그린 대로): [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙].
+# 화살표는 가리키는 쪽 끝에 붙는다(사용자 지정, COPY-005의 '화살표 먼저'와 다름). 제목 앞 원판은 그 글의 노선(G),
+# 제목이 원판으로 시작하면 그 원판을 쓴다. 줄은 글처럼 흘러 넘치면 다음 줄로 이어진다(사용자 취향, CLAUDE.md).
+# 화살표·원판이 홀로 줄 끝·줄 머리에 남지 않게 붙어 있는 첫(끝) 낱말과 묶는다(.nw).
+# 글 페이지(posts/*.html, 화살표 #arrow)와 노선도 읽기 판(index.html, 화살표 #nyarrow)이 같이 쓴다.
+def seq_body(d, title, label, after, arrow_id="arrow"):
+    a = f'<svg class="arrow" data-dir="{d}" aria-hidden="true"><use href="#{arrow_id}"/></svg>'
+    if title:
+        t = rich(title).strip(); m = re.match(r'(<span class="disc[^>]*><span>[^<]*</span></span>)\s*', t)
+        lead, t = (m.group(1), t[m.end():]) if m else (disc_html("G", G_TOKEN, hidden=True), t)
+    else:
+        lead, t = "", label
+    if after:   # [원판 첫 낱말] … [끝 낱말 화살표]
+        f = re.match(r'([^\s<]+)\s+(.*)$', t)
+        if lead and f: t = f'<span class="nw">{lead}{f.group(1)}</span> {f.group(2)}'; lead = ""
+        l = re.match(r'^(.*\S)\s+([^\s<>]+)$', t)
+        return f'{lead}{l.group(1)} <span class="nw">{l.group(2)}{a}</span>' if l else f'<span class="nw">{lead}{t}{a}</span>'
+    f = re.match(r'([^\s<]+)\s+(.*)$', t)   # [화살표 원판 첫 낱말] …
+    return f'<span class="nw">{a}{lead}{f.group(1)}</span> {f.group(2)}' if f else f'<span class="nw">{a}{lead}{t}</span>'
+
+def seq_aria(label, title):
+    return f' aria-label="{html.escape(label + ": " + plain(title))}"' if title else ' aria-label="노선도로 돌아가기"'
+
+def map_body(body_html):
+    """[eee] 노선도 읽기 판에 넣는 본문: 글 페이지(posts/) 기준 상대 주소를 index.html 기준으로 바꾼다(그림·글 사이 링크)."""
+    return re.sub(r'\b(src|href)="(?![a-z][\w+.-]*:|/|#)([^"]+)"', r'\1="posts/\2"', body_html)
+
 def build_posts(data_text, post_tokens):
     if not POSTS.is_dir():
         return data_text
@@ -217,28 +244,8 @@ def build_posts(data_text, post_tokens):
         CURRENT[0] = f"posts/{p['file'].name}"; plain(p.get("station", ""))   # 오류 메시지용, 역 이름의 색 이름도 확인
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
-        # [eee] 끝 줄(2026-11-21 사용자 요청, 그린 대로): [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙].
-        # 화살표는 가리키는 쪽 끝에 붙는다(사용자 지정, COPY-005의 '화살표 먼저'와 다름). 제목 앞 원판은 그 글의 노선(G),
-        # 제목이 원판으로 시작하면 그 원판을 쓴다. 줄은 글처럼 흘러 넘치면 다음 줄로 이어진다(사용자 취향, CLAUDE.md).
-        # 화살표·원판이 홀로 줄 끝·줄 머리에 남지 않게 붙어 있는 첫(끝) 낱말과 묶는다(.nw)
-        arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'
         def item(cls, href, label, d, title=None, after=False):
-            a = arrow.format(d)
-            if title:
-                t = rich(title).strip(); m = re.match(r'(<span class="disc[^>]*><span>[^<]*</span></span>)\s*', t)
-                lead, t = (m.group(1), t[m.end():]) if m else (disc, t)
-                aria = f' aria-label="{html.escape(label + ": " + plain(title))}"'
-            else:
-                lead, t, aria = "", label, ' aria-label="노선도로 돌아가기"'
-            if after:   # [원판 첫 낱말] … [끝 낱말 화살표]
-                f = re.match(r'([^\s<]+)\s+(.*)$', t)
-                if lead and f: t = f'<span class="nw">{lead}{f.group(1)}</span> {f.group(2)}'; lead = ""
-                l = re.match(r'^(.*\S)\s+([^\s<>]+)$', t)
-                body = (f'{lead}{l.group(1)} <span class="nw">{l.group(2)}{a}</span>' if l else f'<span class="nw">{lead}{t}{a}</span>')
-            else:       # [화살표 원판 첫 낱말] …
-                f = re.match(r'([^\s<]+)\s+(.*)$', t)
-                body = f'<span class="nw">{a}{lead}{f.group(1)}</span> {f.group(2)}' if f else f'<span class="nw">{a}{lead}{t}</span>'
-            return f'<li><a class="{cls}" href="{href}"{aria}>{body}</a></li>'
+            return f'<li><a class="{cls}" href="{href}"{seq_aria(label, title)}>{seq_body(d, title, label, after)}</a></li>'
         seq = " ".join(filter(None, (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "",
                                      item("next", f'{nxt["slug"]}.html', "다음 글", "right", nxt["title"], after=True) if nxt else "",
                                      item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True))))   # 항목 사이 빈칸 = 줄이 넘어갈 수 있는 자리
@@ -251,17 +258,24 @@ def build_posts(data_text, post_tokens):
             page = page.replace(key, val)
         page = page.replace("<head>", "<head>\n" + POST_MARK.format(p["file"].name), 1)
         (POSTS / f'{p["slug"]}.html').write_text(page, encoding="utf-8")
+        # [eee] 노선도 읽기 판(2026-11-21 사용자 요청: 요약을 누르면 팝업이 읽기 판으로 커진다). file://에서도 열리게 fetch 없이
+        # 본문을 데이터에 넣는다. 이전·다음은 보이는 글(배포 사이트는 초안 제외)에 따라 노선도가 고르므로, 이 글이 '이전 글'일 때와
+        # '다음 글'일 때의 끝 줄 조각을 둘 다 넣어 둔다
+        p["reader"] = {"slug": p["slug"], "th": rich(p["title"]).strip(), "tt": plain(p["title"]), "body": map_body(md_blocks(p["body"])),
+                       "np": seq_body("left", p["title"], "이전 글", False, "nyarrow"), "nn": seq_body("right", p["title"], "다음 글", True, "nyarrow")}
     # .md가 없어진 글 페이지(build.py가 만든 것만)는 지운다
     for h in POSTS.glob("*.html"):
         if not (POSTS / f"{h.stem}.md").exists() and "by build.py: edit the .md" in h.read_text(encoding="utf-8")[:400]:
             h.unlink(); print(f"posts/{h.name}: removed (no .md)")
     d = json.loads(data_text)
     d["글"] = [{"id": p["id"], "b": "G", "s": plain(p.get("station") or p["title"]), "t": plain(p.get("station") or p["title"]), "d": p["date"],
-               "u": f'posts/{p["slug"]}.html', "ser": G_SERIES, "m": plain(p.get("summary", "")), "post": 1, **({"draft": 1} if p["draft"] else {})}
+               "u": f'posts/{p["slug"]}.html', "ser": G_SERIES, "m": plain(p.get("summary", "")), "post": 1, **p["reader"],
+               **({"draft": 1} if p["draft"] else {})}
               for p in posts]
     if posts:
         print(f"posts: {len(public)} published, {len(posts) - len(public)} draft(s) (drafts show on file:// / localhost only)")
-    return json.dumps(d, ensure_ascii=False)
+    # 본문 HTML이 <script> 안에 들어가므로 '</'를 끊어 둔다(JSON 문자열 안에서 '<\/'는 '</'와 같다)
+    return json.dumps(d, ensure_ascii=False).replace("</", "<\\/")
 
 data = build_posts(data, post_tokens)
 for key in ("__DATA__", "__DATA_EN__", "/*__NYCTA__*/", "/*__NYCTA_MAP__*/", "/*__NYCTA_PRINT__*/"):
