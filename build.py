@@ -219,20 +219,29 @@ def build_posts(data_text, post_tokens):
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
         # [eee] 끝 줄(2026-11-21 사용자 요청, 그린 대로): [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙].
         # 화살표는 가리키는 쪽 끝에 붙는다(사용자 지정, COPY-005의 '화살표 먼저'와 다름). 제목 앞 원판은 그 글의 노선(G),
-        # 제목이 원판으로 시작하면 그 원판을 쓴다. 밑줄은 글자에만
+        # 제목이 원판으로 시작하면 그 원판을 쓴다. 줄은 글처럼 흘러 넘치면 다음 줄로 이어진다(사용자 취향, CLAUDE.md).
+        # 화살표·원판이 홀로 줄 끝·줄 머리에 남지 않게 붙어 있는 첫(끝) 낱말과 묶는다(.nw)
         arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'
         def item(cls, href, label, d, title=None, after=False):
+            a = arrow.format(d)
             if title:
                 t = rich(title).strip(); m = re.match(r'(<span class="disc[^>]*><span>[^<]*</span></span>)\s*', t)
-                lead, t = (m.group(1), t[m.end():]) if m else (disc, t)   # 원판은 밑줄 밖
-                body = f'{lead}<span>{t}</span>'; aria = f' aria-label="{html.escape(label + ": " + plain(title))}"'
+                lead, t = (m.group(1), t[m.end():]) if m else (disc, t)
+                aria = f' aria-label="{html.escape(label + ": " + plain(title))}"'
             else:
-                body = f'<span>{label}</span>'; aria = ' aria-label="노선도로 돌아가기"'
-            a = arrow.format(d)
-            return f'<li class="trim"><a class="{cls}" href="{href}"{aria}>' + (body + a if after else a + body) + '</a></li>'
-        seq = (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "") + \
-              (item("next", f'{nxt["slug"]}.html', "다음 글", "right", nxt["title"], after=True) if nxt else "") + \
-              item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True)
+                lead, t, aria = "", label, ' aria-label="노선도로 돌아가기"'
+            if after:   # [원판 첫 낱말] … [끝 낱말 화살표]
+                f = re.match(r'([^\s<]+)\s+(.*)$', t)
+                if lead and f: t = f'<span class="nw">{lead}{f.group(1)}</span> {f.group(2)}'; lead = ""
+                l = re.match(r'^(.*\S)\s+([^\s<>]+)$', t)
+                body = (f'{lead}{l.group(1)} <span class="nw">{l.group(2)}{a}</span>' if l else f'<span class="nw">{lead}{t}{a}</span>')
+            else:       # [화살표 원판 첫 낱말] …
+                f = re.match(r'([^\s<]+)\s+(.*)$', t)
+                body = f'<span class="nw">{a}{lead}{f.group(1)}</span> {f.group(2)}' if f else f'<span class="nw">{a}{lead}{t}</span>'
+            return f'<li><a class="{cls}" href="{href}"{aria}>{body}</a></li>'
+        seq = " ".join(filter(None, (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "",
+                                     item("next", f'{nxt["slug"]}.html', "다음 글", "right", nxt["title"], after=True) if nxt else "",
+                                     item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True))))   # 항목 사이 빈칸 = 줄이 넘어갈 수 있는 자리
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl
         for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", rich(p["title"])),
