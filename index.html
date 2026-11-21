@@ -2514,8 +2514,10 @@ function growLine(L,start){
 const RELOAD=(()=>{try{return performance.getEntriesByType('navigation')[0].type==='reload'}catch(e){return false}})();
 const FROM_POST=!RELOAD&&(()=>{try{const r=new URL(document.referrer);return r.origin===location.origin&&/\/posts\/[^/]+\.html$/.test(r.pathname)}catch(e){return false}})();
 const START_READ=!RELOAD&&/^#read=/.test(location.hash);   // opened straight on an article: the plate is there from the start (not on a reload)
-function intro(){
-  if(reduce||FROM_POST||START_READ)return;
+// boot: the page's first growth. Only that one is skipped for an article link or a return from an article; ↻ (replay) always grows
+// (2026-11-21 사용자 보고: 그런 탭에서 ↻을 누르면 새 배치만 나오고 애니메이션이 없었다)
+function intro(boot){
+  if(reduce||boot&&(FROM_POST||START_READ))return;
   // a line starts growing when its parent line's growth reaches the transfer
   const start=new Map(),dur=L=>L.subs.map(p=>Math.min(1600,Math.max(250,p._len/SPEED)));
   const order=[],add=L=>{if(order.includes(L))return;order.push(L);LINES.forEach(C=>{if(C.parent===L)add(C)})};
@@ -2584,7 +2586,7 @@ $('#theme').onclick=e=>{
 };
 
 // ---------- boot ----------
-view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(); requestAnimationFrame(frame);
+view=fitView(all.map(s=>[s.x,s.y]),90); apply(); intro(true); requestAnimationFrame(frame);
 fitPlates();
 if(document.fonts){const f=()=>{relabel();fitPlates()};document.fonts.ready.then(f);document.fonts.addEventListener('loadingdone',f)}
 // #K-14 opens that station's popup; #read=<post> opens the reading plate (2026-11-21). Leaving #read=… (back) closes the plate

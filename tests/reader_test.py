@@ -88,6 +88,12 @@ async def main():
             z = await pg.evaluate("({reading:reading&&reading.id,hash:location.hash})")
             check(f"{tag} reload while reading replays the intro, then reopens the plate", a["anims"] > 50 and not a["reading"]
                   and z["reading"] == G[0]["id"] and z["hash"] == "#read=" + G[0]["slug"], {"first": a, "later": z})
+            # 7. ↻ 새 배치는 어떤 주소로 들어왔든 노선이 자라나는 애니메이션과 함께
+            await pg.goto("about:blank"); await pg.goto(URL + "#read=" + G[0]["slug"]); await pg.wait_for_timeout(600)
+            await pg.keyboard.press("Escape"); await pg.wait_for_timeout(700)
+            await pg.evaluate("document.querySelector('#replay').click()"); await pg.wait_for_timeout(250)
+            n = await pg.evaluate("document.getAnimations().length")
+            check(f"{tag} ↻ grows the new layout after an article link", n > 50, n)
             check(f"{tag} no JS errors", not errs, errs[:3])
             await pg.close()
         await b.close()
