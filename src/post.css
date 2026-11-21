@@ -2,7 +2,7 @@
    [eee] 웹 연재(G) 글 페이지. build.py가 vendor/nycta/nycta.css 전체 뒤에 이 파일을 붙여 posts/post.css를 만든다.
    원칙(2026-11-21 사용자 요청 "원래 있는 모듈을 최대한 이용"): 모양은 nycta 구성요소가 정하고, 여기에는 그것들을
    한 페이지에 놓는 자리와 nycta에 없는 글 요소(인용·구분선·그림)만 둔다. 새 크기나 간격 값은 만들지 않는다.
-   - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 원판·연재·날짜는 판 아래 한 줄
+   - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 맨 위 노선도 링크·연재·날짜 줄은 뺐다(2026-11-21 사용자 요청)
    - 모듈 판은 바탕과 반대 색(반전 판, DEC-031 구성)
    - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
    - 끝 = 모듈 판 하나에 .nav: [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙] (팝업 글처럼)
@@ -12,9 +12,6 @@
    .module-scope(nycta DEC-016 메모)라서 글자·띠·원판 토큰도 이 모듈로 다시 계산된다 */
 .page{--module:clamp(40px, (100vw - 2 * var(--doc-space-3)) / 6, 97.75px);
   width:calc(var(--module) * 6);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
-
-/* 맨 위 [화살표][노선도] — nycta .nav 그대로, 아래로 GRID-006 5⅝in */
-.page>nav{margin-bottom:var(--doc-space-4)}
 
 /* [eee] 이 페이지의 모듈 판(글 머리·끝 표지)은 바탕과 반대 색 반전 판(2026-11-21 사용자 요청: 판이 바탕과 분리되어 보이게).
    노선도 UI 판(.rplate)과 같은 DEC-031 구성: 띠(1⅝in) 대신 위 ½in + ⅛in 바탕색 줄, 그 아래 12in 칸. 흰 바탕엔 검은 판, 검은 바탕엔 흰 판 */
@@ -26,9 +23,6 @@
 
 /* 글 머리: 표준 길이 모듈 판 하나(.plate > .m, GRID-012/014). 제목은 방향 크기 Grid 2(.t-direction), 길이·높이는 post.html 스크립트 */
 .head h1{text-wrap:balance}
-/* 판 아래 한 줄: [노선 원판][연재][날짜] — 줄 안 원판(.disc--inline, DEC-034)과 안내 크기 */
-.meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--doc-space-1);margin:var(--doc-space-3) 0 0;line-height:var(--lh-g1)}
-.meta time{margin-inline-start:var(--doc-space-1)}
 /* 글 속 원판 {G}·{G:orange}(build.py가 .disc--inline으로 바꿈, DEC-034). 색을 정해 준 원판(data-color)은 다크 모드 테두리도 그 색으로 정한다:
    검정 원판만 흰 테두리(nycta의 1970 검정 노선 규칙과 같은 값). {B:orange}처럼 검정 노선을 다른 색으로 바꾸면 테두리를 뺀다 */
 :root[data-theme=dark] .disc[data-color]{box-shadow:none}
@@ -37,7 +31,7 @@
 .page .plate .disc:is([data-color=black],:not([data-color]):is([data-line="5"],[data-line="B"],[data-line="LL"],[data-line="QJ"])){box-shadow:0 0 0 1px var(--bg)}
 
 /* 본문: 데스크톱에서는 5ft 폭(긴 글 한 줄 30자 안팎), 폰에서는 6ft 판 폭 전체 */
-.body{max-width:calc(var(--module) * 5);margin-top:var(--doc-space-4)}
+.body{max-width:calc(var(--module) * 5);margin-top:var(--doc-space-4);line-height:1.5}   /* [eee] 행간 1.5(2026-11-21 사용자 요청: 한글 긴 글 1.7(DEC-033)이 넓어 보임 → nycta 긴 글 기본값 DEC-020) */
 @media (max-width:640px){.body{max-width:none}}
 .body>:last-child{margin-bottom:0}
 .body ul,.body ol{margin:0 0 var(--doc-space-3);padding-inline-start:var(--doc-space-3)}
