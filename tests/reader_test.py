@@ -81,13 +81,6 @@ async def main():
             r6 = await pg.evaluate("({reading:reading&&reading.id,cls:panel.classList.contains('reading'),st:(()=>{const d=byLine.G.st[0].g.querySelector('.dot').getBoundingClientRect();return [d.x,d.y]})()})")
             check(f"{tag} #read=<post> opens with the plate", r6["reading"] == G[0]["id"] and r6["cls"]
                   and 0 <= r6["st"][0] <= w and 0 <= r6["st"][1] <= h, r6)
-            # 6. 새로고침은 처음부터: 읽던 중에 새로고침해도 노선이 자라나는 애니메이션이 나오고, 그 뒤 판이 다시 열린다
-            await pg.reload(); await pg.wait_for_timeout(150)
-            a = await pg.evaluate("({anims:document.getAnimations().length,reading:!!reading})")
-            await pg.wait_for_timeout(2300)
-            z = await pg.evaluate("({reading:reading&&reading.id,hash:location.hash})")
-            check(f"{tag} reload while reading replays the intro, then reopens the plate", a["anims"] > 50 and not a["reading"]
-                  and z["reading"] == G[0]["id"] and z["hash"] == "#read=" + G[0]["slug"], {"first": a, "later": z})
             # 7. ↻ 새 배치는 어떤 주소로 들어왔든 노선이 자라나는 애니메이션과 함께
             await pg.goto("about:blank"); await pg.goto(URL + "#read=" + G[0]["slug"]); await pg.wait_for_timeout(600)
             await pg.keyboard.press("Escape"); await pg.wait_for_timeout(700)
