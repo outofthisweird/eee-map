@@ -38,7 +38,6 @@ assert 0 in heads and 1 in heads and 2 in heads, "nycta.css section layout chang
 tokens = nycta[heads[0]:heads[2]].rstrip()
 fonts = re.findall(r'url\("\.\./fonts/([\w.-]+\.woff2)"\)', tokens)
 assert "albert-sans-nycta-wght.woff2" in fonts and "nycta-hangul.woff2" in fonts, "nycta.css font urls changed: check build.py"
-tokens_raw = tokens
 for name in set(fonts):
     b64 = base64.b64encode((root / "vendor/nycta" / name).read_bytes()).decode()
     tokens = tokens.replace(f'url("../fonts/{name}")', f'url("data:font/woff2;base64,{b64}")')
@@ -51,7 +50,9 @@ tokens += "\n\n" + nycta[nycta.index(MB):nycta.index(ME) + len(ME)]
 assert 14 in heads, "nycta.css §14 (print layer) not found: check build.py"
 nxt = min([s for s in heads.values() if s > heads[14]] + [len(nycta)])
 tokens += "\n\n" + nycta[heads[14]:nxt].rstrip()
-post_tokens = tokens_raw + "\n\n" + nycta[nycta.index(MB):nycta.index(ME) + len(ME)]
+# 글 페이지(posts/post.css)는 nycta.css를 통째로 쓴다(2026-11-21 사용자 요청: 원래 있는 모듈을 최대한 이용).
+# 판·칸(.plate .m), 표지(.sign-train .sign-direction), 원판, 화살표, 안내 막대(.guide), 문서 규모 h1–h3·p, 다크 모드가 그대로 온다.
+post_tokens = nycta
 for name in set(fonts):   # posts/post.css sits in posts/: the font files are served from vendor/nycta/
     post_tokens = post_tokens.replace(f'url("../fonts/{name}")', f'url("../vendor/nycta/{name}")')
 tokens = "/* NYCTA design system — vendor/nycta/nycta.css §0–1 + disc glyph masks + §14 print layer (" + \
@@ -161,7 +162,7 @@ def build_posts(data_text, post_tokens):
     if not POSTS.is_dir():
         return data_text
     tpl = (root / "src/post.html").read_text(encoding="utf-8")
-    (POSTS / "post.css").write_text("/* posts/post.css — build.py가 만든다. src/post.css를 고친다. */\n" + post_tokens + "\n\n" +
+    (POSTS / "post.css").write_text("/* posts/post.css — build.py가 만든다: vendor/nycta/nycta.css 전체 + src/post.css. src/post.css를 고친다. */\n" + post_tokens + "\n\n" +
         (root / "src/post.css").read_text(encoding="utf-8"), encoding="utf-8")
     posts = []
     for f in sorted(POSTS.glob("*.md")):
@@ -175,10 +176,10 @@ def build_posts(data_text, post_tokens):
     for p in posts:
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
-        arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#nyarrow"/></svg>'   # DEC-014: [화살표][글]
-        seq = (f'<a class="prev" href="{prev["slug"]}.html">{arrow.format("left")}<span><small>이전 글</small>'
+        arrow = '<svg class="arrow arrow--inline" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'   # nycta .guide(DEC-014): 띠 + [화살표][글]
+        seq = (f'<a class="guide prev" href="{prev["slug"]}.html">{arrow.format("left")}<span><span>이전 글</span>'
                f'<span class="t">{html.escape(prev["title"])}</span></span></a>' if prev else "") + \
-              (f'<a class="next" href="{nxt["slug"]}.html">{arrow.format("right")}<span><small>다음 글</small>'
+              (f'<a class="guide next" href="{nxt["slug"]}.html">{arrow.format("right")}<span><span>다음 글</span>'
                f'<span class="t">{html.escape(nxt["title"])}</span></span></a>' if nxt else "")
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl

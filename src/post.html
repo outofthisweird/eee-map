@@ -12,22 +12,26 @@ var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\
 if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
 </head>
 <body>
-<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="arrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <div class="page">
-  <nav class="top" aria-label="노선도"><a class="nav" href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a></nav>
+  <!-- nycta 구성요소만 쓴다: .nav(DEC-014), .plate.sign-train(GRID-022), .guide(DEC-014), .plate.sign-direction(SIGN-003) -->
+  <nav aria-label="노선도"><ul class="nav"><li><a href="../index.html#__ID__"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#arrow"/></svg>노선도</a></li></ul></nav>
   <main>
     <article>
-      <header class="train">
-        <div class="train__disc">__DISC__</div>
-        <div class="train__field"><h1>__TITLE__</h1></div>
+      <header class="plate sign-train">
+        <div class="m m-4"><h1 class="t-direction trim">__TITLE__</h1></div>
+        <div class="m m-center">__DISC__</div>
+        <div class="m m-info"><div class="stack-g1"><p class="t-info trim">__SERIES__</p><p class="t-info trim"><time datetime="__DATE__">__DATE_TEXT__</time></p></div></div>
       </header>
-      <p class="meta"><span>__SERIES__</span><time datetime="__DATE__">__DATE_TEXT__</time></p>
       <div class="body">
 __BODY__
       </div>
     </article>
     <nav class="seq" aria-label="이전 글과 다음 글">__SEQ__</nav>
-    <a class="dir" href="../index.html#__ID__"><span class="dir__arrow"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg></span><span class="dir__copy">노선도</span></a>
+    <a class="plate sign-direction back" href="../index.html#__ID__">
+      <span class="m m-center"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#arrow"/></svg></span>
+      <span class="m m-4"><span class="t-direction trim">노선도</span></span>
+    </a>
   </main>
 </div>
 </body>

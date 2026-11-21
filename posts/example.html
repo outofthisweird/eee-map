@@ -13,29 +13,33 @@ var q=location.search,local=location.protocol==='file:'||/^(localhost|127\.0\.0\
 if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.write('<link rel="stylesheet" href="../preview/helvetica.css?'+Date.now()+'">')})();</script>
 </head>
 <body>
-<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="nyarrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="arrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <div class="page">
-  <nav class="top" aria-label="노선도"><a class="nav" href="../index.html#G-01"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg>노선도</a></nav>
+  <!-- nycta 구성요소만 쓴다: .nav(DEC-014), .plate.sign-train(GRID-022), .guide(DEC-014), .plate.sign-direction(SIGN-003) -->
+  <nav aria-label="노선도"><ul class="nav"><li><a href="../index.html#G-01"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#arrow"/></svg>노선도</a></li></ul></nav>
   <main>
     <article>
-      <header class="train">
-        <div class="train__disc"><span class="disc" data-line="G" style="--line:var(--c-orange);--on:var(--c-white)" aria-hidden="true"><span>G</span></span></div>
-        <div class="train__field"><h1>웹 연재 글 페이지 예시</h1></div>
+      <header class="plate sign-train">
+        <div class="m m-4"><h1 class="t-direction trim">웹 연재 글 페이지 예시</h1></div>
+        <div class="m m-center"><span class="disc" data-line="G" style="--line:var(--c-orange);--on:var(--c-white)" aria-hidden="true"><span>G</span></span></div>
+        <div class="m m-info"><div class="stack-g1"><p class="t-info trim">웹 연재</p><p class="t-info trim"><time datetime="2026-11-21">2026년 11월 21일</time></p></div></div>
       </header>
-      <p class="meta"><span>웹 연재</span><time datetime="2026-11-21">2026년 11월 21일</time></p>
       <div class="body">
       <p>이 글은 글 페이지 모양을 확인하려고 만든 예시입니다. 초안이라서 배포 사이트의 노선도에는 나오지 않고, 내 컴퓨터에서 연 노선도에만 보입니다. 첫 글을 쓰시면 이 파일은 지워도 됩니다.</p>
       <p>긴 문단이 어떻게 흐르는지 보려고 문장을 조금 더 이어 씁니다. 현대미술을 쉽게 풀어 주는 글은 대개 작품 하나를 오래 들여다보는 데서 시작합니다. 무엇이 보이는지, 왜 그렇게 놓였는지, 작가가 무엇을 비워 두었는지를 차례로 묻다 보면 처음에는 낯설던 작품이 조금씩 말을 걸어옵니다.</p>
       <h2>소제목</h2>
       <p>소제목은 제목과 같은 방향 표지 크기로 커집니다. 문단 사이는 1⅞in(매뉴얼 안내 표지의 줄 간격)만큼 띄웁니다.</p>
-      <blockquote><p>인용문은 조금 들여 쓰고, 본문 왼쪽 선에 짧은 선이 붙습니다.</p></blockquote>
+      <blockquote><p>인용문은 조금 들여 쓰고, 왼쪽에 가는 선이 붙습니다.</p></blockquote>
       <ul><li>목록 첫째 줄</li><li>목록 둘째 줄은 조금 길게 써서 다음 줄로 넘어갈 때 들여쓰기가 어떻게 맞는지 확인합니다.</li><li><a href="https://www.instagram.com/eee_exhibition/" target="_blank" rel="noopener">인스타그램 계정</a>으로 가는 링크</li></ul>
       <hr>
       <p>구분선 아래 마지막 문단입니다.</p>
       </div>
     </article>
     <nav class="seq" aria-label="이전 글과 다음 글"></nav>
-    <a class="dir" href="../index.html#G-01"><span class="dir__arrow"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#nyarrow"/></svg></span><span class="dir__copy">노선도</span></a>
+    <a class="plate sign-direction back" href="../index.html#G-01">
+      <span class="m m-center"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#arrow"/></svg></span>
+      <span class="m m-4"><span class="t-direction trim">노선도</span></span>
+    </a>
   </main>
 </div>
 </body>

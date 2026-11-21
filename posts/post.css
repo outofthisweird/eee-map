@@ -1,4 +1,11 @@
-/* posts/post.css — build.py가 만든다. src/post.css를 고친다. */
+/* posts/post.css — build.py가 만든다: vendor/nycta/nycta.css 전체 + src/post.css. src/post.css를 고친다. */
+/* ==========================================================================
+   NYCTA Graphics Standards Manual (1970) → Web — design tokens & components
+   Source of truth: ledger.yaml (rule IDs). Comment format:
+   RULE-ID | pdf p.N | [status]
+   [변환] values carry their formula. "in" in formulas = one manual inch.
+   ========================================================================== */
+
 /* -------------------------------------------------------------------------
    0. Typeface
    ------------------------------------------------------------------------- */
@@ -117,6 +124,219 @@
   color-scheme: light dark;
 }
 
+/* -------------------------------------------------------------------------
+   2. Dark mode (DEC-019)
+   ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fg: var(--c-white);                               /* DEC-019 | - | [설계결정] swap */
+    --bg: var(--c-black);                               /* DEC-019 | - | [설계결정] swap */
+    --font-weight: var(--font-weight-dark);             /* DEC-019 | - | [설계결정] */
+    --c-red-text: var(--c-red);                         /* DEC-026 | - | [설계결정] scan red already 6.3:1 on black */
+  }
+}
+:root[data-theme="dark"] {
+  --fg: var(--c-white);                                 /* DEC-019 | - | [설계결정] */
+  --bg: var(--c-black);                                 /* DEC-019 | - | [설계결정] */
+  --font-weight: var(--font-weight-dark);               /* DEC-019 | - | [설계결정] */
+  --c-red-text: var(--c-red);                           /* DEC-026 | - | [설계결정] */
+}
+
+/* -------------------------------------------------------------------------
+   3. Base
+   ------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; border-radius: 0; } /* DEC-009 | - | [설계결정] exact rectangles everywhere */
+/* em-based spacing must resolve against each element's own font-size, so it is set on every element
+   (an inherited letter-spacing would keep the body's px value) — DEC-018 | - | [변환] */
+* { letter-spacing: var(--ls); word-spacing: var(--ws); --lsb-pull: var(--lsb-comp); }
+/* Korean text — set per element by its own language, so lang="en" inside a Korean page keeps the Latin values */
+:lang(ko) {
+  word-break: keep-all;                                 /* DEC-033 | - | [설계결정] never break inside a Korean word */
+  line-break: strict;                                   /* DEC-033 | - | [설계결정] */
+  word-spacing: var(--ws-ko);                           /* DEC-033, DEC-018 | - | [변환] */
+  --lsb-pull: var(--lsb-comp-ko);                       /* DEC-033, DEC-025 | - | [변환] */
+}
+body:lang(ko) { --lh-body: 1.7; }                       /* DEC-033, DEC-020 | - | [설계결정] long-form Hangul */
+
+html {
+  font-family: var(--font-sign);                        /* TYPE-001, DEC-017 */
+  font-weight: var(--font-weight);                      /* TYPE-002, DEC-017 */
+  font-size: 100%;
+  color: var(--fg);
+  background: var(--bg);
+  font-kerning: normal;
+  font-synthesis: none;                                 /* SIGN-002 | pdf p.93 | [확정] no distorted/faux forms */
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  margin: 0;
+  font-size: var(--doc-fs-s);                           /* DEC-005 | - | [설계결정] body = Information tier */
+  line-height: var(--lh-body);                          /* DEC-020 | - | [설계결정] */
+  letter-spacing: var(--ls);                            /* DEC-018 | - | [변환] */
+  word-spacing: var(--ws);                              /* DEC-018, TYPE-021 | pdf p.13 | [변환] */
+  text-transform: none;                                 /* DONT-005 | pdf p.13 | [확정] never all caps */
+  text-align: left;                                     /* GRID-004 | pdf p.9–11 | [이미지판독] flush left */
+}
+
+/* Cap-line / baseline trimming so margins are measured to cap line and baseline,
+   as on the grid drawings (GRID-003). Fallback derived from Albert Sans metrics:
+   ascent .95, descent .25, cap .70 → trim = lh/2 − 0.35 em (each side) = --trim-k. */
+.trim {
+  --lh: var(--lh-g1);
+  line-height: var(--lh);
+  margin-block: calc((var(--trim-k) - var(--lh) / 2) * 1em); /* GRID-003 | pdf p.9–11 | [변환] (asc+desc−lh)/2 − (asc−cap) */
+}
+@supports (text-box: trim-both cap alphabetic) {
+  .trim { margin-block: 0; text-box: trim-both cap alphabetic; }
+}
+
+/* -------------------------------------------------------------------------
+   4. Typography — from the manual (sign scale)
+   ------------------------------------------------------------------------- */
+.t-ident {                                              /* TYPE-005, GRID-005 | pdf p.9 | [이미지판독] Grid 3: one line */
+  font-size: var(--fs-l);
+  --lh: var(--lh-g2);                                   /* single line; value only affects trimming */
+  white-space: nowrap;
+}
+.t-direction {                                          /* TYPE-006, GRID-006, TYPE-011 | pdf p.8,10 | [이미지판독] Grid 2, max 2 lines */
+  font-size: var(--fs-m);
+  --lh: var(--lh-g2);                                   /* max 2 lines is an authoring rule (TYPE-011), not clipped */
+}
+.t-info {                                               /* TYPE-007, GRID-007, TYPE-012 | pdf p.8,11 | [이미지판독] Grid 1, max 6 lines */
+  font-size: var(--fs-s);
+  --lh: var(--lh-g1);
+}
+.t-ident, .t-direction, .t-info { line-height: var(--lh); margin: 0; }
+/* first glyph sits on the ½in margin like the masters: pull text left by the font's extra side bearing — DEC-025 */
+.t-ident, .t-direction, .t-info, h1, .h1, h2, .h2, h3, .h3, .compact__title, .compact__item { margin-inline-start: calc(-1 * var(--lsb-pull)); } /* DEC-025, DEC-033 */
+.t-info--clamp6 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; } /* TYPE-012 | pdf p.8 | [확정] */
+
+/* -------------------------------------------------------------------------
+   5. Typography — extended for the web (document scale, DEC-005)
+   ------------------------------------------------------------------------- */
+h1, .h1 {                                               /* DEC-005 | - | [설계결정] = Identification tier */
+  font-size: var(--doc-fs-l);
+  line-height: var(--lh-g2);                            /* DEC-005 | - | [설계결정] reuse Grid 2 pitch if wrapping */
+  font-weight: var(--font-weight);
+  margin: 0 0 var(--doc-space-3);
+}
+h2, .h2 {                                               /* DEC-005 | - | [설계결정] = Directional tier */
+  font-size: var(--doc-fs-m);
+  line-height: var(--lh-g2);                            /* GRID-006 | pdf p.10 | [변환] */
+  font-weight: var(--font-weight);
+  margin: var(--doc-space-4) 0 var(--doc-space-2);
+}
+h3, .h3, p, li, dd {                                    /* DEC-005 | - | [설계결정] = Information tier */
+  font-size: var(--doc-fs-s);
+  font-weight: var(--font-weight);
+}
+h3, .h3 { margin: var(--doc-space-3) 0 var(--doc-space-1); line-height: var(--lh-g1); }
+p { margin: 0 0 var(--doc-space-3); }
+
+/* Compact contexts — DEC-016 | pdf p.68–72 precedent | [설계결정] */
+.compact { --module: clamp(40px, 6vw, 64px); }
+.compact__title { font-size: var(--fs-m); line-height: var(--lh-g2); } /* drop one tier: top item → Directional */
+.compact__item  { font-size: var(--fs-s); line-height: var(--lh-g1); } /* rest → Information (12px floor via --fs-s) */
+.compact > * + * { border-top: var(--stroke-divider) solid currentColor; padding-top: var(--space-gap-g1); } /* hierarchy by order + rule */
+
+/* -------------------------------------------------------------------------
+   6. Layout utilities
+   ------------------------------------------------------------------------- */
+.plate {                                                /* GRID-012, GRID-013, GRID-014 | pdf p.64–65 | [이미지판독] */
+  display: flex;
+  align-items: stretch;
+  border-top: var(--stroke-band) solid var(--fg);       /* GRID-013 | pdf p.64 | [이미지판독] band above the field */
+  background: var(--bg);
+  color: var(--fg);
+  width: max-content;                                   /* DEC-023 | - | [설계결정] the whole plate (field + band) sticks out when wider than its container; */
+  min-width: 0;                                         /*   no max-width, or the field and band stop at the container while the cells run on */
+  overflow: visible;                                    /* DEC-023 | - | [설계결정] plates never scroll inside; a plate wider than the screen sticks out */
+}
+.m {                                                    /* GRID-012 | pdf p.64 | [확정] 1 ft module cell, field 12in */
+  flex: 0 0 auto;
+  width: var(--module);
+  min-height: var(--module);                            /* GRID-014 | pdf p.65 | [이미지판독] field = 12in; grows only when the 12px text floor overflows (DEC-023) */
+  padding: var(--space-margin) var(--space-margin) 0;  /* GRID-003, GRID-004 | pdf p.9–11 | [이미지판독] */
+  position: relative;
+}
+.m-2 { width: calc(var(--module) * 2); }                /* GRID-012 | pdf p.64 | [확정] informational 2×1 */
+.m-4 { width: calc(var(--module) * 4); }                /* GRID-012 | pdf p.64 | [확정] directional 4×1 */
+.m-6 { width: calc(var(--module) * 6); }                /* SIGN-012 | pdf p.66 | [확정] */
+.m-8 { width: calc(var(--module) * 8); }                /* GRID-012 | pdf p.64 | [확정] identification 8×1 */
+.m-auto { width: auto; min-width: var(--module); padding-right: var(--space-margin); } /* SIGN-003 | pdf p.62 | [이미지판독] copy width varies */
+/* Identification plates size themselves to the name in ½ ft steps (DEC-030, .sign-ident below + js/nycta.js);
+   .m-auto is for other copy cells whose width varies (Exit, Transfer). */
+.m-blank { padding: 0; }                                /* SIGN-004 | pdf p.62 | [확정] blank 1×1 between directions */
+.m-center { display: grid; place-items: center; padding: 0; } /* GRID-016, GRID-017 | pdf p.65 | [이미지판독] disc/arrow centered */
+.m-center { overflow: clip; }                           /* DEC-023 | - | [설계결정] a rotated arrow's box must not spill out; ink stays inside the 11in circle */
+
+.stack-g1 > * + * { margin-top: var(--space-gap-g1); } /* GRID-007 | pdf p.11 | [이미지판독] */
+.stack-g2 > * + * { margin-top: var(--space-gap-g2); } /* GRID-006 | pdf p.10 | [이미지판독] */
+.row { display: flex; align-items: flex-start; }        /* SIGN-003 | pdf p.62 | [확정] left → right order */
+.row--disc-text { gap: var(--space-disc-text); }        /* GRID-009 | pdf p.11 | [이미지판독] */
+
+/* -------------------------------------------------------------------------
+   7. Component — line disc (route badge)
+   ------------------------------------------------------------------------- */
+.disc {                                                 /* COLOR-002, DISC-001, DISC-004 | pdf p.14–48 | [이미지판독] */
+  --d: var(--disc-l);
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;                                   /* DISC-001 | pdf p.14 | [확정] circle — the only non-rectangular form (DEC-009 exception) */
+  background: var(--line, var(--c-black));
+  color: var(--c-white);                                /* COLOR-002, DEC-004 | pdf p.14 | [확정] white glyph */
+  font-size: calc(var(--d) * var(--disc-glyph) / var(--cap-em)); /* DISC-004 | - | [변환] glyph cap = 0.408 D */
+  line-height: 1;
+  letter-spacing: var(--ls);
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: top;
+  position: relative;
+}
+/* Glyph = baked outline (DEC-035): the circle is the box's background, the glyph a second layer in the same box,
+   painted in currentColor through a mask, so the two can never drift apart (no text layout, no font rounding).
+   Masked labels keep their text, transparent, for screen readers and copying; other labels fall back to the text. */
+.disc > span { display: block; color: var(--disc-text, inherit); } /* DEC-035 | - | [설계결정] */
+.disc::after {                                          /* DISC-004, DISC-007, DEC-035, DEC-037 | pdf p.15–40 | [변환] glyph layer, bold outlines */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  -webkit-mask: var(--disc-mask, linear-gradient(#0000 0 0)) center / 100% 100% no-repeat;
+  mask: var(--disc-mask, linear-gradient(#0000 0 0)) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+.disc--m { --d: var(--disc-m); }                        /* DISC-001 | pdf p.14 | [이미지판독] 5½in */
+.disc--s { --d: var(--disc-s); }                        /* DISC-001 | pdf p.14 | [이미지판독] 1 11/16in */
+.disc--inline {                                         /* GRID-008, DEC-034 | pdf p.11 | [설계결정] beside text, no minimum size */
+  /* D = parent cap × (1 11/16 ÷ 1 3/8); glyph cap = 0.408 D.
+     font-size uses parent em: k = 0.408 × 1.6875 / 1.375 = 0.5007  [변환] */
+  font-size: calc(1em * var(--disc-glyph) * 1.6875 / 1.375);
+  --d: calc(1em * var(--cap-em) / var(--disc-glyph));   /* GRID-008 | pdf p.11 | [변환] own em → D */
+  --disc-mb: 0.3;                                       /* DEC-034 | - | [설계결정] overhang never changes line spacing */
+  margin-block: calc(var(--d) * -1 * var(--disc-mb));
+  /* Centre on the cap height (DEC-034), from geometry only (no font metrics, which the browser rounds):
+     the glyph is out of flow, so the disc's baseline is its bottom margin edge, D × (0.5 − mb) below its centre.
+     Raise = parent cap / 2 − D × (0.5 − mb), parent cap = D × 1.375 / 1.6875  [변환] */
+  vertical-align: calc(var(--d) * (1.375 / 1.6875 / 2 - 0.5 + var(--disc-mb)));
+}
+.disc--inline > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); } /* DEC-034 | - | [변환] out of flow → baseline = margin edge */
+
+/* line → color (COLOR-003 | pdf p.15–40 | [확정]; hex DEC-003) */
+.disc[data-line="1"],  .disc[data-line="7"],  .disc[data-line="D"],  .disc[data-line="EE"] { --line: var(--c-orange); }
+.disc[data-line="2"],  .disc[data-line="HH"], .disc[data-line="QB"] { --line: var(--c-red); }
+.disc[data-line="3"],  .disc[data-line="8"],  .disc[data-line="E"],  .disc[data-line="M"]  { --line: var(--c-lightblue); }
+.disc[data-line="4"],  .disc[data-line="AA"], .disc[data-line="F"]  { --line: var(--c-magenta); }
+.disc[data-line="5"],  .disc[data-line="B"],  .disc[data-line="LL"], .disc[data-line="QJ"] { --line: var(--c-black); }
+.disc[data-line="6"],  .disc[data-line="N"]   { --line: var(--c-yellow); color: var(--c-black); } /* DEC-004 | - | [설계결정] yellow → black glyph */
+.disc[data-line="CC"], .disc[data-line="GG"], .disc[data-line="RR"], .disc[data-line="SS"] { --line: var(--c-green); }
+.disc[data-line="A"],  .disc[data-line="KK"]  { --line: var(--c-blue); }
+
+/* Per-label glyph outlines — DISC-004, DISC-007, DEC-035 | pdf p.15–40 | [변환] D = 1000, glyph cap 408, ink centre at the
+   master offset (data/disc_masters.json: dx_D, dy_D, two-letter ink gap); labels without a master (0, 9, C, G, R, X …) centred. */
 /* disc glyph masks — generated by tools/build_fonts.py from the shipped font (DEC-035). Do not edit by hand. */
 .disc[data-line="1"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M459 361H404V295H538V703H459Z'/%3E%3C/svg%3E"); }
 .disc[data-line="2"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M368 648 481 541Q513 512 531 491Q549 471 557 454Q566 436 566 417Q566 392 552 376Q538 360 506 360Q487 360 473 369Q459 378 451 395Q444 412 443 435H367Q368 386 387 355Q406 323 438 308Q470 293 508 293Q553 293 584 309Q615 325 630 352Q646 380 646 416Q646 442 637 466Q628 490 606 516Q584 543 546 578L479 639H655V705H368Z'/%3E%3C/svg%3E"); }
@@ -167,134 +387,341 @@
 .disc[data-line="Z"]  { --disc-text: #0000; --disc-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='M649 356 443 638H649V704H351V644L556 362H351V296H649Z'/%3E%3C/svg%3E"); }
 /* end of disc glyph masks */
 
-/* ==========================================================================
-   [eee] 웹 연재(G) 글 페이지. build.py가 nycta 토큰(§0–1 + 원판 글자 윤곽) 뒤에 이 파일을 붙여 posts/post.css를 만든다.
-   노선도(src/map.html)와 같은 규칙: 한 굵기(TYPE-002), 문장 대소문자(DONT-005), 왼쪽 정렬(GRID-004), 직각(DEC-009),
-   한국어는 DEC-033(keep-all·단어 간격·첫 글자 보정).
-
-   짜임(2026-11-21): 페이지 전체가 표지 한 벌이다. 크기는 매뉴얼의 세 단계(TYPE-008) 중 두 개만 쓴다.
-   - 글 머리 = 열차 바깥 행선 표지(SIGN-016, pdf p.82): 흰 1ft 칸의 노선 원판 + 검정 판에 흰 글자, 방향 크기(4¼in, TYPE-006)를
-     1ft 판의 Grid 2(GRID-006)로 두 줄까지. 다크 모드는 흰-검 반전(팝업 DEC-031과 같음).
-   - 본문 = 안내 크기(1⅜in, TYPE-007). 소제목(h2) = 방향 크기(DEC-005). 문단·간격은 매뉴얼 간격(½ · 1⅜ · 1⅞ · 5⅝in · 1ft)만 쓴다.
-   - 끝 = 방향 표지(SIGN-003): 띠(GRID-013) + [화살표 1ft 칸][문구]. 이전·다음 글은 문서 규모 안내 막대(DEC-014 .guide).
-   - 단(column)은 6ft 판(SIGN-012) 폭. 본문은 원판 칸(1ft) 다음, 표지 문구와 같은 왼쪽 선에서 시작한다(데스크톱).
-   ========================================================================== */
-:root{
-  --font:var(--font-sign);
-  --s:1.125;                                       /* [eee] 긴 글 읽기용 배율(데스크톱). 팝업 --p-scale처럼 표지 비율은 그대로, 크기만 키운다 */
-  --fs:calc(1rem * var(--s));                      /* TYPE-007, DEC-005 | 본문 = 안내 크기 */
-  --in:calc(var(--fs) * var(--cap-em) / 1.375);    /* DEC-002 | 본문 cap = 1⅜in → 1in */
-  --ft:calc(var(--in) * 12);                       /* GRID-002 | 1 모듈 */
-  --t-fs:calc(var(--fs) * 4.25 / 1.375);           /* TYPE-006, DEC-005 | 방향 크기(같은 인치) */
-  --tin:calc(var(--t-fs) * var(--cap-em) / 4.25);  /* 표지의 1in(데스크톱에서는 --in과 같음) */
-  --rule:max(1px, calc(var(--in) * .125));         /* SIGN-023 | ⅛in 선 */
-  --band:calc(var(--in) * 1.625);                  /* GRID-013 | 띠 1⅝in */
-  --gut:calc(var(--tin) * 12.5);                   /* 본문 왼쪽 선 = 원판 칸 1ft + 판 여백 ½in(표지 문구와 같은 선) */
-  --hang:calc(var(--in) * 1.875);                  /* 목록 기호·인용 선이 걸리는 자리(본문 선 왼쪽 1⅞in) */
-  --lh:1.5;                                        /* DEC-020 | 긴 글 행간 */
-  --side:16px;
-  color-scheme:light;
+/* black disc ring in dark mode — DEC-019 | - | [설계결정] */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .disc:is([data-line="5"],[data-line="B"],[data-line="LL"],[data-line="QJ"]) { box-shadow: 0 0 0 1px var(--c-white); }
 }
-:root[data-theme=dark]{--fg:var(--c-white);--bg:var(--c-black);--font-weight:var(--font-weight-dark);color-scheme:dark}   /* DEC-019 */
-/* [eee] 폰: 배율 1, 표지는 DEC-005의 방향 크기 최솟값(1.75rem)으로 내리고 표지 인치도 그 글자에서 다시 잰다(DEC-016처럼 한 벌째 축소).
-   원판 칸 옆 단이 좁아서 본문은 원판 칸 아래까지 넓게 쓰고, 목록 기호·인용 선은 걸지 않고 들여 넣는다 */
-@media (max-width:640px){:root{--s:1;--t-fs:1.75rem;--gut:0px}}
+:root[data-theme="dark"] .disc:is([data-line="5"],[data-line="B"],[data-line="LL"],[data-line="QJ"]) { box-shadow: 0 0 0 1px var(--c-white); }
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}   /* DEC-009 */
-html{background:var(--bg);color:var(--fg);font-family:var(--font);font-weight:var(--font-weight);font-size:100%;
-  font-kerning:normal;font-synthesis:none;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
-*{letter-spacing:var(--ls);word-spacing:var(--ws);--lsb-pull:var(--lsb-comp)}           /* DEC-018, DEC-025 */
-:lang(ko){word-break:keep-all;line-break:strict;word-spacing:var(--ws-ko);--lsb-pull:var(--lsb-comp-ko)}   /* DEC-033 */
-body{font-size:var(--fs);line-height:var(--lh-g1)}
-a{color:inherit;text-decoration:none}
-:focus:not(:focus-visible){outline:none}                                                 /* DEC-008 */
-:focus-visible{outline:1px solid currentColor;outline-offset:2px}
-/* 대문자 윗선·기준선까지 잘라 여백을 격자대로 잰다(GRID-003). 대체: (trim-k − lh/2)em */
-.trim,.train h1,.dir__copy,.body h2{margin-block:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em)}
-@supports (text-box: trim-both cap alphabetic){.trim,.train h1,.dir__copy,.body h2{margin-block:0;text-box:trim-both cap alphabetic}}
+/* disc row order: alphabetical, then numerical — DISC-002 | pdf p.14 | [확정] (author must order markup) */
+.discs { display: inline-flex; gap: 0; }                /* SIGN-003 | pdf p.62 | [이미지판독] each disc in its own module */
 
-.page{width:min(100% - 2 * var(--side), var(--ft) * 6);margin:0 auto;padding:calc(var(--in) * 1.875) 0 var(--ft)}   /* SIGN-012 | 6ft 판 폭 */
+/* -------------------------------------------------------------------------
+   8. Component — arrow (inline SVG, ARROW-005 path)
+   Markup: <svg class="arrow" data-dir="right" viewBox="-0.5 -0.5 1 1" aria-hidden="true">
+             <path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0
+                      L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></svg>
+   ------------------------------------------------------------------------- */
+.arrow {                                                /* ARROW-004, ARROW-005 | pdf p.58,60 | [이미지판독] D = construction circle */
+  --d: var(--disc-l);                                   /* ARROW-004 | pdf p.60 | [이미지판독] circle = 11in = disc size */
+  width: var(--d);
+  height: var(--d);
+  flex: 0 0 auto;
+  fill: currentColor;                                   /* COLOR-009 | pdf p.65 | [확정] black on white */
+  overflow: visible;
+}
+.arrow[data-dir="right"]    { transform: rotate(0deg); }    /* ARROW-001 | pdf p.59 | [확정] */
+.arrow[data-dir="down"]     { transform: rotate(90deg); }   /* ARROW-001, ARROW-002 | pdf p.59 | [확정] */
+.arrow[data-dir="left"]     { transform: rotate(180deg); }  /* ARROW-001 | pdf p.59 | [확정] */
+.arrow[data-dir="up"]       { transform: rotate(-90deg); }  /* ARROW-001 | pdf p.59 | [확정] straight ahead */
+.arrow[data-dir="up-right"] { transform: rotate(-45deg); }  /* ARROW-006 | pdf p.61 | [이미지판독] bear right */
+.arrow[data-dir="up-left"]  { transform: rotate(-135deg); } /* ARROW-006 | pdf p.61 | [이미지판독] bear left */
+/* no down-diagonals, no double-headed arrows — ARROW-001, DONT-006 | pdf p.59,63 | [확정] */
+.arrow--inline { --d: calc(1em * var(--cap-em) * 1.6875 / 1.375); vertical-align: calc(-1 * (var(--d) - 1em * var(--cap-em))); } /* DEC-014 | - | [설계결정] same size as inline disc */
 
-/* 맨 위 [화살표][노선도] — DEC-014 */
-.nav{display:inline-flex;align-items:baseline;gap:calc(var(--in) * .5)}
-.arrow{--d:calc(1em * var(--cap-em) * 1.6875 / 1.375);width:var(--d);height:var(--d);flex:none;fill:currentColor;overflow:visible}   /* GRID-008 | 줄 안 원 크기 */
-.nav .arrow,.seq .arrow{position:relative;top:calc((var(--d) - 1em * var(--cap-em)) / 2)}   /* cap 높이 가운데 */
-.arrow[data-dir=left]{transform:rotate(180deg)}
-.nav:hover,.seq a:hover .t{text-decoration:underline;text-decoration-thickness:var(--rule);text-underline-offset:.18em}
+/* -------------------------------------------------------------------------
+   9. Component — sign blocks
+   ------------------------------------------------------------------------- */
+/* Directional: [arrow][copy][discs…] — SIGN-003, COPY-005 | pdf p.62,177 | [확정] */
+.sign-direction .m-auto .t-direction { margin-top: 0; }
+/* Identification: 8×1 (or 4/6) one line, 9in — SIGN-012 | pdf p.66 | [확정] */
+.sign-ident .t-ident { margin-top: 0; }
+/* DEC-030 | pdf p.66 | [설계결정] ID plate hugs the name: ½in + name + ½in, rounded up to ½ ft (+½ ft when < 1in room).
+   js/nycta.js sets --plate-w = module × ft; without it the plate is the bare hug width. Height stays 12in. */
+.sign-ident .m { width: var(--plate-w, max-content); min-width: var(--module); }
+/* Exit: white on red, 2×1, 9in type — SIGN-013, COLOR-010 | pdf p.67 | [확정] */
+.m-exit     { background: var(--c-exit-bg); color: var(--c-exit-fg); width: auto; min-width: calc(var(--module) * 2); padding-right: var(--space-margin); }
+/* Transfer: black on yellow, 4×1, 9in type — SIGN-013, COLOR-011 | pdf p.67 | [확정] */
+.m-transfer { background: var(--c-transfer-bg); color: var(--c-transfer-fg); min-width: calc(var(--module) * 4); }
+.m-exit .t-ident, .m-transfer .t-ident { font-size: var(--fs-l); }
+/* arrows stay black on white in their own module — DONT-006 | pdf p.63 | [이미지판독] no reversed arrows */
+/* Mandatory: 1×1, red 1 3/8in text on white, ≤6 lines — SIGN-018 | pdf p.86 | [이미지판독] */
+.m-mandatory { color: var(--c-mandatory); }
+/* Reverse (street 'Subway' / 'Exit only'): white on grey — COLOR-007, SIGN-025 | pdf p.88,92 | [확정] */
+.m-reverse { background: var(--c-reverse-bg); color: var(--c-white); }
+/* Train information: [direction 4][disc 1…][info 2][rush-hour] — GRID-022, COPY-012 | pdf p.73,178 | [확정] */
+.sign-train .m-info { width: calc(var(--module) * 2); }
 
-/* 글 머리: 열차 행선 표지 — SIGN-016 | pdf p.82 */
-.train{display:flex;align-items:flex-start;margin-top:calc(var(--in) * 5.625)}
-.train__disc{flex:none;display:grid;place-items:center;width:calc(var(--tin) * 12);height:calc(var(--tin) * 12)}   /* GRID-016 | 1ft 칸 */
-.train__disc .disc{--d:calc(var(--tin) * 11)}                                                                    /* DISC-001 | 11in */
-.train__field{flex:1 1 auto;min-width:0;min-height:calc(var(--tin) * 12);background:var(--fg);color:var(--bg);
-  --font-weight:var(--font-weight-dark);font-weight:var(--font-weight);                     /* DEC-019: 검정 바탕 흰 글자 */
-  padding:calc(var(--tin) * .5) calc(var(--tin) * .5) calc(var(--tin) * 1.625)}            /* GRID-003/006 | 위·옆 ½in, 두 줄이면 아래 1⅝in로 정확히 12in */
-:root[data-theme=dark] .train__field{--font-weight:var(--font-weight-light)}
-.train h1{font-size:var(--t-fs);line-height:var(--lh-g2);font-weight:inherit;margin-inline-start:calc(-1 * var(--lsb-pull));text-wrap:balance}   /* GRID-006, DEC-025 */
+/* -------------------------------------------------------------------------
+   10. Component — arrow guide bar / navigation (DEC-014)
+   ------------------------------------------------------------------------- */
+.guide {                                                /* DEC-014, SIGN-003 | pdf p.62 | [설계결정] [arrow][label] */
+  display: flex;
+  align-items: flex-start;
+  gap: var(--doc-space-1);
+  border-top: var(--doc-band) solid var(--fg);          /* GRID-013 | - | [변환] band at document scale */
+  padding: var(--doc-space-1) var(--doc-space-1) var(--doc-space-1) 0;
+  font-size: var(--doc-fs-s);
+  line-height: var(--lh-g1);
+}
+.nav { display: flex; flex-wrap: wrap; gap: 0 var(--doc-space-3); margin: 0; padding: 0; list-style: none; }
+.nav a { display: inline-flex; gap: calc(var(--doc-in) * 0.5); align-items: baseline; text-decoration: none; } /* DEC-014 | - | [설계결정] */
+.nav a .arrow { --d: calc(1em * var(--cap-em) * 1.6875 / 1.375); position: relative; top: calc((var(--d) - 1em * var(--cap-em)) / 2); } /* arrow centred on cap height */
 
-/* 노선 · 날짜 — 안내 크기 한 줄 */
-.meta{display:flex;flex-wrap:wrap;gap:0 calc(var(--in) * 1.875);margin:calc(var(--in) * 1.875) 0 0 var(--gut)}
+/* breadcrumb = information tree — DEC-015, SIGN-011 | pdf p.5 | [설계결정] */
+.crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--doc-space-1); list-style: none; margin: 0; padding: 0; }
+.crumbs li + li::before { content: none; }
+.crumbs .arrow { --d: calc(1em * var(--cap-em)); }      /* [설계결정] arrow circle = cap height */
 
-/* 본문 */
-.body{--lh:1.5;margin:calc(var(--in) * 5.625) 0 0 var(--gut);line-height:var(--lh)}         /* DEC-020 */
-.body:lang(ko){--lh:1.7}                                                                    /* DEC-033 | 긴 한글 글 */
-.body>*+*{margin-top:calc(var(--in) * 1.875)}                                               /* GRID-007 | 1⅞in */
-.body h2{font-size:var(--t-fs);line-height:var(--lh-g2);font-weight:inherit;text-wrap:balance;margin-inline-start:calc(-1 * var(--lsb-pull))}   /* DEC-005 | 방향 크기 */
-.body>h2{margin-top:calc(var(--in) * 5.625)}                                                /* GRID-006 | 5⅝in */
-.body>h2+*{margin-top:calc(var(--in) * 1.875 - (var(--lh) / 2 - var(--trim-k)) * 1em)}       /* GRID-007 | 소제목 기준선 → 본문 대문자 윗선 1⅞in */
-.body h3{font-size:inherit;font-weight:inherit;border-top:var(--rule) solid currentColor;padding-top:calc(var(--in) * 1.875)}
-.body>h3{margin-top:calc(var(--in) * 5.625)}
-.body>h3+*{margin-top:calc(var(--in) * .5)}
-.body a{text-decoration:underline;text-decoration-thickness:var(--rule);text-underline-offset:.18em}   /* DEC-006 */
-.body strong,.body em{font-weight:inherit;font-style:normal}                                 /* TYPE-002, DONT-001: 한 굵기, 기울임 없음 */
-.body code{font:inherit}                                                                     /* DONT-001: 다른 서체 없음 */
+/* -------------------------------------------------------------------------
+   11. Web elements without a manual counterpart (DEC-006 … DEC-015)
+   ------------------------------------------------------------------------- */
+a {                                                     /* DEC-006 | - | [설계결정] */
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--doc-rule);           /* SIGN-023 ratio | - | [변환] 1/8in */
+  text-underline-offset: 0.18em;                        /* [설계결정] */
+}
 
-/* 목록: 기호는 본문 선 왼쪽에 건다(본문 왼쪽 선이 끊기지 않게). 기호 = 안내 cap의 절반 원, cap 높이 가운데 */
-.body ul,.body ol{list-style:none}
-.body li{position:relative}
-.body li+li{margin-top:calc(var(--in) * .5)}
-.body li::before{position:absolute;left:calc(-1 * var(--hang))}
-.body ul>li::before{content:"";--b:calc(var(--in) * .6875);width:var(--b);height:var(--b);border-radius:50%;background:currentColor;
-  top:calc((var(--lh) / 2 + var(--cap-em) / 2 - var(--trim-k)) * 1em - var(--b) / 2)}
-.body ol{counter-reset:n}
-.body ol>li{counter-increment:n}
-.body ol>li::before{content:counter(n)}
-/* 인용: 같은 크기, 1⅞in 들여 넣고 본문 왼쪽 선에 ½in 선. 선은 첫 줄 대문자 윗선부터 끝 줄 기준선까지 */
-.body blockquote{position:relative;padding-inline-start:var(--hang)}
-.body blockquote::before{content:"";position:absolute;left:0;width:calc(var(--in) * .5);background:currentColor;
-  top:calc((var(--lh) / 2 - var(--trim-k)) * 1em);bottom:calc((var(--lh) / 2 + var(--trim-k) - var(--cap-em)) * 1em)}
-.body blockquote>*+*{margin-top:calc(var(--in) * 1.875)}
-@media (max-width:640px){.body ul,.body ol{padding-inline-start:var(--hang)}}
-/* 구분선·그림은 단 전체(원판 칸 아래까지) */
-.body hr{border:0;border-top:var(--rule) solid currentColor;margin-inline-start:calc(-1 * var(--gut))}
-.body>hr,.body>hr+*{margin-top:calc(var(--in) * 5.625)}
-.body figure{margin-inline-start:calc(-1 * var(--gut))}
+:focus:not(:focus-visible) { outline: none; }           /* DEC-008 | - | [설계결정] never on mouse/touch */
+:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; } /* DEC-008 | - | [설계결정] minimal */
+
+.btn, button {                                          /* DEC-007 | - | [설계결정] white plate + top band */
+  appearance: none;                                     /* DEC-009 */
+  font: inherit;
+  letter-spacing: inherit;
+  word-spacing: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 0;
+  border-top: var(--doc-band) solid var(--fg);
+  padding: var(--doc-space-1) var(--doc-space-1) var(--doc-space-1) 0;
+  line-height: var(--lh-g1);
+  cursor: pointer;
+  text-align: left;
+}
+.btn:active, button:active, .btn[aria-pressed="true"], button[aria-pressed="true"] { /* DEC-007 | - | [설계결정] reversed */
+  color: var(--bg);
+  background: var(--fg);
+  padding-left: var(--doc-space-1);
+}
+.btn:disabled, button:disabled { color: var(--c-disabled); border-top-color: var(--c-disabled); cursor: default; } /* DEC-012 */
+
+label { display: block; font-size: var(--doc-fs-s); line-height: var(--lh-g1); margin-bottom: var(--doc-space-1); } /* DEC-009 | - | [설계결정] info tier */
+input, select, textarea {                               /* DEC-009 | - | [설계결정] plate + band, exact rectangle */
+  appearance: none;
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: var(--doc-rule) solid var(--fg);
+  border-top: var(--doc-band) solid var(--fg);
+  padding: var(--doc-space-1);
+  line-height: var(--lh-g1);
+  width: 100%;
+}
+input:disabled, select:disabled, textarea:disabled { color: var(--c-disabled); border-color: var(--c-disabled); } /* DEC-012 */
+[aria-invalid="true"] { border-color: var(--c-error); }  /* DEC-010 */
+.error { color: var(--c-error); font-size: var(--doc-fs-s); } /* DEC-010 | - | [설계결정] */
+.success { color: inherit; }                            /* DEC-011 | - | [설계결정] wording only */
+
+table { border-collapse: collapse; width: 100%; font-size: var(--doc-fs-s); } /* DEC-013, GRID-020 | pdf p.81 | [설계결정] Directory */
+thead th {
+  background: var(--fg); color: var(--bg);              /* SIGN-015 | pdf p.81 | [이미지판독] white on black header */
+  text-align: left; padding: var(--doc-space-1);
+}
+td { padding: var(--doc-space-1); border-bottom: var(--doc-rule) solid var(--fg); text-align: left; vertical-align: top; }
+
+.notice {                                               /* DEC-015, SIGN-019, DONT-009 | pdf p.87 | [설계결정] temporary sign: subordinate */
+  font-size: var(--doc-fs-s);
+  line-height: var(--lh-g1);
+  border-top: var(--doc-rule) solid var(--fg);
+  padding: var(--doc-space-1) 0;
+}
+
+/* -------------------------------------------------------------------------
+   12. Component — information popup (DEC-031)
+   Markup: <dialog class="popup"> <div class="popup__body">
+             [<span class="disc popup__disc" data-line="3"><span>3</span></span>]
+             <div class="popup__text"> <p>…</p> <p>… <span class="disc disc--inline">…</span></p>
+               <form method="dialog"><button class="popup__close">Close</button></form> </div>
+           </div></dialog>       (a <div class="popup" role="dialog"> renders the same in place)
+   ------------------------------------------------------------------------- */
+.popup {
+  --p-fs: var(--popup-fs, var(--doc-fs-s));            /* DEC-031 | - | [설계결정] Information tier 1rem; --popup-fs scales the whole popup */
+  --p-in: calc(var(--p-fs) * var(--cap-em) / 1.375);   /* DEC-031, DEC-002 | - | [변환] cap = 1 3/8in */
+  --p-rule: max(1px, calc(var(--p-in) * 0.125));        /* DEC-031, SIGN-023 | pdf p.88 | [변환] 1/8in rule */
+  --font-weight: var(--font-weight-dark);               /* DEC-031, DEC-019 | - | [설계결정] white type → irradiation weight */
+  color: var(--bg);                                     /* DEC-031, SIGN-016 | pdf p.82 | [설계결정] reverse of the page */
+  background:
+    linear-gradient(var(--bg), var(--bg)) 0 calc(var(--p-in) * 0.5) / 100% var(--p-rule) no-repeat, /* DEC-031 | - | [설계결정] rule ½in below the top edge */
+    var(--fg);
+  font-size: var(--p-fs);                               /* DEC-031, TYPE-007 | - | [설계결정] */
+  font-weight: var(--font-weight);
+  line-height: var(--lh-g1);                            /* GRID-007 | pdf p.11 | [변환] */
+  border: 0;
+  margin: auto;                                         /* DEC-031 | - | [설계결정] centred when modal */
+  padding: calc(var(--p-in) * 1.125) calc(var(--p-in) * 0.5) calc(var(--p-in) * (0.5 + 0.235 * 1.375)); /* DEC-031, GRID-003, GRID-011 | - | [설계결정] top ½ + ⅛ + ½in; sides ½in; bottom ½in below the descender guide (0.235 cap) */
+  width: max-content;
+  max-inline-size: min(calc(var(--p-in) * 48), calc(100% - 2 * var(--doc-space-3))); /* DEC-031 | - | [설계결정] ≤ 4 ft */
+  max-block-size: calc(100% - 2 * var(--doc-space-3));
+  overflow: auto;
+  box-shadow: none;
+}
+.popup:not(dialog), dialog.popup[open] { display: block; }
+.popup::backdrop { background: rgb(255 255 255 / 0.8); } /* DEC-031 | - | [설계결정] page colour at 80% */
+.popup__body { display: flex; align-items: flex-start; gap: calc(var(--p-in) * 0.5); } /* GRID-009 | pdf p.11 | [이미지판독] disc → text ½in */
+.disc.popup__disc { --d: calc(var(--p-in) * (1.375 + 1.875)); } /* DEC-031, GRID-010 | - | [설계결정] cap line 1 → baseline 2 = 3 1/4in */
+.popup__text { min-width: 0; }
+.popup__text > * {                                      /* GRID-007, TYPE-012 | pdf p.8,11 | [변환] Grid 1 lines, trimmed to cap line / baseline */
+  --p-trim: calc((var(--trim-k) - var(--lh-g1) / 2) * 1em); /* GRID-003 | - | [변환] same as .trim fallback */
+  font-size: inherit;
+  line-height: var(--lh-g1);
+  margin: var(--p-trim) 0 var(--p-trim) calc(-1 * var(--lsb-pull)); /* DEC-025, DEC-033 | - | [변환] first glyph on the ½in margin */
+}
+.popup__text > * + * { margin-block-start: calc(var(--p-in) * 0.5 + var(--p-trim)); } /* GRID-007 | pdf p.11 | [이미지판독] baseline → next cap line ½in */
+@supports (text-box: trim-both cap alphabetic) {
+  .popup__text > * { --p-trim: 0px; text-box: trim-both cap alphabetic; }
+}
+.popup .popup__close {                                  /* DEC-031, DEC-006 | - | [설계결정] text control styled as a link, not DEC-007 */
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  line-height: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--p-rule);
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+/* black discs on the black field get the dark-mode ring — DEC-019, DEC-031 | - | [설계결정] */
+.popup .disc:is([data-line="5"],[data-line="B"],[data-line="LL"],[data-line="QJ"]) { box-shadow: 0 0 0 1px var(--bg); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .popup { --font-weight: var(--font-weight-light); } /* DEC-031 | - | [설계결정] black type on white */
+  :root:not([data-theme="light"]) .popup::backdrop { background: rgb(0 0 0 / 0.8); }
+}
+:root[data-theme="dark"] .popup { --font-weight: var(--font-weight-light); }
+:root[data-theme="dark"] .popup::backdrop { background: rgb(0 0 0 / 0.8); }
+
+/* -------------------------------------------------------------------------
+   13. Component — route map (DEC-036)
+   Markup: <figure class="map" aria-label="…"><script type="application/json">{ groups, articles, series }</script></figure>
+   + js/nycta-map.js (draws the SVG). Data format: see the head of js/nycta-map.js.
+   ------------------------------------------------------------------------- */
+.map {
+  --map-fs: var(--doc-fs-s);                            /* DEC-036, DEC-005 | - | [설계결정] station names = Information tier */
+  --map-cap: calc(var(--map-fs) * var(--cap-em));       /* DEC-036 | - | [변환] name cap height */
+  --map-pitch: calc(var(--map-cap) * 2);                /* DEC-036 | - | [설계결정] strand pitch = 2 cap (reference photo ≈1.9–2.2) */
+  --map-gap: calc(var(--doc-in) * 0.25);                /* DEC-036, SIGN-023 | - | [설계결정] ground between strands = 2 × ⅛in rule */
+  --map-stop: calc(var(--map-cap) * 1.6875 / 1.375);    /* DEC-036, GRID-008, DISC-001 | pdf p.11,14 | [변환] station = small disc beside a name of that cap */
+  --map-label-gap: calc(var(--doc-in) * 0.5);           /* DEC-036, GRID-009 | pdf p.11 | [변환] strand edge → name ½in */
+  --map-radius: 1;                                      /* DEC-036 | - | [설계결정] innermost strand bend radius, in pitches; +1 pitch per strand outward */
+  --map-unit: 2;                                        /* DEC-036 | - | [설계결정] grid step, in pitches */
+  margin: 0;
+  overflow-x: auto;                                     /* DEC-036 | - | [설계결정] the map keeps its scale; narrow screens pan */
+  font-size: var(--map-fs);
+}
+.map__svg { display: block; max-width: none; overflow: visible; }
+.map__casing { fill: none; stroke: var(--bg); stroke-linecap: butt; stroke-linejoin: round; } /* DEC-036 | - | [설계결정] ground cut where lines cross */
+.map__line { fill: none; stroke: var(--line); stroke-linecap: butt; stroke-linejoin: round; } /* DEC-036, COLOR-003 | - | [설계결정] route colour */
+.map__stop { fill: var(--c-black); }                    /* DEC-036 | - | [설계결정] station = plain black circle, no letter; no dark-mode ring (it always sits on a line) */
+.map__transfer { fill: none; stroke: var(--fg); stroke-linecap: round; stroke-linejoin: round; } /* DEC-036 | - | [설계결정] one station on two groups; page colour so it stays visible in dark mode */
+.map__grid line { stroke: var(--c-grey); stroke-width: 1px; opacity: 0.35; vector-effect: non-scaling-stroke; } /* DEC-036 | - | [설계결정] alignment check only ("grid": true) */
+.map__name { fill: var(--fg); font-weight: var(--font-weight); } /* DEC-036, TYPE-001 | - | [설계결정] */
+.map a:focus-visible { outline: 1px solid var(--fg); }  /* DEC-008 | - | [설계결정] */
+
+/* -------------------------------------------------------------------------
+   14. Print simulation layer (DEC-038) — opt-in: <html data-print>
+   Off by default; a button with data-print-toggle switches it per viewer (js/nycta.js). Two parts: paper grain + ink edge.
+   Dark mode keeps both, mirrored (white fibre, screen blend), without the paper colour; high contrast, forced colours and real printing turn it off.
+   Ink-edge filter (#nycta-ink) is injected by js/nycta.js; without the script only paper + grain apply.
+   ------------------------------------------------------------------------- */
+:root[data-print] {
+  --c-paper: #FFFCFA;                                   /* DEC-038, COLOR-005 | pdf p.49–57 | [설계결정] scan paper #EAE5E2 normalised to R = 255 (#FFFAF6), halfway to white */
+  --c-white: var(--c-paper);                            /* DEC-038 | - | [설계결정] white type = bare paper */
+  --print-grain: 0.15;                                  /* DEC-038 | - | [설계결정] fine fibre */
+  --print-grain-dark: 0.25;                             /* DEC-038 | - | [설계결정] fine fibre in dark mode: white specks, screen blend */
+  --print-edge: 1.5;                                    /* DEC-038, DEC-039 | - | [설계결정] edge displacement in px at 100 % zoom (max ±0.75px), read by js/nycta.js */
+  --print-filter: url(#nycta-ink);
+  --print-grain-now: var(--print-grain);
+  --print-grain-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .27 0 0 0 0 .2 1.8 0 0 0 -.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --print-grain-blend: multiply;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-print]:not([data-theme="light"]) {         /* DEC-038, DEC-019 | - | [설계결정] dark mode: grain mirrored (light specks lift the black), ink edge kept; no paper colour */
+    --c-white: #FFFFFF;
+    --print-grain-now: var(--print-grain-dark);
+    --print-grain-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.8 0 0 0 -.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+    --print-grain-blend: screen;
+  }
+}
+:root[data-print][data-theme="dark"] {
+  --c-white: #FFFFFF;
+  --print-grain-now: var(--print-grain-dark);
+  --print-grain-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.8 0 0 0 -.82'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --print-grain-blend: screen;
+}
+:root[data-print] body::after {                         /* DEC-038 | - | [설계결정] paper: fine fibre over ink too (light: multiply, dark: screen) */
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483646;
+  background: var(--print-grain-tex) 0 0 / var(--print-grain-size, 240px) var(--print-grain-size, 240px); /* DEC-039 | - | [설계결정] tile held at screen-pixel size by js/nycta.js */
+  mix-blend-mode: var(--print-grain-blend);
+  opacity: var(--print-grain-now);
+}
+:root[data-print] :is(.plate, .popup, .map__svg),
+:root[data-print] .disc:not(.plate .disc, .popup .disc) {
+  filter: var(--print-filter);                          /* DEC-038, DEC-009 | - | [설계결정] ragged ink edge, sub-pixel so corners stay square */
+}
+@media (prefers-contrast: more), (forced-colors: active), print {
+  :root[data-print] { --c-white: #FFFFFF; --print-filter: none; }  /* DEC-038 | - | [설계결정] whole layer off */
+  :root[data-print] body::after { display: none; }
+}
+
+
+/* ==========================================================================
+   [eee] 웹 연재(G) 글 페이지. build.py가 vendor/nycta/nycta.css 전체 뒤에 이 파일을 붙여 posts/post.css를 만든다.
+   원칙(2026-11-21 사용자 요청 "원래 있는 모듈을 최대한 이용"): 모양은 nycta 구성요소가 정하고, 여기에는 그것들을
+   한 페이지에 놓는 자리와 nycta에 없는 글 요소(인용·구분선·그림)만 둔다. 새 크기나 간격 값은 만들지 않는다.
+   - 글 머리 = 열차 안내 표지 .plate.sign-train(GRID-022): [방향 4ft: 제목][원판 1ft: G][안내 2ft: 연재·날짜] = 7ft 판
+   - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
+   - 이전·다음 글 = .guide(DEC-014), 끝 = .plate.sign-direction(SIGN-003): [화살표 1ft][노선도 4ft]
+   ========================================================================== */
+
+/* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 7ft 글 머리 판이 화면 폭에 꼭 맞을 때까지만 줄인다
+   (.compact처럼 --module만 바꾼다. 원래 값이면 390px 화면에서 판이 280px로 남는다) */
+.page{--module:clamp(40px, (100vw - 2 * var(--doc-space-3)) / 7, 97.75px);
+  width:calc(var(--module) * 7);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
+
+/* 맨 위 [화살표][노선도] — nycta .nav 그대로, 아래로 GRID-006 5⅝in */
+.page>nav{margin-bottom:var(--doc-space-4)}
+
+/* 글 머리: 제목이 4ft를 넘으면 줄 수만큼 판이 자란다(.m의 min-height). TYPE-011대로 두 줄 안이 가장 좋다 */
+.sign-train h1{text-wrap:balance}
+.sign-train>.m-center{align-self:flex-start;height:var(--module)}   /* 판이 자라도 원판은 맨 위 1ft 칸에(GRID-016) */
+
+/* 본문: 데스크톱에서는 제목 칸 + 원판 칸(5ft) 폭, 오른쪽 2ft(안내 칸 아래)는 비운다. 폰에서는 판 폭 전체 */
+.body{max-width:calc(var(--module) * 5);margin-top:var(--doc-space-4)}
+@media (max-width:640px){.body{max-width:none}}
+.body>:last-child{margin-bottom:0}
+.body ul,.body ol{margin:0 0 var(--doc-space-3);padding-inline-start:var(--doc-space-3)}
+.body li+li{margin-top:var(--doc-space-1)}
+.body strong,.body em{font-weight:inherit;font-style:normal}    /* TYPE-002, DONT-001: 한 굵기, 기울임 없음 */
+.body code{font:inherit}                                         /* DONT-001: 다른 서체 없음 */
+/* nycta에 없는 글 요소: 기존 선(⅛in, SIGN-023)과 간격 토큰만 쓴다 */
+.body blockquote{margin:0 0 var(--doc-space-3);padding-inline-start:var(--doc-space-3);border-inline-start:var(--doc-rule) solid currentColor}
+.body blockquote>:last-child{margin-bottom:0}
+.body hr{border:0;border-top:var(--doc-rule) solid currentColor;margin:var(--doc-space-4) 0}
+.body figure{margin:0 0 var(--doc-space-3)}
 .body img{display:block;max-width:100%;height:auto}
-.body figure img{width:100%}
-.body figcaption{font-size:1rem;line-height:var(--lh-g1);margin:calc(var(--in) * .5) 0 0 var(--gut)}   /* 안내 크기(배율 없이) */
+.body figcaption{line-height:var(--lh-g1);margin-top:var(--doc-space-1)}
 
-/* 이전 글 · 다음 글 — DEC-014 안내 막대: 띠 + [화살표][글] */
-.seq{display:grid;grid-template-columns:1fr 1fr;gap:var(--in);margin-top:var(--ft)}
+/* 이전 글 · 다음 글: .guide 두 개를 반씩 */
+.seq{display:grid;grid-template-columns:1fr 1fr;gap:var(--doc-space-3);margin-top:var(--doc-space-5)}
 .seq:empty{display:none}
-.seq a{grid-column:1;display:flex;align-items:baseline;gap:calc(var(--in) * .5);border-top:var(--band) solid currentColor;
-  padding-top:calc(var(--in) * .5)}
-.seq a.next{grid-column:2}
-.seq a>span{display:flex;flex-direction:column;min-width:0}
-.seq small{font-size:inherit}
-@media (max-width:640px){.seq{grid-template-columns:1fr}.seq a.next{grid-column:1}}
+.seq .next{grid-column:2}
+.seq .guide{text-decoration:none}
+.seq .guide>span{display:flex;flex-direction:column}
+.seq .guide .arrow{margin-top:calc((var(--lh-g1) / 2 + var(--cap-em) / 2 - var(--trim-k)) * 1em - var(--d) / 2)}   /* cap 높이 가운데(.guide는 flex라 vertical-align이 듣지 않음) */
+.seq .guide:hover .t{text-decoration:underline;text-decoration-thickness:var(--doc-rule);text-underline-offset:.18em}
+@media (max-width:640px){.seq{grid-template-columns:1fr}.seq .next{grid-column:1}}
 
-/* 끝: 방향 표지 — SIGN-003 | pdf p.62: 띠 + [화살표 1ft 칸][문구 Grid 2] */
-.dir{display:flex;align-items:flex-start;margin-top:var(--ft);border-top:calc(var(--tin) * 1.625) solid currentColor}
-.seq:not(:empty)+.dir{margin-top:calc(var(--in) * 5.625)}
-.dir__arrow{flex:none;display:grid;place-items:center;width:calc(var(--tin) * 12);height:calc(var(--tin) * 12)}   /* GRID-017 */
-.dir__arrow .arrow{--d:calc(var(--tin) * 11)}                                                                    /* ARROW-004 | 11in 원 */
-.dir__copy{padding:calc(var(--tin) * .5) 0 0 calc(var(--tin) * .5);font-size:var(--t-fs);line-height:var(--lh-g2)}   /* GRID-003 | ½in */
-.dir:hover .dir__copy{text-decoration:underline;text-decoration-thickness:max(1px, calc(var(--tin) * .125));text-underline-offset:.18em}
-
-/* 노선 원판(DISC-001/004, 윤곽 DEC-035): src/map.html의 .disc와 같은 규칙. 그쪽이 바뀌면 여기도 맞춘다 */
-.disc{--d:calc(1rem * var(--cap-em) * 1.6875 / 1.375);display:inline-grid;place-items:center;flex:0 0 auto;width:var(--d);height:var(--d);
-  border-radius:50%;background:var(--line,var(--c-black));color:var(--on,var(--c-white));font-size:calc(var(--d) * var(--disc-glyph) / var(--cap-em));
-  line-height:1;position:relative}
-.disc>span{display:block;color:var(--disc-text,inherit)}
-.disc::after{content:"";position:absolute;inset:0;background:currentColor;pointer-events:none;
-  -webkit-mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat;mask:var(--disc-mask,linear-gradient(#0000 0 0)) center/100% 100% no-repeat}
+/* 끝: 방향 표지 — 링크라서 nycta a의 밑줄만 뺀다 */
+.back{margin-top:var(--doc-space-5);text-decoration:none}
+.seq:not(:empty)+.back{margin-top:var(--doc-space-4)}
+.back:hover .t-direction{text-decoration:underline;text-decoration-thickness:var(--stroke-divider);text-underline-offset:.18em}
