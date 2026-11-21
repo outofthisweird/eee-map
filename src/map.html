@@ -241,8 +241,10 @@
   :root[data-print] #panel.reading{filter:none}   /* [eee] no ink edge on the reading plate: a filter over a scrolling box re-rasters on every scroll, and blurs long copy */
   html.reading #logo,html.reading #legend,html.reading #tools,html.reading #zoom,html.reading #snaptune{visibility:hidden}   /* the map's chrome steps aside */
   #reader h1,#reader h2,#reader h3,#reader strong,#reader em{font-weight:inherit;font-style:normal}   /* TYPE-002, DONT-001: one weight */
-  /* title: direction size (TYPE-006, Grid 2 cap 4¼in of the plate's inch), never wider than the phone allows */
-  #rtitle{font-size:min(calc(var(--p-in) * 4.25 / var(--cap-em)), 8vw);line-height:var(--lh-g2);text-wrap:balance;
+  /* title: direction size (TYPE-006, Grid 2 cap 4¼in) at the map popup's 1.5× sign scale, the plate it grew from (2026-11-21 사용자 요청:
+     제목을 더 크게; was the copy's inch: 61 → 74px on desktop); phones up to 11vw (31 → 43px at 390px), so both take about the same
+     share of the plate */
+  #rtitle{font-size:min(calc(var(--doc-in) * 1.5 * 4.25 / var(--cap-em)), 11vw);line-height:var(--lh-g2);text-wrap:balance;
     --t-trim:calc((var(--trim-k) - var(--lh-g2) / 2) * 1em);margin:var(--t-trim) 0 .7em calc(-1 * var(--lsb-pull))}
   @supports (text-box: trim-both cap alphabetic){#rtitle{--t-trim:0px;text-box:trim-start cap alphabetic}}
   /* --here = the font size of the line a disc or arrow sits in, as a length (registered, so 1em is fixed where it is set, not inside
@@ -307,6 +309,10 @@
      drag, tidy-up, intro) inMotion() sets html.map-moving and the edge comes back 400ms after it stops, never while a
      finger is still down. */
   @media (hover:none) and (pointer:coarse){:root[data-print].map-moving #map{filter:none}}
+  /* [eee] reading plate (2026-11-21 사용자 요청: 열리고 닫히는 애니메이션이 어느 모드에서든 같게): while the plate grows / shrinks and
+     the camera glides (readerMotion()), the map's ink edge is off on every device, so the print layer can't slow the camera; the
+     ghost plate itself is transform-only and unfiltered. The edge comes back when it stops */
+  :root[data-print].reader-moving #map{filter:none}
 </style>
 <script>/* 로컬 헬베티카 미리보기(nycta-gsm DEC-028). 절대 배포하지 않는다: preview/는 git 제외.
    file://·localhost에서만 preview/helvetica.css를 불러온다. ?font=web이면 배포 서체, ?font=helvetica면 강제로 미리보기.
@@ -1638,14 +1644,17 @@ function openReader(s,how,instant){
   try{if(how==='push')history.pushState({eeeRead:1},'',h);else if(how==='replace')history.replaceState(history.state,'',h)}catch(e){}
   follow=s; centerOn(s,instant?0:DESIGN.motion.centerMs,first);
   if(r0)plateMorph(r0,panel.getBoundingClientRect(),DESIGN.motion.readerMs,'cubic-bezier(.2,0,0,1)');   // the popup's box grows into the plate
-  inMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});
+  inMotion(DESIGN.motion.centerMs); if(!instant)readerMotion(DESIGN.motion.centerMs); reader.focus({preventScroll:true});   // 이전·다음 too: the camera glides
 }
 // [eee] the plate growing / shrinking between the popup and the reading plate. A blank reverse plate (.rghost) moves and scales
 // from one box to the other while the real panel waits hidden (.hold), then shows. Transform only (2026-11-21: on the iPhone the
 // first version, a clip-path animation on the panel itself, did not show in dark or print mode: WebKit repaints a clip-path on the
 // main thread every frame, and the print layer's full-screen filter and grain stalled it; a transform runs on the compositor).
 // The ghost is drawn at the bigger box and scaled down from there, so its band is never blown up.
+let rmT=0;
+function readerMotion(ms){const r=document.documentElement;r.classList.add('reader-moving');clearTimeout(rmT);rmT=setTimeout(()=>r.classList.remove('reader-moving'),ms+120)}
 function plateMorph(a,b,ms,ease){
+  readerMotion(Math.max(ms,DESIGN.motion.centerMs));
   const big=a.width*a.height>=b.width*b.height?a:b, g=document.createElement('div'); g.className='rplate rghost';
   g.style.cssText=`left:${big.left}px;top:${big.top}px;width:${big.width}px;height:${big.height}px`; document.body.append(g);
   const tf=r=>({transform:`translate(${r.left-big.left}px,${r.top-big.top}px) scale(${r.width/big.width},${r.height/big.height})`});
