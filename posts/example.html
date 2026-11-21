@@ -15,14 +15,13 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.w
 <body>
 <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="arrow" viewBox="-0.5 -0.5 1 1"><path d="M -0.488 -0.1015 L 0.119 -0.1015 L -0.048 -0.269 L 0.096 -0.403 L 0.5 0 L 0.096 0.403 L -0.048 0.269 L 0.119 0.1015 L -0.488 0.1015 Z"/></symbol></svg>
 <div class="page">
-  <!-- nycta 구성요소만 쓴다: .nav(DEC-014), .plate.sign-train(GRID-022), .guide(DEC-014), .plate.sign-direction(SIGN-003) -->
+  <!-- nycta 구성요소만 쓴다: .nav(DEC-014), 표준 길이 모듈 판 .plate>.m(GRID-012), .guide(DEC-014), .plate.sign-direction(SIGN-003) -->
   <nav aria-label="노선도"><ul class="nav"><li><a href="../index.html#G-01"><svg class="arrow" data-dir="left" aria-hidden="true"><use href="#arrow"/></svg>노선도</a></li></ul></nav>
   <main>
     <article>
-      <header class="plate sign-train">
-        <div class="m m-4"><h1 class="t-direction trim">웹 연재 글 페이지 예시</h1></div>
-        <div class="m m-center"><span class="disc" data-line="G" style="--line:var(--c-orange);--on:var(--c-white)" aria-hidden="true"><span>G</span></span></div>
-        <div class="m m-info"><div class="stack-g1"><p class="t-info trim">웹 연재</p><p class="t-info trim"><time datetime="2026-11-21">2026년 11월 21일</time></p></div></div>
+      <header>
+        <div class="plate head"><div class="m m-6"><h1 class="t-direction trim">웹 연재 글 페이지 예시</h1></div></div>
+        <p class="meta"><span class="disc disc--inline" data-line="G" style="--line:var(--c-orange)" aria-hidden="true"><span>G</span></span><span>웹 연재</span><time datetime="2026-11-21">2026년 11월 21일</time></p>
       </header>
       <div class="body">
       <p>이 글은 글 페이지 모양을 확인하려고 만든 예시입니다. 초안이라서 배포 사이트의 노선도에는 나오지 않고, 내 컴퓨터에서 연 노선도에만 보입니다. 첫 글을 쓰시면 이 파일은 지워도 됩니다.</p>
@@ -42,5 +41,14 @@ if(/[?&]font=helvetica\b/.test(q)||(local&&!/[?&]font=web\b/.test(q)))document.w
     </a>
   </main>
 </div>
+<script>/* [eee] 글 머리 판 길이: 노선도 로고·범례(fitPlates)와 같은 규칙. 표준 길이(GRID-012/SIGN-012) 4·6ft 중 제목 한 줄 옆에
+   1in 이상 남는 가장 짧은 것(DEC-030), 안 되면 6ft에서 줄을 바꾼다. 높이는 1ft, 넘치면 1ft 단위. 스크립트가 없으면 6×1ft */
+(function(){var c=document.querySelector('.head .m'),h=c&&c.querySelector('h1');if(!h)return;
+function fit(){c.classList.remove('m-4');c.classList.add('m-6');c.style.height='';
+  var M=c.getBoundingClientRect().width/6,inch=M/12,r=document.createRange();
+  h.style.whiteSpace='nowrap';r.selectNodeContents(h);var w=r.getBoundingClientRect().width;h.style.whiteSpace='';
+  if(inch*.5+w+inch<=4*M){c.classList.remove('m-6');c.classList.add('m-4')}
+  var H=c.scrollHeight;if(H>M+1)c.style.height=Math.ceil(H/M-.02)*M+'px'}
+fit();if(document.fonts)document.fonts.ready.then(fit);addEventListener('resize',fit)})();</script>
 </body>
 </html>

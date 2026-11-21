@@ -172,7 +172,7 @@ def build_posts(data_text, post_tokens):
     posts.sort(key=lambda p: (p["date"], p["slug"]))   # 역 번호는 게시일 순서(G-01부터)
     for i, p in enumerate(posts): p["id"] = f"G-{i + 1:02d}"
     public = [p for p in posts if not p["draft"]]
-    disc = (f'<span class="disc" data-line="G" style="--line:var({G_TOKEN});--on:var(--c-white)" aria-hidden="true"><span>G</span></span>')
+    disc = (f'<span class="disc disc--inline" data-line="G" style="--line:var({G_TOKEN})" aria-hidden="true"><span>G</span></span>')
     for p in posts:
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None

@@ -2,24 +2,33 @@
    [eee] 웹 연재(G) 글 페이지. build.py가 vendor/nycta/nycta.css 전체 뒤에 이 파일을 붙여 posts/post.css를 만든다.
    원칙(2026-11-21 사용자 요청 "원래 있는 모듈을 최대한 이용"): 모양은 nycta 구성요소가 정하고, 여기에는 그것들을
    한 페이지에 놓는 자리와 nycta에 없는 글 요소(인용·구분선·그림)만 둔다. 새 크기나 간격 값은 만들지 않는다.
-   - 글 머리 = 열차 안내 표지 .plate.sign-train(GRID-022): [방향 4ft: 제목][원판 1ft: G][안내 2ft: 연재·날짜] = 7ft 판
+   - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 원판·연재·날짜는 판 아래 한 줄
    - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
    - 이전·다음 글 = .guide(DEC-014), 끝 = .plate.sign-direction(SIGN-003): [화살표 1ft][노선도 4ft]
    ========================================================================== */
 
-/* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 7ft 글 머리 판이 화면 폭에 꼭 맞을 때까지만 줄인다
-   (.compact처럼 --module만 바꾼다. 원래 값이면 390px 화면에서 판이 280px로 남는다) */
-.page{--module:clamp(40px, (100vw - 2 * var(--doc-space-3)) / 7, 97.75px);
-  width:calc(var(--module) * 7);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
+/* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 6ft 판이 화면 폭에 꼭 맞을 때까지만 줄인다
+   (.compact처럼 --module만 바꾼다. 원래 값이면 390px 화면에서 6ft 판이 240px로 남는다) */
+.page{--module:clamp(40px, (100vw - 2 * var(--doc-space-3)) / 6, 97.75px);
+  /* 모듈에서 나오는 토큰은 :root에서 계산이 끝난 값으로 물려받으므로, 같은 공식(nycta §1)을 여기서 다시 선언해야 글자·원판·띠도 따라온다 */
+  --in:calc(var(--module) / 12);
+  --cap-l:calc(var(--in) * 9);--cap-m:calc(var(--in) * 4.25);--cap-s:calc(var(--in) * 1.375);
+  --fs-l:calc(var(--cap-l) / var(--cap-em));--fs-m:calc(var(--cap-m) / var(--cap-em));--fs-s:max(12px, calc(var(--cap-s) / var(--cap-em)));
+  --space-margin:calc(var(--in) * .5);--space-gap-g1:calc(var(--in) * .5);--space-gap-g2:calc(var(--in) * 1.375);--space-disc-text:calc(var(--in) * .5);
+  --stroke-band:calc(var(--in) * 1.625);--stroke-divider:max(1px, calc(var(--in) * .125));
+  --disc-l:calc(var(--in) * 11);--disc-m:calc(var(--in) * 5.5);--disc-s:calc(var(--in) * 1.6875);
+  width:calc(var(--module) * 6);max-width:calc(100% - 2 * var(--doc-space-3));margin:0 auto;padding:var(--doc-space-3) 0 var(--doc-space-5)}
 
 /* 맨 위 [화살표][노선도] — nycta .nav 그대로, 아래로 GRID-006 5⅝in */
 .page>nav{margin-bottom:var(--doc-space-4)}
 
-/* 글 머리: 제목이 4ft를 넘으면 줄 수만큼 판이 자란다(.m의 min-height). TYPE-011대로 두 줄 안이 가장 좋다 */
-.sign-train h1{text-wrap:balance}
-.sign-train>.m-center{align-self:flex-start;height:var(--module)}   /* 판이 자라도 원판은 맨 위 1ft 칸에(GRID-016) */
+/* 글 머리: 표준 길이 모듈 판 하나(.plate > .m, GRID-012/014). 제목은 방향 크기 Grid 2(.t-direction), 길이·높이는 post.html 스크립트 */
+.head h1{text-wrap:balance}
+/* 판 아래 한 줄: [노선 원판][연재][날짜] — 줄 안 원판(.disc--inline, DEC-034)과 안내 크기 */
+.meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--doc-space-1);margin:var(--doc-space-3) 0 0;line-height:var(--lh-g1)}
+.meta time{margin-inline-start:var(--doc-space-1)}
 
-/* 본문: 데스크톱에서는 제목 칸 + 원판 칸(5ft) 폭, 오른쪽 2ft(안내 칸 아래)는 비운다. 폰에서는 판 폭 전체 */
+/* 본문: 데스크톱에서는 5ft 폭(긴 글 한 줄 30자 안팎), 폰에서는 6ft 판 폭 전체 */
 .body{max-width:calc(var(--module) * 5);margin-top:var(--doc-space-4)}
 @media (max-width:640px){.body{max-width:none}}
 .body>:last-child{margin-bottom:0}
