@@ -27,12 +27,12 @@ async def main():
             await pg.click("#psum"); await pg.wait_for_timeout(900)
             r = await pg.evaluate("""(()=>{const p=panel.getBoundingClientRect();return {hash:location.hash,reading:reading&&reading.id,
               cls:panel.classList.contains('reading'),title:rtitle.textContent,body:rbody.textContent.length,
-              path:location.pathname,cover:p.width*p.height/(innerWidth*innerHeight),
+              path:location.pathname,cover:p.width*p.height/(innerWidth*innerHeight),fits:rscroll.scrollHeight<=rscroll.clientHeight+1,
               st:(()=>{const d=reading.g.querySelector('.dot').getBoundingClientRect();return {x:d.x+d.width/2,y:d.y+d.height/2}})(),
               left:p.left,top:p.top,bodyFs:parseFloat(getComputedStyle(rbody).fontSize),chrome:getComputedStyle(logo).visibility}})()""")
             check(f"{tag} summary opens the reading plate, no page change", r["cls"] and r["reading"] == G[k]["id"] and r["hash"] == "#read=" + G[k]["slug"]
                   and G[k]["tt"] in r["title"] and r["body"] > 200 and r["path"].endswith("index.html"), r)
-            check(f"{tag} the plate covers most of the screen, the station shows beside it", r["cover"] > (.85 if w < 641 else .4)
+            check(f"{tag} the plate covers most of the screen (or the whole article fits), the station shows beside it", (r["cover"] > (.85 if w < 641 else .4) or r["fits"])
                   and 0 <= r["st"]["x"] <= w and 0 <= r["st"]["y"] <= h and (r["st"]["x"] < r["left"] if w > 640 else r["st"]["y"] < r["top"])
                   and r["chrome"] == "hidden", r)
             # 2. 다음 글: 카메라가 그 역으로 가고 판 내용이 바뀐다

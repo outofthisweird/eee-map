@@ -447,7 +447,8 @@
   .rghost{position:fixed;z-index:11;pointer-events:none;transform-origin:0 0;will-change:transform;background:var(--fg)}   /* plain: the reading plates have no band */
   :root[data-print] .rghost{filter:none}
   #panel.hold{opacity:0}   /* (not visibility: the reader takes the focus while the ghost grows) */
-  #panel.reading{--r-fs:clamp(17px, 12px + .55vw, 20px);--p-fs:var(--r-fs);--p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
+  #panel.reading{--r-fs:calc(1rem * var(--p-scale));--p-fs:var(--r-fs);   /* the popup's size (2026-11-21 사용자 요청: 크기도 팝업 따라가자; was clamp 17–20px): 24px desktop, 16px phone */
+    --p-in:calc(var(--r-fs) * var(--cap-em) / 1.375);
     --r-room:calc(var(--p-in) * 1.5);--r-w:min(calc(var(--rp-side) + 34em + var(--r-room)), calc(100vw - 2 * var(--r-lmin)));
     --r-lmin:max(72px, 8vw);font-size:var(--r-fs);
     left:max(var(--r-lmin), calc((100vw - var(--r-w)) / 2));top:calc(var(--edge) + var(--sa-t));width:var(--r-w);max-width:none;height:auto;
@@ -495,12 +496,11 @@
   #rtitle,#rbody,#rbody h2,#rbody h3,#rbody blockquote,#rnav{--here:1em}
   #reader .disc--inline{--d:calc(var(--here) * var(--cap-em) * 1.6875 / 1.375)}               /* DEC-034 at each line's own size */
   #reader .disc[data-color=black]{box-shadow:0 0 0 1px var(--bg)}                         /* a black disc on the black plate: page-colour ring */
-  /* copy: the size and pitch the user picked (clamp 17–20px, 1.5), lines ≈ 34em */
-  #rbody{max-width:34em;line-height:1.5}
-  /* [eee] long white-on-black copy (light theme): pure white on pure black glares over many lines, so the copy (not the title or
-     the end line) is a softer white. The dark theme (black type on the white plate) keeps pure black. */
-  :root:not([data-theme=dark]) #rbody{color:color-mix(in srgb, var(--bg) 86%, var(--fg))}
-  #rbody>*{margin:0 0 1.1em}
+  /* copy: the popup's size (--r-fs), lines ≈ 34em. Spacing and colour as in the map popup (2026-11-21 사용자 요청: 자간·행간·색을
+     팝업과 똑같이): Grid 1 pitch (GRID-007, --lh-g1), the plate's type colour (pure white on black; the softer white is gone), the same
+     letter and word spacing (kerning, --ws-ko, em-based). Blocks: baseline → next cap line = 1⅜in, the GRID-006 gap the popup uses */
+  #rbody{max-width:34em;line-height:var(--lh-g1)}
+  #rbody>*{margin:0 0 calc(var(--p-in) * 1.375 - (var(--lh-g1) - var(--cap-em)) * 1em)}
   #rbody>:last-child{margin-bottom:0}
   #rbody h2{font-size:1.3em;line-height:1.3;margin:1.6em 0 .6em}
   #rbody h3{font-size:1.1em;line-height:1.4;margin:1.4em 0 .5em}
