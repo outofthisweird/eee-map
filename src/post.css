@@ -5,7 +5,7 @@
    - 글 머리 = 표준 길이 모듈 판 하나(.plate > .m-4/.m-6)에 제목(방향 크기). 원판·연재·날짜는 판 아래 한 줄
    - 모듈 판은 바탕과 반대 색(반전 판, DEC-031 구성)
    - 본문 = nycta 문서 규모(DEC-005: h1 식별·h2 방향·본문 안내 크기, p 간격, 한국어 행간 DEC-033)
-   - 끝 = 모듈 판 하나에 .nav 한 줄: [← 이전 글] [→ 다음 글] [← 노선도] (팝업 글처럼)
+   - 끝 = 모듈 판 하나에 .nav: [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙] (팝업 글처럼)
    ========================================================================== */
 
 /* 판 크기: nycta 모듈(DEC-002)을 그대로 쓰되, 좁은 화면에서는 6ft 판이 화면 폭에 꼭 맞을 때까지만 줄인다.
@@ -52,11 +52,16 @@
 .body img{display:block;max-width:100%;height:auto}
 .body figcaption{line-height:var(--lh-g1);margin-top:var(--doc-space-1)}
 
-/* 끝 줄: 모듈 판 하나에 [← 이전 글] [→ 다음 글] [← 노선도] 한 줄(2026-11-21 사용자 요청: 줄바꿈 없이, 팝업 글처럼).
-   nycta .nav(DEC-014: 화살표 먼저 COPY-005, 화살표→글 ½in, 항목 사이 1⅞in GRID-007)를 안내 크기(.t-info, TYPE-007)로 판 안에 둔다.
-   첫 글자가 아니라 화살표가 여백에 붙으므로 DEC-025 보정은 뺀다. 링크는 팝업의 닫기처럼 글에만 ⅛in 밑줄(DEC-006). 길이는 post.html 스크립트 */
+/* 끝 줄: 모듈 판 하나에 [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙] (2026-11-21 사용자 요청: 팝업 글처럼, 그린 대로).
+   nycta .nav(DEC-014: 화살표·원판·글 사이 ½in, 항목 사이 1⅞in GRID-007)를 안내 크기(.t-info, TYPE-007)로 판 안에 둔다.
+   한 줄이 6ft 판에 들어가지 않으면 항목 단위로만 다음 줄로 넘어가고(항목 안은 줄바꿈 없음), 줄 사이는 1⅜in(GRID-006, 노선도 팝업의 한글 간격),
+   판 높이는 1ft 단위로 는다. 첫 글자가 아니라 화살표·원판이 여백에 붙으므로 DEC-025 보정은 뺀다.
+   링크는 팝업의 닫기처럼 글자에만 ⅛in 밑줄(DEC-006). 길이는 post.html 스크립트 */
 .seqbar{margin-top:var(--doc-space-5)}
-.seqbar .nav{flex-wrap:nowrap;gap:0 calc(var(--in) * 1.875);margin-inline-start:0;line-height:var(--lh-g1)}
+.seqbar .nav{gap:calc(var(--in) * 1.375) calc(var(--in) * 1.875);margin-inline-start:0;line-height:var(--lh-g1)}
 .seqbar li{white-space:nowrap}
 .seqbar .nav a{color:inherit;gap:calc(var(--in) * .5)}
-.seqbar .nav a span{text-decoration:underline;text-decoration-thickness:var(--stroke-divider);text-underline-offset:.18em}
+.seqbar .nav a>span{text-decoration:underline;text-decoration-thickness:var(--stroke-divider);text-underline-offset:.18em}
+.seqbar .nav .disc--inline{align-self:center}
+/* [eee] ↙(돌아가기): 매뉴얼의 6방향(ARROW-001/006)에 없는 방향, 사용자 지정. 같은 화살표를 135° 돌린다 */
+.arrow[data-dir=down-left]{transform:rotate(135deg)}

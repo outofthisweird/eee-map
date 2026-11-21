@@ -217,15 +217,22 @@ def build_posts(data_text, post_tokens):
         CURRENT[0] = f"posts/{p['file'].name}"; plain(p.get("station", ""))   # 오류 메시지용, 역 이름의 색 이름도 확인
         seq_list = posts if p["draft"] else public   # 공개 글의 이전·다음에는 초안이 끼지 않는다
         k = seq_list.index(p); prev = seq_list[k - 1] if k else None; nxt = seq_list[k + 1] if k + 1 < len(seq_list) else None
-        # [eee] 끝 줄(2026-11-21 사용자 요청: 이전 글·다음 글·노선도를 한 모듈 판에 줄바꿈 없이, 팝업 글처럼).
-        # 화살표가 먼저(COPY-005), 글 제목은 줄을 넘기지 않게 title·aria-label로만 건넨다
+        # [eee] 끝 줄(2026-11-21 사용자 요청, 그린 대로): [← (G) 이전 글 제목] [(G) 다음 글 제목 →] [돌아가기 ↙].
+        # 화살표는 가리키는 쪽 끝에 붙는다(사용자 지정, COPY-005의 '화살표 먼저'와 다름). 제목 앞 원판은 그 글의 노선(G),
+        # 제목이 원판으로 시작하면 그 원판을 쓴다. 밑줄은 글자에만
         arrow = '<svg class="arrow" data-dir="{}" aria-hidden="true"><use href="#arrow"/></svg>'
-        def item(cls, href, d, label, title=None):
-            t = f' title="{html.escape(label + ": " + plain(title))}"' if title else ""
-            return f'<li class="trim"><a class="{cls}" href="{href}"{t}>{arrow.format(d)}<span>{label}</span></a></li>'
-        seq = (item("prev", f'{prev["slug"]}.html', "left", "이전 글", prev["title"]) if prev else "") + \
-              (item("next", f'{nxt["slug"]}.html', "right", "다음 글", nxt["title"]) if nxt else "") + \
-              item("back", f'../index.html#{p["id"]}', "left", "노선도")
+        def item(cls, href, label, d, title=None, after=False):
+            if title:
+                t = rich(title).strip(); m = re.match(r'(<span class="disc[^>]*><span>[^<]*</span></span>)\s*', t)
+                lead, t = (m.group(1), t[m.end():]) if m else (disc, t)   # 원판은 밑줄 밖
+                body = f'{lead}<span>{t}</span>'; aria = f' aria-label="{html.escape(label + ": " + plain(title))}"'
+            else:
+                body = f'<span>{label}</span>'; aria = ' aria-label="노선도로 돌아가기"'
+            a = arrow.format(d)
+            return f'<li class="trim"><a class="{cls}" href="{href}"{aria}>' + (body + a if after else a + body) + '</a></li>'
+        seq = (item("prev", f'{prev["slug"]}.html', "이전 글", "left", prev["title"]) if prev else "") + \
+              (item("next", f'{nxt["slug"]}.html', "다음 글", "right", nxt["title"], after=True) if nxt else "") + \
+              item("back", f'../index.html#{p["id"]}', "돌아가기", "down-left", after=True)
         y, mo, d = map(int, p["date"].split("-"))
         page = tpl
         for key, val in (("__TITLE_TEXT__", html.escape(plain(p["title"]))), ("__TITLE__", rich(p["title"])),
